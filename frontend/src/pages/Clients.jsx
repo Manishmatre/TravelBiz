@@ -6,7 +6,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function Clients() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,7 +31,11 @@ function Clients() {
 
   const handleAddClient = async (form) => {
     try {
-      const newClient = await addClient(form, token);
+      let formData = { ...form };
+      if (user?.role === 'agent') {
+        formData.assignedAgent = user.id;
+      }
+      const newClient = await addClient(formData, token);
       setClients([newClient, ...clients]);
       setModalOpen(false);
       toast.success('Client added successfully!');
