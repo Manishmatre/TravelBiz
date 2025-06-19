@@ -46,7 +46,7 @@ function Header({ onLogout }) {
               <div className="text-xs text-gray-500">{user?.email}</div>
               <div className="text-xs text-blue-600 font-bold mt-1">{user?.role?.toUpperCase()}</div>
             </div>
-            <button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => setDropdownOpen(false)}>Profile</button>
+            <a href="/profile" className="block w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => setDropdownOpen(false)}>Profile</a>
             {user?.role === 'admin' && (
               <button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => setDropdownOpen(false)}>Admin Panel</button>
             )}

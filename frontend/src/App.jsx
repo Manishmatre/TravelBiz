@@ -10,6 +10,7 @@ import Files from './pages/Files';
 import Vehicles from './pages/Vehicles';
 import LiveTracking from './pages/LiveTracking';
 import ActivityLog from './pages/ActivityLog';
+import ProfilePage from './pages/ProfilePage';
 import './App.css'
 
 function ProtectedRoute({ children }) {
@@ -81,6 +82,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ActivityLog />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
                 </Layout>
               </ProtectedRoute>
             }
