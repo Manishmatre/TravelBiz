@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { getClients, addClient, updateClient, deleteClient } from '../services/clientService';
 import { useAuth } from '../contexts/AuthContext';
 import ClientFormModal from '../components/ClientFormModal';
+import Button from '../components/common/Button';
+import Table from '../components/common/Table';
+import Loader from '../components/common/Loader';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -67,12 +70,25 @@ function Clients() {
     }
   };
 
+  const columns = [
+    { label: 'Name', accessor: 'name' },
+    { label: 'Email', accessor: 'email' },
+    { label: 'Passport #', accessor: 'passportNumber' },
+    { label: 'Nationality', accessor: 'nationality' },
+    { label: 'Assigned Agent', accessor: 'assignedAgentName' },
+  ];
+
+  const tableData = clients.map(client => ({
+    ...client,
+    assignedAgentName: client.assignedAgent?.name || '-',
+  }));
+
   return (
     <div>
       <ToastContainer position="top-right" autoClose={3000} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Clients</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 transition" onClick={() => { setEditClient(null); setModalOpen(true); }}>Add Client</button>
+        <Button color="primary" onClick={() => { setEditClient(null); setModalOpen(true); }}>Add Client</Button>
       </div>
       <ClientFormModal
         open={modalOpen}
@@ -80,41 +96,22 @@ function Clients() {
         onSubmit={editClient ? handleEditClient : handleAddClient}
         initialData={editClient}
       />
-      <div className="bg-white rounded shadow p-4 overflow-x-auto">
-        {loading ? (
-          <div>Loading...</div>
-        ) : error ? (
-          <div className="text-red-500">{error}</div>
-        ) : (
-          <table className="min-w-full">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="py-2 px-4 text-left">Name</th>
-                <th className="py-2 px-4 text-left">Email</th>
-                <th className="py-2 px-4 text-left">Passport #</th>
-                <th className="py-2 px-4 text-left">Nationality</th>
-                <th className="py-2 px-4 text-left">Assigned Agent</th>
-                <th className="py-2 px-4 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map(client => (
-                <tr key={client._id}>
-                  <td className="py-2 px-4">{client.name}</td>
-                  <td className="py-2 px-4">{client.email}</td>
-                  <td className="py-2 px-4">{client.passportNumber}</td>
-                  <td className="py-2 px-4">{client.nationality}</td>
-                  <td className="py-2 px-4">{client.assignedAgent?.name || '-'}</td>
-                  <td className="py-2 px-4">
-                    <button className="text-blue-600 hover:underline mr-2" onClick={() => { setEditClient(client); setModalOpen(true); }}>Edit</button>
-                    <button className="text-red-600 hover:underline" onClick={() => handleDeleteClient(client._id)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {loading ? (
+        <Loader className="my-8" />
+      ) : error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <Table
+          columns={columns}
+          data={tableData}
+          actions={client => (
+            <>
+              <Button color="secondary" size="sm" className="mr-2" onClick={() => { setEditClient(client); setModalOpen(true); }}>Edit</Button>
+              <Button color="danger" size="sm" onClick={() => handleDeleteClient(client._id)}>Delete</Button>
+            </>
+          )}
+        />
+      )}
     </div>
   );
 }

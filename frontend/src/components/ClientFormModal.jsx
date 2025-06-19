@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import Input from './common/Input';
+import Button from './common/Button';
 
 function ClientFormModal({ open, onClose, onSubmit, initialData }) {
   const [form, setForm] = useState({
@@ -37,25 +39,13 @@ function ClientFormModal({ open, onClose, onSubmit, initialData }) {
         <h2 className="text-xl font-bold mb-4">{initialData ? 'Edit Client' : 'Add Client'}</h2>
         {error && <div className="mb-2 text-red-500">{error}</div>}
         <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Name</label>
-            <input name="name" value={form.name} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Email</label>
-            <input name="email" type="email" value={form.email} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Passport Number</label>
-            <input name="passportNumber" value={form.passportNumber} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-4">
-            <label className="block mb-1 font-medium">Nationality</label>
-            <input name="nationality" value={form.nationality} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition">
+          <Input label="Name" name="name" value={form.name} onChange={handleChange} required />
+          <Input label="Email" name="email" type="email" value={form.email} onChange={handleChange} required />
+          <Input label="Passport Number" name="passportNumber" value={form.passportNumber} onChange={handleChange} required />
+          <Input label="Nationality" name="nationality" value={form.nationality} onChange={handleChange} required />
+          <Button type="submit" color="primary" className="w-full mt-2">
             {initialData ? 'Update' : 'Add'} Client
-          </button>
+          </Button>
         </form>
       </div>
     </div>
