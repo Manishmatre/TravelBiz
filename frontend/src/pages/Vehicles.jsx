@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { getVehicles, addVehicle, updateVehicle, deleteVehicle } from '../services/vehicleService';
 import { useAuth } from '../contexts/AuthContext';
 import VehicleFormModal from '../components/VehicleFormModal';
+import StatCard from '../components/common/StatCard';
+import Loader from '../components/common/Loader';
+import Table from '../components/common/Table';
+import { FaCar } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -64,60 +68,57 @@ function Vehicles() {
   };
 
   return (
-    <div>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
       <ToastContainer position="top-right" autoClose={3000} />
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Vehicles</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 transition" onClick={() => { setEditVehicle(null); setModalOpen(true); }}>Add Vehicle</button>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Vehicles</h1>
+        <button className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold shadow hover:bg-blue-700 transition-all" onClick={() => { setEditVehicle(null); setModalOpen(true); }}>Add Vehicle</button>
       </div>
+      {/* Quick Stat */}
+      <div className="mb-6 max-w-xs">
+        <StatCard icon={<FaCar />} label="Total Vehicles" value={loading ? '--' : vehicles.length} accentColor="green" />
+      </div>
+      {/* Modal */}
       <VehicleFormModal
         open={modalOpen}
         onClose={() => { setEditVehicle(null); setModalOpen(false); }}
         onSubmit={editVehicle ? handleEditVehicle : handleAddVehicle}
         initialData={editVehicle}
       />
-      <div className="bg-white rounded shadow p-4 overflow-x-auto">
+      {/* Table or Loader/Error */}
+      <div className="">
         {loading ? (
-          <div>Loading...</div>
+          <Loader className="my-10" />
         ) : error ? (
-          <div className="text-red-500">{error}</div>
+          <div className="text-red-500 p-6">{error}</div>
         ) : (
-          <table className="min-w-full">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="py-2 px-4 text-left">Name</th>
-                <th className="py-2 px-4 text-left">Type</th>
-                <th className="py-2 px-4 text-left">Number Plate</th>
-                <th className="py-2 px-4 text-left">Insurance Expiry</th>
-                <th className="py-2 px-4 text-left">Driver</th>
-                <th className="py-2 px-4 text-left">Status</th>
-                <th className="py-2 px-4 text-left">Photo</th>
-                <th className="py-2 px-4 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map(vehicle => (
-                <tr key={vehicle._id}>
-                  <td className="py-2 px-4">{vehicle.name}</td>
-                  <td className="py-2 px-4">{vehicle.vehicleType}</td>
-                  <td className="py-2 px-4">{vehicle.numberPlate}</td>
-                  <td className="py-2 px-4">{vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry).toLocaleDateString() : '-'}</td>
-                  <td className="py-2 px-4">{vehicle.driverName || '-'}</td>
-                  <td className="py-2 px-4">{vehicle.status}</td>
-                  <td className="py-2 px-4">
-                    {vehicle.photoUrl ? <img src={vehicle.photoUrl} alt="Vehicle" className="h-10 w-16 object-cover rounded" /> : '-'}</td>
-                  <td className="py-2 px-4">
-                    <button className="text-blue-600 hover:underline mr-2" onClick={() => { setEditVehicle(vehicle); setModalOpen(true); }}>Edit</button>
-                    <button className="text-red-600 hover:underline" onClick={() => handleDeleteVehicle(vehicle._id)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            columns={[
+              { label: 'Model', accessor: 'model' },
+              { label: 'Number', accessor: 'number', render: v => typeof v === 'object' && v !== null ? v.numberPlate || '-' : (v || '-') },
+              { label: 'Type', accessor: 'type' },
+              { label: 'Driver', accessor: 'driverName' },
+              { label: 'Status', accessor: 'status' },
+              { label: 'Photo', accessor: 'photoUrl', render: v => v ? <img src={v} alt="Vehicle" className="h-10 w-16 object-cover rounded" /> : '-' },
+            ]}
+            data={vehicles.map(v => ({
+              ...v,
+              driverName: v.driverName || '-',
+              photoUrl: v.photoUrl,
+              number: typeof v.number === 'object' && v.number !== null ? v.number.numberPlate || '-' : (v.number || '-')
+            }))}
+            actions={vehicle => (
+              <>
+                <button className="text-blue-600 hover:underline mr-2" onClick={() => { setEditVehicle(vehicle); setModalOpen(true); }}>Edit</button>
+                <button className="text-red-600 hover:underline" onClick={() => handleDeleteVehicle(vehicle._id)}>Delete</button>
+              </>
+            )}
+          />
         )}
       </div>
     </div>
   );
 }
 
-export default Vehicles; 
+export default Vehicles;

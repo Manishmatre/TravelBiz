@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import StatCard from '../components/common/StatCard';
+import Loader from '../components/common/Loader';
+import Table from '../components/common/Table';
+import { FaSyncAlt } from 'react-icons/fa';
 import io from 'socket.io-client';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/files/activity';
@@ -19,10 +23,14 @@ function ActivityLog() {
   useEffect(() => {
     fetchActivities(1, true);
     // Setup socket
-    socketRef.current = io(SOCKET_URL);
-    socketRef.current.on('activity', (activity) => {
-      setActivities(prev => [activity, ...prev]);
-    });
+    try {
+      socketRef.current = io(SOCKET_URL);
+      socketRef.current.on('activity', (activity) => {
+        setActivities(prev => [activity, ...prev]);
+      });
+    } catch (err) {
+      setError('Socket connection failed: ' + (err.message || err));
+    }
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
@@ -83,16 +91,24 @@ function ActivityLog() {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Activity Log</h1>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Activity Log</h1>
+      </div>
+      {/* Quick Stat */}
+      <div className="mb-6 max-w-xs">
+        <StatCard icon={<FaSyncAlt />} label="Total Activities" value={loading ? '--' : activities.length} accentColor="blue" />
+      </div>
+      {/* Filters */}
       <div className="mb-4 flex gap-4">
-        <select name="entityType" value={filters.entityType} onChange={handleFilterChange} className="border rounded px-2 py-1">
+        <select name="entityType" value={filters.entityType} onChange={handleFilterChange} className="border border-gray-300 rounded-lg px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-200">
           <option value="">All Entities</option>
           <option value="Client">Client</option>
           <option value="Vehicle">Vehicle</option>
           <option value="File">File</option>
         </select>
-        <select name="actionType" value={filters.actionType} onChange={handleFilterChange} className="border rounded px-2 py-1">
+        <select name="actionType" value={filters.actionType} onChange={handleFilterChange} className="border border-gray-300 rounded-lg px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-200">
           <option value="">All Actions</option>
           <option value="create">Create</option>
           <option value="update">Update</option>
@@ -100,36 +116,40 @@ function ActivityLog() {
         </select>
       </div>
       {error && <div className="text-red-500 mb-2">{error}</div>}
-      <div className="bg-white rounded shadow p-4 overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr>
-              <th className="text-left p-2">Time</th>
-              <th className="text-left p-2">Action</th>
-              <th className="text-left p-2">Entity</th>
-              <th className="text-left p-2">Name</th>
-              <th className="text-left p-2">By</th>
-              <th className="text-left p-2">Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activities.map((a, idx) => (
-              <tr key={a._id || idx} className="border-t">
-                <td className="p-2 text-xs text-gray-500">{a.timestamp ? new Date(a.timestamp).toLocaleString() : ''}</td>
-                <td className="p-2 font-semibold">{a.actionType}</td>
-                <td className="p-2">{a.entityType}</td>
-                <td className="p-2">{a.entityName}</td>
-                <td className="p-2">{a.performedByName}</td>
-                <td className="p-2 text-xs text-gray-600">{a.details ? JSON.stringify(a.details) : ''}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {loading && <div className="text-gray-500 mt-2">Loading...</div>}
-        {!loading && hasMore && (
-          <button onClick={handleLoadMore} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Load More</button>
+      <div className="">
+        {/* Debug Info */}
+        {(!Array.isArray(activities) || error) && (
+          <div className="bg-yellow-100 text-yellow-900 p-4 rounded mb-4">
+            <div><b>Debug Info</b></div>
+            {!Array.isArray(activities) && <div>activities is not an array: {JSON.stringify(activities)}</div>}
+            {error && <div>Error: {error}</div>}
+          </div>
+        )}
+        {loading ? (
+          <Loader className="my-10" />
+        ) : error ? (
+          <div className="text-red-500 p-6">{error}</div>
+        ) : (
+          Array.isArray(activities) && activities.length > 0 ? (
+            <Table
+              columns={[
+                { label: 'Timestamp', accessor: 'timestamp', render: v => v ? new Date(v).toLocaleString() : '' },
+                { label: 'Action', accessor: 'actionType' },
+                { label: 'Entity', accessor: 'entityType' },
+                { label: 'Name', accessor: 'entityName' },
+                { label: 'By', accessor: 'performedByName' },
+                { label: 'Details', accessor: 'details', render: v => v ? JSON.stringify(v) : '' },
+              ]}
+              data={activities}
+            />
+          ) : (
+            <div className="text-gray-500 p-6">No activity log data found.</div>
+          )
         )}
       </div>
+      {!loading && hasMore && (
+        <button onClick={handleLoadMore} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl shadow">Load More</button>
+      )}
     </div>
   );
 }

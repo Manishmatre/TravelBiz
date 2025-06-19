@@ -30,31 +30,31 @@ function Register() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-6 text-center">Register</h2>
+    <div className="flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100">
+      <form onSubmit={handleSubmit} className="bg-white/80 border border-gray-100 rounded-2xl shadow-lg p-8 w-full max-w-sm">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">Register</h2>
         {error && <div className="mb-4 text-red-500 text-center">{error}</div>}
         <div className="mb-4">
           <label className="block mb-1 font-medium">Name</label>
-          <input type="text" className="w-full border rounded px-3 py-2" value={name} onChange={e => setName(e.target.value)} required />
+          <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-200" value={name} onChange={e => setName(e.target.value)} required />
         </div>
         <div className="mb-4">
           <label className="block mb-1 font-medium">Email</label>
-          <input type="email" className="w-full border rounded px-3 py-2" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input type="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-200" value={email} onChange={e => setEmail(e.target.value)} required />
         </div>
         <div className="mb-4">
           <label className="block mb-1 font-medium">Password</label>
-          <input type="password" className="w-full border rounded px-3 py-2" value={password} onChange={e => setPassword(e.target.value)} required />
+          <input type="password" className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-200" value={password} onChange={e => setPassword(e.target.value)} required />
         </div>
         <div className="mb-6">
           <label className="block mb-1 font-medium">Role</label>
-          <select className="w-full border rounded px-3 py-2" value={role} onChange={e => setRole(e.target.value)}>
+          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-200" value={role} onChange={e => setRole(e.target.value)}>
             <option value="admin">Admin</option>
             <option value="agent">Agent</option>
             <option value="driver">Driver</option>
           </select>
         </div>
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition" disabled={loading}>
+        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-xl font-semibold shadow hover:bg-blue-700 transition-all" disabled={loading}>
           {loading ? 'Registering...' : 'Register'}
         </button>
         <div className="mt-4 text-center">

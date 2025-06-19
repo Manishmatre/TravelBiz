@@ -4,10 +4,12 @@ import { getAllLocations } from '../services/locationService';
 import { getVehicles } from '../services/vehicleService';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
+import StatCard from '../components/common/StatCard';
+import { FaMapMarkerAlt } from 'react-icons/fa';
 
 const containerStyle = {
   width: '100%',
-  height: '500px',
+  height: '400px',
 };
 
 // Placeholder center (Dubai)
@@ -71,9 +73,17 @@ function LiveTracking() {
   const getVehicleInfo = (vehicleId) => vehicles.find(v => v._id === vehicleId) || {};
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Live Vehicle Tracking</h1>
-      <div className="mb-6">
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Live Vehicle Tracking</h1>
+      </div>
+      {/* Quick Stat */}
+      <div className="mb-6 max-w-xs">
+        <StatCard icon={<FaMapMarkerAlt />} label="Tracked Vehicles" value={loading ? '--' : locations.length} accentColor="green" />
+      </div>
+      {/* Map Card */}
+      <div className="bg-white/80 border border-gray-100 rounded-2xl shadow-lg p-0 md:p-2 mb-6">
         {isLoaded ? (
           <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={12}>
             {locations.map(loc => {
@@ -93,12 +103,13 @@ function LiveTracking() {
             })}
           </GoogleMap>
         ) : (
-          <div>Loading map...</div>
+          <div className="text-gray-500 py-10 text-center text-lg">Loading map...</div>
         )}
       </div>
-      <div className="bg-white rounded shadow p-4">
-        <h2 className="text-xl font-semibold mb-4">Vehicle Status</h2>
-        <ul>
+      {/* Status Card */}
+      <div className="bg-white/80 border border-gray-100 rounded-2xl shadow-lg p-0 md:p-2">
+        <h2 className="text-xl font-semibold mb-4 px-4 pt-4">Vehicle Status</h2>
+        <ul className="px-4 pb-4">
           {locations.map(loc => {
             const vehicle = getVehicleInfo(loc.vehicleId);
             return (

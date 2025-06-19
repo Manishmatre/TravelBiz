@@ -93,7 +93,7 @@ function Dashboard() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 py-4 px-1 md:px-4">
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
       <h1 className="text-2xl font-bold mb-5 text-gray-900 tracking-tight">Dashboard</h1>
       {/* Quick Actions Bar */}
       <div className="flex flex-wrap gap-2 mb-5">

@@ -5,6 +5,8 @@ import ClientFormModal from '../components/ClientFormModal';
 import Button from '../components/common/Button';
 import Table from '../components/common/Table';
 import Loader from '../components/common/Loader';
+import StatCard from '../components/common/StatCard';
+import { FaUsers } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -84,36 +86,45 @@ function Clients() {
   }));
 
   return (
-    <div>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
       <ToastContainer position="top-right" autoClose={3000} />
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Clients</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Clients</h1>
         <Button color="primary" onClick={() => { setEditClient(null); setModalOpen(true); }}>Add Client</Button>
       </div>
+      {/* Quick Stat */}
+      <div className="mb-6 max-w-xs">
+        <StatCard icon={<FaUsers />} label="Total Clients" value={loading ? '--' : clients.length} accentColor="blue" />
+      </div>
+      {/* Modal */}
       <ClientFormModal
         open={modalOpen}
         onClose={() => { setEditClient(null); setModalOpen(false); }}
         onSubmit={editClient ? handleEditClient : handleAddClient}
         initialData={editClient}
       />
-      {loading ? (
-        <Loader className="my-8" />
-      ) : error ? (
-        <div className="text-red-500">{error}</div>
-      ) : (
-        <Table
-          columns={columns}
-          data={tableData}
-          actions={client => (
-            <>
-              <Button color="secondary" size="sm" className="mr-2" onClick={() => { setEditClient(client); setModalOpen(true); }}>Edit</Button>
-              <Button color="danger" size="sm" onClick={() => handleDeleteClient(client._id)}>Delete</Button>
-            </>
-          )}
-        />
-      )}
+      {/* Table or Loader/Error */}
+      <div className="">
+        {loading ? (
+          <Loader className="my-10" />
+        ) : error ? (
+          <div className="text-red-500 p-6">{error}</div>
+        ) : (
+          <Table
+            columns={columns}
+            data={tableData}
+            actions={client => (
+              <>
+                <Button color="secondary" size="sm" className="mr-2" onClick={() => { setEditClient(client); setModalOpen(true); }}>Edit</Button>
+                <Button color="danger" size="sm" onClick={() => handleDeleteClient(client._id)}>Delete</Button>
+              </>
+            )}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-export default Clients; 
+export default Clients;
