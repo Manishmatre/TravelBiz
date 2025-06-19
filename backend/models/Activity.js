@@ -8,6 +8,7 @@ const activitySchema = new mongoose.Schema({
   performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   performedByName: { type: String },
   details: { type: Object }, // Optional: extra info about the action
+  agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency', required: true, index: true },
 }, { timestamps: { createdAt: 'timestamp', updatedAt: false } });
 
 module.exports = mongoose.model('Activity', activitySchema); 

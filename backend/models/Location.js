@@ -7,6 +7,7 @@ const locationSchema = new mongoose.Schema({
   speed: { type: Number, required: true },
   status: { type: String, enum: ['moving', 'stopped'], required: true },
   updatedAt: { type: Date, default: Date.now },
+  agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency', required: true, index: true },
 });
 
 module.exports = mongoose.model('Location', locationSchema); 

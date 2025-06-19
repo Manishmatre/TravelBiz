@@ -11,12 +11,15 @@ import Vehicles from './pages/Vehicles';
 import LiveTracking from './pages/LiveTracking';
 import ActivityLog from './pages/ActivityLog';
 import ProfilePage from './pages/ProfilePage';
+import AgencyInfoForm from './pages/AgencyInfoForm';
 import './App.css'
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, requireAgency = false }) {
   const { user, loading } = useAuth();
   if (loading) return <div>Loading...</div>;
-  return user ? children : <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" />;
+  if (requireAgency && !user.agencyId) return <Navigate to="/agency-info" />;
+  return children;
 }
 
 function App() {
@@ -26,10 +29,25 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/agency-info" element={
+            <ProtectedRoute>
+              <AgencyInfoForm />
+            </ProtectedRoute>
+          } />
           <Route
             path="/"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireAgency={true}>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute requireAgency={true}>
                 <Layout>
                   <Dashboard />
                 </Layout>

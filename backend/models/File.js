@@ -10,6 +10,9 @@ const fileSchema = new mongoose.Schema({
   originalName: { type: String },
   mimeType: { type: String },
   size: { type: Number },
+  agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency', required: true },
 });
+
+fileSchema.index({ agencyId: 1 });
 
 module.exports = mongoose.model('File', fileSchema); 

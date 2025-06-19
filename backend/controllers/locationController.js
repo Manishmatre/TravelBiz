@@ -5,6 +5,11 @@ const Vehicle = require('../models/Vehicle');
 exports.updateLocation = async (req, res) => {
   try {
     const { vehicleId, latitude, longitude, speed, status } = req.body;
+    // Check agency access
+    const vehicle = await Vehicle.findOne({ _id: vehicleId, agencyId: req.user.agencyId });
+    if (!vehicle) {
+      return res.status(403).json({ message: 'Forbidden: vehicle not in your agency' });
+    }
     let location = await Location.findOne({ vehicleId });
     if (location) {
       location.latitude = latitude;
@@ -28,6 +33,11 @@ exports.updateLocation = async (req, res) => {
 // Get current location for a vehicle
 exports.getLocationByVehicle = async (req, res) => {
   try {
+    // Check agency access
+    const vehicle = await Vehicle.findOne({ _id: req.params.vehicleId, agencyId: req.user.agencyId });
+    if (!vehicle) {
+      return res.status(403).json({ message: 'Forbidden: vehicle not in your agency' });
+    }
     const location = await Location.findOne({ vehicleId: req.params.vehicleId });
     if (!location) return res.status(404).json({ message: 'Location not found' });
     res.json(location);
@@ -39,9 +49,12 @@ exports.getLocationByVehicle = async (req, res) => {
 // Get all vehicle locations (for map display)
 exports.getAllLocations = async (req, res) => {
   try {
-    const locations = await Location.find({});
+    // Only vehicles in this agency
+    const vehicles = await Vehicle.find({ agencyId: req.user.agencyId }).select('_id');
+    const vehicleIds = vehicles.map(v => v._id);
+    const locations = await Location.find({ vehicleId: { $in: vehicleIds } });
     res.json(locations);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}; 
+};

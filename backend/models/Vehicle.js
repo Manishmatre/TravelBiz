@@ -11,7 +11,10 @@ const vehicleSchema = new mongoose.Schema({
   driverContact: { type: String },
   status: { type: String, enum: ['available', 'on-trip', 'maintenance'], default: 'available' },
   photoUrl: { type: String },
+  agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency', required: true },
   createdAt: { type: Date, default: Date.now },
 });
+
+vehicleSchema.index({ agencyId: 1 });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema); 

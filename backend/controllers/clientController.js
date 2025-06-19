@@ -12,6 +12,7 @@ exports.createClient = async (req, res) => {
       passportNumber,
       nationality,
       assignedAgent: assignedAgent || req.user._id,
+      agencyId: req.user.agencyId,
     });
     // Log activity
     const activity = await Activity.create({
@@ -33,7 +34,7 @@ exports.createClient = async (req, res) => {
 // Get all clients (admin sees all, agent sees only their clients)
 exports.getClients = async (req, res) => {
   try {
-    let filter = {};
+    let filter = { agencyId: req.user.agencyId };
     if (req.user.role === 'agent') {
       filter.assignedAgent = req.user._id;
     }
@@ -47,7 +48,7 @@ exports.getClients = async (req, res) => {
 // Get client by ID
 exports.getClientById = async (req, res) => {
   try {
-    const client = await Client.findById(req.params.id).populate('assignedAgent', 'name email role');
+    const client = await Client.findOne({ _id: req.params.id, agencyId: req.user.agencyId }).populate('assignedAgent', 'name email role');
     if (!client) return res.status(404).json({ message: 'Client not found' });
     // Agent can only access their own clients
     if (req.user.role === 'agent' && String(client.assignedAgent._id) !== String(req.user._id)) {
@@ -62,7 +63,7 @@ exports.getClientById = async (req, res) => {
 // Update client
 exports.updateClient = async (req, res) => {
   try {
-    const client = await Client.findById(req.params.id);
+    const client = await Client.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
     if (!client) return res.status(404).json({ message: 'Client not found' });
     // Agent can only update their own clients
     if (req.user.role === 'agent' && String(client.assignedAgent) !== String(req.user._id)) {
@@ -90,7 +91,7 @@ exports.updateClient = async (req, res) => {
 // Delete client
 exports.deleteClient = async (req, res) => {
   try {
-    const client = await Client.findById(req.params.id);
+    const client = await Client.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
     if (!client) return res.status(404).json({ message: 'Client not found' });
     // Agent can only delete their own clients
     if (req.user.role === 'agent' && String(client.assignedAgent) !== String(req.user._id)) {

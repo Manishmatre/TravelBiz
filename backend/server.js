@@ -31,6 +31,8 @@ app.use('/api/vehicles', vehicleRoutes);
 const locationRoutes = require('./routes/location');
 app.use('/api/location', locationRoutes);
 
+const agencyRoutes = require('./routes/agency');
+app.use('/api/agency', agencyRoutes);
 // TODO: Import routes and middlewares here
 
 // Connect to MongoDB

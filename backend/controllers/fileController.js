@@ -17,6 +17,7 @@ exports.uploadFile = async (req, res) => {
       originalName: req.file.originalname,
       mimeType: req.file.mimetype,
       size: req.file.size,
+      agencyId: req.user.agencyId,
     });
     // Link file to client
     await Client.findByIdAndUpdate(clientId, { $push: { files: file._id } });
@@ -42,7 +43,7 @@ exports.uploadFile = async (req, res) => {
 exports.getFiles = async (req, res) => {
   try {
     const { clientId, fileType, startDate, endDate } = req.query;
-    let filter = {};
+    let filter = { agencyId: req.user.agencyId };
     if (clientId) filter.clientId = clientId;
     if (fileType) filter.fileType = fileType;
     if (startDate || endDate) {
@@ -60,7 +61,7 @@ exports.getFiles = async (req, res) => {
 // Get file by ID
 exports.getFileById = async (req, res) => {
   try {
-    const file = await File.findById(req.params.id).populate('clientId', 'name').populate('uploadedBy', 'name email');
+    const file = await File.findOne({ _id: req.params.id, agencyId: req.user.agencyId }).populate('clientId', 'name').populate('uploadedBy', 'name email');
     if (!file) return res.status(404).json({ message: 'File not found' });
     res.json(file);
   } catch (err) {
@@ -71,7 +72,7 @@ exports.getFileById = async (req, res) => {
 // Delete file (from Cloudinary and DB)
 exports.deleteFile = async (req, res) => {
   try {
-    const file = await File.findById(req.params.id);
+    const file = await File.findOne({ _id: req.params.id, agencyId: req.user.agencyId }); // already enforced
     if (!file) return res.status(404).json({ message: 'File not found' });
     // Remove file from Cloudinary
     if (file.fileUrl) {

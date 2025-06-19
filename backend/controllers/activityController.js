@@ -4,7 +4,7 @@ const Activity = require('../models/Activity');
 exports.getActivities = async (req, res) => {
   try {
     const { limit = 20, skip = 0, entityType, actionType } = req.query;
-    const filter = {};
+    const filter = { agencyId: req.user.agencyId };
     if (entityType) filter.entityType = entityType;
     if (actionType) filter.actionType = actionType;
     const activities = await Activity.find(filter)

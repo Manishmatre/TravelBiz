@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'agent', 'driver'], default: 'agent' },
+  agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency' },
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -21,6 +21,7 @@ exports.createVehicle = async (req, res) => {
       driverContact,
       status,
       photoUrl,
+      agencyId: req.user.agencyId,
     });
     // Log activity
     const activity = await Activity.create({
@@ -43,7 +44,7 @@ exports.createVehicle = async (req, res) => {
 exports.getVehicles = async (req, res) => {
   try {
     const { status, vehicleType } = req.query;
-    let filter = {};
+    let filter = { agencyId: req.user.agencyId };
     if (status) filter.status = status;
     if (vehicleType) filter.vehicleType = vehicleType;
     const vehicles = await Vehicle.find(filter).populate('assignedClient', 'name email');
@@ -56,7 +57,7 @@ exports.getVehicles = async (req, res) => {
 // Get vehicle by ID
 exports.getVehicleById = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id).populate('assignedClient', 'name email');
+    const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId }).populate('assignedClient', 'name email');
     if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
     res.json(vehicle);
   } catch (err) {
@@ -67,7 +68,7 @@ exports.getVehicleById = async (req, res) => {
 // Update vehicle
 exports.updateVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id);
+    const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
     if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
     // If new photo uploaded, update Cloudinary URL
     if (req.file && req.file.path) {
@@ -95,7 +96,7 @@ exports.updateVehicle = async (req, res) => {
 // Delete vehicle (and photo from Cloudinary)
 exports.deleteVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id);
+    const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
     if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
     // Remove photo from Cloudinary
     if (vehicle.photoUrl) {
