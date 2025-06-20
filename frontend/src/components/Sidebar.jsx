@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FaTachometerAlt, FaUsers, FaUserCog, FaFileAlt, FaCar, FaMapMarkedAlt, FaHistory, FaSignOutAlt } from 'react-icons/fa';
+import { FaTachometerAlt, FaUsers, FaUserCog, FaFileAlt, FaCar, FaMapMarkedAlt, FaHistory, FaSignOutAlt, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 const navLinks = [
   { to: '/', label: 'Dashboard', icon: <FaTachometerAlt />, roles: ['admin', 'agent', 'driver'] },
@@ -13,10 +13,27 @@ const navLinks = [
   { to: '/activity-log', label: 'Activity Log', icon: <FaHistory />, roles: ['admin', 'agent'] },
 ];
 
+const vehicleMenuLinks = [
+  { to: '/vehicles', label: 'Vehicles' },
+  { to: '/vehicles/dashboard', label: 'Dashboard' },
+  { to: '/vehicles/maintenance', label: 'Maintenance' },
+  { to: '/vehicles/fuel', label: 'Fuel' },
+  { to: '/vehicles/documents', label: 'Documents' },
+  { to: '/vehicles/assignments', label: 'Assignments' },
+];
+
 function Sidebar({ open, onClose }) {
   const { user, logout, agency } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [vehicleMenuOpen, setVehicleMenuOpen] = useState(false);
+
+  // Open vehicle menu if on a vehicle-related page
+  useEffect(() => {
+    if (vehicleMenuLinks.some(link => location.pathname.startsWith(link.to))) {
+      setVehicleMenuOpen(true);
+    }
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -57,7 +74,7 @@ function Sidebar({ open, onClose }) {
         )}
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        {navLinks.filter(link => link.roles.includes(user?.role)).map(link => (
+        {navLinks.filter(link => link.roles.includes(user?.role) && link.label !== 'Vehicles').map(link => (
           <Link
             key={link.to}
             to={link.to}
@@ -68,26 +85,34 @@ function Sidebar({ open, onClose }) {
             <span>{link.label}</span>
           </Link>
         ))}
-        {/* Vehicle Management Section */}
+        {/* Vehicle Management Dropdown */}
         {(user?.role === 'admin' || user?.role === 'agent') && (
-          <>
-            <div className="mt-6 mb-2 px-4 text-xs font-bold text-blue-500 uppercase tracking-wider">Vehicle Management</div>
-            <Link to="/vehicles/dashboard" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/dashboard' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
-              <span className="text-lg"><FaCar /></span> <span>Dashboard</span>
-            </Link>
-            <Link to="/vehicles/maintenance" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/maintenance' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
-              <span className="text-lg"><FaCar /></span> <span>Maintenance</span>
-            </Link>
-            <Link to="/vehicles/fuel" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/fuel' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
-              <span className="text-lg"><FaCar /></span> <span>Fuel</span>
-            </Link>
-            <Link to="/vehicles/documents" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/documents' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
-              <span className="text-lg"><FaCar /></span> <span>Documents</span>
-            </Link>
-            <Link to="/vehicles/assignments" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/assignments' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
-              <span className="text-lg"><FaCar /></span> <span>Assignments</span>
-            </Link>
-          </>
+          <div className="mt-6">
+            <button
+              className={`flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none ${vehicleMenuOpen ? 'bg-blue-50' : ''}`}
+              onClick={() => setVehicleMenuOpen(v => !v)}
+              type="button"
+              style={{ minHeight: '44px' }}
+            >
+              <FaCar className="text-lg mr-2 shrink-0" />
+              <span className="flex-1 text-left whitespace-nowrap truncate">Vehicle Management</span>
+              {vehicleMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
+            </button>
+            {vehicleMenuOpen && (
+              <div className="ml-7 mt-1 space-y-1">
+                {vehicleMenuLinks.map(link => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                    onClick={onClose}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </nav>
       <div className="p-4 border-t border-blue-100">

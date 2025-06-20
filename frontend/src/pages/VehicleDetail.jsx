@@ -344,10 +344,13 @@ function VehicleDetail() {
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
       <div className="w-full">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <Link to="/vehicles" className="text-blue-600 hover:underline font-semibold">&larr; Back to Vehicles</Link>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 text-center flex-1">Vehicle Details</h1>
-          <div className="hidden md:block" style={{ width: 120 }} />
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Vehicle Details</h1>
+          <Link to="/vehicles" className="ml-auto">
+            <Button color="secondary" size="sm">
+              &larr; Back to Vehicles
+            </Button>
+          </Link>
         </div>
         <div className="bg-white rounded-2xl shadow-xl p-6 w-full">
           <Tab tabs={tabLabels.map(label => ({ label }))} activeTab={activeTab} onTabChange={setActiveTab} className="mb-6" />
