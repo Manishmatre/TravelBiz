@@ -1,6 +1,7 @@
 const Vehicle = require('../models/Vehicle');
 const { cloudinary } = require('../utils/upload');
 const Activity = require('../models/Activity');
+const User = require('../models/User');
 
 // Create a new vehicle
 exports.createVehicle = async (req, res) => {
@@ -203,6 +204,10 @@ exports.addVehicleAssignment = async (req, res) => {
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
   vehicle.assignments.push(req.body);
   await vehicle.save();
+  // Update assignedVehicle on user if status is not 'Unassigned'
+  if (req.body.driver && req.body.status !== 'Unassigned') {
+    await User.findByIdAndUpdate(req.body.driver, { assignedVehicle: vehicle._id });
+  }
   res.status(201).json(vehicle.assignments[vehicle.assignments.length - 1]);
 };
 
@@ -213,6 +218,15 @@ exports.updateVehicleAssignment = async (req, res) => {
   if (!assign) return res.status(404).json({ message: 'Assignment not found' });
   Object.assign(assign, req.body);
   await vehicle.save();
+  // Update assignedVehicle on user
+  if (req.body.driver) {
+    if (req.body.status === 'Unassigned') {
+      // Only clear if this vehicle is currently assigned
+      await User.findOneAndUpdate({ _id: req.body.driver, assignedVehicle: vehicle._id }, { assignedVehicle: null });
+    } else {
+      await User.findByIdAndUpdate(req.body.driver, { assignedVehicle: vehicle._id });
+    }
+  }
   res.json(assign);
 };
 
@@ -221,7 +235,11 @@ exports.deleteVehicleAssignment = async (req, res) => {
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
   const assign = vehicle.assignments.id(req.params.assignId);
   if (!assign) return res.status(404).json({ message: 'Assignment not found' });
-  assign.remove();
+  // If this assignment was assigned, clear assignedVehicle on the user
+  if (assign.driver && assign.status !== 'Unassigned') {
+    await User.findOneAndUpdate({ _id: assign.driver, assignedVehicle: vehicle._id }, { assignedVehicle: null });
+  }
+  vehicle.assignments.pull(assign._id);
   await vehicle.save();
   res.json({ message: 'Assignment deleted' });
 };

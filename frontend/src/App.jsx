@@ -20,6 +20,9 @@ import VehicleFuel from './pages/VehicleFuel';
 import VehicleDocuments from './pages/VehicleDocuments';
 import VehicleAssignments from './pages/VehicleAssignments';
 import VehicleDetail from './pages/VehicleDetail';
+import Drivers from './pages/Drivers';
+import DriverDashboard from './pages/DriverDashboard';
+import DriverDetail from './pages/DriverDetail';
 import './App.css'
 
 function ProtectedRoute({ children, requireAgency = false }) {
@@ -198,6 +201,36 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <VehicleDetail />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/drivers"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Drivers />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/drivers/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DriverDashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/drivers/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DriverDetail />
                 </Layout>
               </ProtectedRoute>
             }

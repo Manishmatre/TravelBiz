@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'agent', 'driver'], default: 'agent' },
+  role: { type: String, enum: ['admin', 'agent', 'driver', 'client'], default: 'agent' },
   agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency' },
   createdAt: { type: Date, default: Date.now },
   // Profile fields
@@ -59,6 +59,16 @@ const userSchema = new mongoose.Schema({
     country: { type: String, default: '' },
     postalCode: { type: String, default: '' }
   },
+  // Driver-specific fields
+  licenseNumber: { type: String, default: '' },
+  licenseExpiry: { type: String, default: '' },
+  assignedVehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
+  documents: [{
+    type: { type: String, default: '' }, // e.g., 'license', 'ID', etc.
+    url: { type: String, default: '' },
+    expiryDate: { type: String, default: '' }
+  }],
+  status: { type: String, default: 'Active' },
 });
 
 // Hash password before saving
