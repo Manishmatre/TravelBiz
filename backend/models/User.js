@@ -69,6 +69,16 @@ const userSchema = new mongoose.Schema({
     expiryDate: { type: String, default: '' }
   }],
   status: { type: String, default: 'Active' },
+  nationality: { type: String, default: '' },
+  passportNumber: { type: String, default: '' },
+  emergencyContact: {
+    name: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    relation: { type: String, default: '' }
+  },
+  assignedAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  bookings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Booking' }],
+  notes: { type: String, default: '' },
 });
 
 // Hash password before saving

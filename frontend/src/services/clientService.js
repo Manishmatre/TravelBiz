@@ -10,17 +10,55 @@ export const getClients = async (token) => {
 };
 
 export const addClient = async (client, token) => {
-  const res = await axios.post(`${API_URL}/clients`, client, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return res.data;
+  if (client.avatar) {
+    const formData = new FormData();
+    Object.entries(client).forEach(([key, value]) => {
+      if (key === 'avatar' && value) formData.append('avatar', value);
+      else if (typeof value === 'object' && value !== null) {
+        formData.append(key, JSON.stringify(value));
+      } else if (value !== undefined && value !== null) {
+        formData.append(key, value);
+      }
+    });
+    const res = await axios.post(`${API_URL}/clients`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  } else {
+    const res = await axios.post(`${API_URL}/clients`, client, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  }
 };
 
 export const updateClient = async (id, client, token) => {
-  const res = await axios.put(`${API_URL}/clients/${id}`, client, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return res.data;
+  if (client.avatar) {
+    const formData = new FormData();
+    Object.entries(client).forEach(([key, value]) => {
+      if (key === 'avatar' && value) formData.append('avatar', value);
+      else if (typeof value === 'object' && value !== null) {
+        formData.append(key, JSON.stringify(value));
+      } else if (value !== undefined && value !== null) {
+        formData.append(key, value);
+      }
+    });
+    const res = await axios.put(`${API_URL}/clients/${id}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  } else {
+    const res = await axios.put(`${API_URL}/clients/${id}`, client, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  }
 };
 
 export const deleteClient = async (id, token) => {

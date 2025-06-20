@@ -21,7 +21,8 @@ exports.inviteUser = async (req, res) => {
   try {
     const {
       name, email, role, licenseNumber, licenseExpiry, assignedVehicle, documents,
-      phone, gender, joiningDate, address, status, dateOfBirth, avatarUrl
+      phone, gender, joiningDate, address, status, dateOfBirth, avatarUrl,
+      nationality, passportNumber, emergencyContact, assignedAgent, bookings, notes
     } = req.body;
     if (!name || !email || !role) return res.status(400).json({ message: 'Name, email, and role are required' });
     // Check if user already exists
@@ -45,7 +46,13 @@ exports.inviteUser = async (req, res) => {
       address,
       status,
       dateOfBirth,
-      avatarUrl
+      avatarUrl,
+      nationality,
+      passportNumber,
+      emergencyContact,
+      assignedAgent,
+      bookings,
+      notes
     });
     // TODO: Send invite email with password reset link
     res.status(201).json({ message: 'User invited', user: { id: user._id, name: user.name, email: user.email, role: user.role } });
@@ -80,7 +87,8 @@ exports.updateMe = async (req, res) => {
       'bankAccounts', 'paymentMethods',
       'twofa', 'emailVerified', 'notifications', 'language', 'theme', 'privacy',
       // Address fields
-      'address.street', 'address.city', 'address.state', 'address.country', 'address.postalCode'
+      'address.street', 'address.city', 'address.state', 'address.country', 'address.postalCode',
+      'nationality', 'passportNumber', 'emergencyContact', 'assignedAgent', 'bookings', 'notes'
     ];
     const updates = {};
     allowedFields.forEach(field => {
@@ -122,7 +130,8 @@ exports.updateUserById = async (req, res) => {
   try {
     const allowedFields = [
       'name', 'email', 'phone', 'licenseNumber', 'licenseExpiry', 'assignedVehicle',
-      'documents', 'gender', 'joiningDate', 'address', 'status', 'dateOfBirth', 'avatarUrl'
+      'documents', 'gender', 'joiningDate', 'address', 'status', 'dateOfBirth', 'avatarUrl',
+      'nationality', 'passportNumber', 'emergencyContact', 'assignedAgent', 'bookings', 'notes'
     ];
     const updates = {};
     allowedFields.forEach(field => {
