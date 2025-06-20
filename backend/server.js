@@ -33,6 +33,10 @@ app.use('/api/location', locationRoutes);
 
 const agencyRoutes = require('./routes/agency');
 app.use('/api/agency', agencyRoutes);
+
+// User management (agency)
+const userRoutes = require('./routes/user');
+app.use('/api/users', userRoutes);
 // TODO: Import routes and middlewares here
 
 // Connect to MongoDB

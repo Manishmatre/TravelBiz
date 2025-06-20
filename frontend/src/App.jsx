@@ -7,11 +7,13 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Files from './pages/Files';
+import Users from './pages/Users';
 import Vehicles from './pages/Vehicles';
 import LiveTracking from './pages/LiveTracking';
 import ActivityLog from './pages/ActivityLog';
 import ProfilePage from './pages/ProfilePage';
 import AgencyInfoForm from './pages/AgencyInfoForm';
+import AgencyProfile from './pages/AgencyProfile';
 import './App.css'
 
 function ProtectedRoute({ children, requireAgency = false }) {
@@ -75,6 +77,16 @@ function App() {
             }
           />
           <Route
+            path="/users"
+            element={
+              <ProtectedRoute requireAgency={true}>
+                <Layout>
+                  <Users />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/vehicles"
             element={
               <ProtectedRoute>
@@ -110,6 +122,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agency-profile"
+            element={
+              <ProtectedRoute requireAgency={true}>
+                <Layout>
+                  <AgencyProfile />
                 </Layout>
               </ProtectedRoute>
             }

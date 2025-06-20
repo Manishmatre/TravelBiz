@@ -57,9 +57,18 @@ function Header({ onLogout, onMenuClick }) {
               <div className="text-xs text-gray-500 truncate">{user?.email}</div>
               <div className="text-xs text-blue-600 font-bold mt-1">{user?.role?.toUpperCase()}</div>
             </div>
-            <a href="/profile" className="block w-full text-left px-4 py-2 hover:bg-blue-50 rounded-xl transition" onClick={() => setDropdownOpen(false)}>Profile</a>
+            <a href="/profile" className="block w-full text-left px-4 py-2 hover:bg-blue-50 rounded-xl transition" onClick={() => setDropdownOpen(false)}>My Profile</a>
             {user?.role === 'admin' && (
-              <button className="w-full text-left px-4 py-2 hover:bg-blue-50 rounded-xl transition" onClick={() => setDropdownOpen(false)}>Admin Panel</button>
+              <>
+                <a 
+                  href="/agency-profile" 
+                  className="block w-full text-left px-4 py-2 hover:bg-blue-50 rounded-xl transition" 
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Agency Profile
+                </a>
+                <button className="w-full text-left px-4 py-2 hover:bg-blue-50 rounded-xl transition" onClick={() => setDropdownOpen(false)}>Admin Panel</button>
+              </>
             )}
             <button className="w-full text-left px-4 py-2 hover:bg-blue-50 rounded-xl transition text-red-600" onClick={handleLogout}>Logout</button>
           </div>

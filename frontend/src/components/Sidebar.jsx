@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FaTachometerAlt, FaUsers, FaFileAlt, FaCar, FaMapMarkedAlt, FaHistory, FaSignOutAlt } from 'react-icons/fa';
+import { FaTachometerAlt, FaUsers, FaUserCog, FaFileAlt, FaCar, FaMapMarkedAlt, FaHistory, FaSignOutAlt } from 'react-icons/fa';
 
 const navLinks = [
   { to: '/', label: 'Dashboard', icon: <FaTachometerAlt />, roles: ['admin', 'agent', 'driver'] },
   { to: '/clients', label: 'Clients', icon: <FaUsers />, roles: ['admin', 'agent'] },
+  { to: '/users', label: 'Users', icon: <FaUserCog />, roles: ['admin'] },
   { to: '/files', label: 'Files', icon: <FaFileAlt />, roles: ['admin', 'agent'] },
   { to: '/vehicles', label: 'Vehicles', icon: <FaCar />, roles: ['admin', 'agent'] },
   { to: '/tracking', label: 'Live Tracking', icon: <FaMapMarkedAlt />, roles: ['admin', 'agent', 'driver'] },

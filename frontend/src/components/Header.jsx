@@ -7,6 +7,12 @@ const Header = ({ toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // Log user data for debugging
+  useEffect(() => {
+    console.log('Current user:', user);
+    console.log('User role:', user?.role);
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -35,18 +41,35 @@ const Header = ({ toggleSidebar }) => {
         </button>
 
         {dropdownOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20">
+          <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-20">
             <div className="px-4 py-2 text-sm text-gray-700 border-b">
               <p className="font-semibold">{user ? user.name : 'Guest'}</p>
-              <p className="text-gray-500">{user ? user.role : ''}</p>
+              <p className="text-gray-500">Role: {user?.role || 'No role'}</p>
+              <p className="text-xs text-gray-400 mt-1 break-all">User ID: {user?._id || 'N/A'}</p>
+            </div>
+            {/* Debug info - remove later */}
+            <div className="px-4 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+              <p className="font-medium">Debug Info:</p>
+              <pre className="text-xs overflow-auto max-h-20">
+                {JSON.stringify(user, null, 2)}
+              </pre>
             </div>
             <Link
               to="/profile"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               onClick={() => setDropdownOpen(false)}
             >
-              Profile
+              My Profile
             </Link>
+            {(user?.role === 'admin' || user?.role === 'Admin' || user?.isAdmin) && (
+              <Link
+                to="/agency-profile"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => setDropdownOpen(false)}
+              >
+                Agency Profile
+              </Link>
+            )}
             <button
               onClick={handleLogout}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
