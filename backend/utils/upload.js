@@ -8,12 +8,12 @@ cloudinary.config({
 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
+  params: async (req, file) => ({
     folder: 'travelbiz_uploads',
-    resource_type: 'auto',
-    format: async (req, file) => undefined, // keep original
-    public_id: (req, file) => Date.now() + '-' + file.originalname,
-  },
+    resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'auto',
+    format: undefined, // keep original
+    public_id: Date.now() + '-' + file.originalname,
+  }),
 });
 
 const upload = multer({ storage });

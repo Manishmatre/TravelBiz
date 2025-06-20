@@ -119,4 +119,156 @@ exports.deleteVehicle = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+// --- Maintenance ---
+exports.getVehicleMaintenance = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  res.json(vehicle.maintenance || []);
+};
+
+exports.addVehicleMaintenance = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  vehicle.maintenance.push(req.body);
+  await vehicle.save();
+  res.status(201).json(vehicle.maintenance[vehicle.maintenance.length - 1]);
+};
+
+exports.updateVehicleMaintenance = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  const maint = vehicle.maintenance.id(req.params.maintId);
+  if (!maint) return res.status(404).json({ message: 'Maintenance record not found' });
+  Object.assign(maint, req.body);
+  await vehicle.save();
+  res.json(maint);
+};
+
+exports.deleteVehicleMaintenance = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  const maint = vehicle.maintenance.id(req.params.maintId);
+  if (!maint) return res.status(404).json({ message: 'Maintenance record not found' });
+  maint.remove();
+  await vehicle.save();
+  res.json({ message: 'Maintenance record deleted' });
+};
+
+// --- Fuel Logs ---
+exports.getVehicleFuelLogs = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  res.json(vehicle.fuelLogs || []);
+};
+
+exports.addVehicleFuelLog = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  vehicle.fuelLogs.push(req.body);
+  await vehicle.save();
+  res.status(201).json(vehicle.fuelLogs[vehicle.fuelLogs.length - 1]);
+};
+
+exports.updateVehicleFuelLog = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  const log = vehicle.fuelLogs.id(req.params.fuelId);
+  if (!log) return res.status(404).json({ message: 'Fuel log not found' });
+  Object.assign(log, req.body);
+  await vehicle.save();
+  res.json(log);
+};
+
+exports.deleteVehicleFuelLog = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  const log = vehicle.fuelLogs.id(req.params.fuelId);
+  if (!log) return res.status(404).json({ message: 'Fuel log not found' });
+  log.remove();
+  await vehicle.save();
+  res.json({ message: 'Fuel log deleted' });
+};
+
+// --- Assignments ---
+exports.getVehicleAssignments = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId }).populate('assignments.driver', 'name email');
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  res.json(vehicle.assignments || []);
+};
+
+exports.addVehicleAssignment = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  vehicle.assignments.push(req.body);
+  await vehicle.save();
+  res.status(201).json(vehicle.assignments[vehicle.assignments.length - 1]);
+};
+
+exports.updateVehicleAssignment = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  const assign = vehicle.assignments.id(req.params.assignId);
+  if (!assign) return res.status(404).json({ message: 'Assignment not found' });
+  Object.assign(assign, req.body);
+  await vehicle.save();
+  res.json(assign);
+};
+
+exports.deleteVehicleAssignment = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  const assign = vehicle.assignments.id(req.params.assignId);
+  if (!assign) return res.status(404).json({ message: 'Assignment not found' });
+  assign.remove();
+  await vehicle.save();
+  res.json({ message: 'Assignment deleted' });
+};
+
+// --- Documents ---
+exports.getVehicleDocuments = async (req, res) => {
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+  if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  res.json(vehicle.documents || []);
+};
+
+// Add a new document to a vehicle
+exports.addVehicleDocument = async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+    if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+    if (!req.file || !req.file.path) return res.status(400).json({ message: 'File is required' });
+    console.log('Uploaded file:', req.file); // Debug log
+    const { type, expiryDate, notes } = req.body;
+    // Use Cloudinary public URL for fileUrl
+    const fileUrl = req.file.path || req.file.filename || req.file.url;
+    const doc = {
+      type,
+      expiryDate,
+      notes,
+      fileUrl,
+      uploadedAt: new Date(),
+    };
+    vehicle.documents.push(doc);
+    await vehicle.save();
+    res.status(201).json(vehicle.documents[vehicle.documents.length - 1]);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// Delete a document from a vehicle
+exports.deleteVehicleDocument = async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
+    if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+    const doc = vehicle.documents.id(req.params.docId);
+    if (!doc) return res.status(404).json({ message: 'Document not found' });
+    doc.remove();
+    await vehicle.save();
+    res.json({ message: 'Document deleted' });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
 }; 

@@ -96,7 +96,7 @@ const ProfilePage = () => {
         address: { ...prev.address, [key]: value }
       }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     }
   };
 

@@ -9,6 +9,8 @@ import Table from '../components/common/Table';
 import { FaFileAlt } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import SearchInput from '../components/common/SearchInput';
+import Dropdown from '../components/common/Dropdown';
 
 function Files() {
   const { token } = useAuth();
@@ -17,6 +19,8 @@ function Files() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,6 +64,12 @@ function Files() {
     }
   };
 
+  const filteredFiles = files.filter(f => {
+    const matchesSearch = f.fileName.toLowerCase().includes(search.toLowerCase());
+    const matchesClient = clientFilter === '' || f.clientId?._id === clientFilter;
+    return matchesSearch && matchesClient;
+  });
+
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
       <ToastContainer position="top-right" autoClose={3000} />
@@ -75,7 +85,23 @@ function Files() {
       {/* Modal */}
       <FileUploadModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleUploadFile} clients={clients} />
       {/* Table or Loader/Error */}
-      <div className="">
+      <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
+          <SearchInput
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search any field..."
+            className="w-full h-[44px]"
+            style={{ marginBottom: 0 }}
+          />
+          <Dropdown
+            value={clientFilter}
+            onChange={e => setClientFilter(e.target.value)}
+            options={[{ value: '', label: 'All Clients' }, ...clients.map(c => ({ value: c._id, label: c.name }))]}
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0"
+            style={{ marginBottom: 0 }}
+          />
+        </div>
         {loading ? (
           <Loader className="my-10" />
         ) : error ? (
@@ -88,7 +114,7 @@ function Files() {
               { label: 'Type', accessor: 'fileType' },
               { label: 'Uploaded', accessor: 'uploadDate', render: v => v ? new Date(v).toLocaleDateString() : '-' },
             ]}
-            data={files.map(f => ({ ...f, clientName: f.clientId?.name || '-', uploadDate: f.uploadDate }))}
+            data={filteredFiles.map(f => ({ ...f, clientName: f.clientId?.name || '-', uploadDate: f.uploadDate }))}
             actions={file => (
               <>
                 <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mr-2">View</a>

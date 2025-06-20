@@ -14,6 +14,12 @@ import ActivityLog from './pages/ActivityLog';
 import ProfilePage from './pages/ProfilePage';
 import AgencyInfoForm from './pages/AgencyInfoForm';
 import AgencyProfile from './pages/AgencyProfile';
+import VehicleDashboard from './pages/VehicleDashboard';
+import VehicleMaintenance from './pages/VehicleMaintenance';
+import VehicleFuel from './pages/VehicleFuel';
+import VehicleDocuments from './pages/VehicleDocuments';
+import VehicleAssignments from './pages/VehicleAssignments';
+import VehicleDetail from './pages/VehicleDetail';
 import './App.css'
 
 function ProtectedRoute({ children, requireAgency = false }) {
@@ -132,6 +138,66 @@ function App() {
               <ProtectedRoute requireAgency={true}>
                 <Layout>
                   <AgencyProfile />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleDashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/maintenance"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleMaintenance />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/fuel"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleFuel />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/documents"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleDocuments />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/assignments"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleAssignments />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleDetail />
                 </Layout>
               </ProtectedRoute>
             }

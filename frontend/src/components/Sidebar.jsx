@@ -68,6 +68,27 @@ function Sidebar({ open, onClose }) {
             <span>{link.label}</span>
           </Link>
         ))}
+        {/* Vehicle Management Section */}
+        {(user?.role === 'admin' || user?.role === 'agent') && (
+          <>
+            <div className="mt-6 mb-2 px-4 text-xs font-bold text-blue-500 uppercase tracking-wider">Vehicle Management</div>
+            <Link to="/vehicles/dashboard" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/dashboard' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+              <span className="text-lg"><FaCar /></span> <span>Dashboard</span>
+            </Link>
+            <Link to="/vehicles/maintenance" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/maintenance' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+              <span className="text-lg"><FaCar /></span> <span>Maintenance</span>
+            </Link>
+            <Link to="/vehicles/fuel" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/fuel' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+              <span className="text-lg"><FaCar /></span> <span>Fuel</span>
+            </Link>
+            <Link to="/vehicles/documents" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/documents' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+              <span className="text-lg"><FaCar /></span> <span>Documents</span>
+            </Link>
+            <Link to="/vehicles/assignments" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/vehicles/assignments' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+              <span className="text-lg"><FaCar /></span> <span>Assignments</span>
+            </Link>
+          </>
+        )}
       </nav>
       <div className="p-4 border-t border-blue-100">
         <div className="mb-2 text-sm text-blue-900">Logged in as <span className="font-semibold">{user?.name}</span> ({user?.role})</div>
