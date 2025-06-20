@@ -8,6 +8,7 @@ import Table from '../components/common/Table';
 import { FaCar } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Button from '../components/common/Button';
 
 function Vehicles() {
   const { token } = useAuth();
@@ -95,9 +96,9 @@ function Vehicles() {
         ) : (
           <Table
             columns={[
-              { label: 'Model', accessor: 'model' },
-              { label: 'Number', accessor: 'number', render: v => typeof v === 'object' && v !== null ? v.numberPlate || '-' : (v || '-') },
-              { label: 'Type', accessor: 'type' },
+              { label: 'Model', accessor: 'name' },
+              { label: 'Number', accessor: 'numberPlate' },
+              { label: 'Type', accessor: 'vehicleType' },
               { label: 'Driver', accessor: 'driverName' },
               { label: 'Status', accessor: 'status' },
               { label: 'Photo', accessor: 'photoUrl', render: v => v ? <img src={v} alt="Vehicle" className="h-10 w-16 object-cover rounded" /> : '-' },
@@ -105,13 +106,27 @@ function Vehicles() {
             data={vehicles.map(v => ({
               ...v,
               driverName: v.driverName || '-',
-              photoUrl: v.photoUrl,
-              number: typeof v.number === 'object' && v.number !== null ? v.number.numberPlate || '-' : (v.number || '-')
+              numberPlate: v.numberPlate || '-',
+              vehicleType: v.vehicleType || '-',
+              name: v.name || '-',
             }))}
             actions={vehicle => (
               <>
-                <button className="text-blue-600 hover:underline mr-2" onClick={() => { setEditVehicle(vehicle); setModalOpen(true); }}>Edit</button>
-                <button className="text-red-600 hover:underline" onClick={() => handleDeleteVehicle(vehicle._id)}>Delete</button>
+                <Button
+                  color="primary"
+                  size="sm"
+                  className="mr-2"
+                  onClick={() => { setEditVehicle(vehicle); setModalOpen(true); }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  color="danger"
+                  size="sm"
+                  onClick={() => handleDeleteVehicle(vehicle._id)}
+                >
+                  Delete
+                </Button>
               </>
             )}
           />

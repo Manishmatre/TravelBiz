@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import Modal from './common/Modal';
+import Input from './common/Input';
+import Button from './common/Button';
 
 function FileUploadModal({ open, onClose, onSubmit, clients }) {
   const [form, setForm] = useState({
@@ -33,50 +36,47 @@ function FileUploadModal({ open, onClose, onSubmit, clients }) {
     onSubmit(formData);
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative">
-        <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
-        <h2 className="text-xl font-bold mb-4">Upload File</h2>
-        {error && <div className="mb-2 text-red-500">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Title</label>
-            <input name="title" value={form.title} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">File Type</label>
-            <select name="fileType" value={form.fileType} onChange={handleChange} className="w-full border rounded px-3 py-2" required>
-              <option value="">Select type</option>
-              <option value="Visa">Visa</option>
-              <option value="Passport">Passport</option>
-              <option value="Ticket">Ticket</option>
-              <option value="Hotel">Hotel</option>
-              <option value="Insurance">Insurance</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Client</label>
-            <select name="clientId" value={form.clientId} onChange={handleChange} className="w-full border rounded px-3 py-2" required>
-              <option value="">Select client</option>
-              {clients.map(client => (
-                <option key={client._id} value={client._id}>{client.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="block mb-1 font-medium">File</label>
-            <input name="file" type="file" onChange={handleChange} className="w-full" required />
-          </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition">
-            Upload File
-          </button>
-        </form>
-      </div>
-    </div>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Upload File"
+      overlayClassName="bg-black/10 backdrop-blur-sm"
+      cardClassName="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative"
+    >
+      {error && <div className="mb-2 text-red-500">{error}</div>}
+      <form onSubmit={handleSubmit}>
+        <Input label="Title" name="title" value={form.title} onChange={handleChange} required />
+        <div className="mb-4">
+          <label className="block mb-2 font-semibold text-gray-700">File Type</label>
+          <select name="fileType" value={form.fileType} onChange={handleChange} className="w-full rounded-xl border border-gray-200 bg-white/70 shadow-sm px-4 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" required>
+            <option value="">Select type</option>
+            <option value="Visa">Visa</option>
+            <option value="Passport">Passport</option>
+            <option value="Ticket">Ticket</option>
+            <option value="Hotel">Hotel</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div className="mb-4">
+          <label className="block mb-2 font-semibold text-gray-700">Client</label>
+          <select name="clientId" value={form.clientId} onChange={handleChange} className="w-full rounded-xl border border-gray-200 bg-white/70 shadow-sm px-4 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" required>
+            <option value="">Select client</option>
+            {clients.map(client => (
+              <option key={client._id} value={client._id}>{client.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-4">
+          <label className="block mb-2 font-semibold text-gray-700">File</label>
+          <input name="file" type="file" onChange={handleChange} className="w-full" required />
+        </div>
+        <Button type="submit" color="primary" className="w-full mt-2">
+          Upload File
+        </Button>
+      </form>
+    </Modal>
   );
 }
 

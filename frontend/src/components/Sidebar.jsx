@@ -14,7 +14,7 @@ const navLinks = [
 ];
 
 function Sidebar({ open, onClose }) {
-  const { user, logout } = useAuth();
+  const { user, logout, agency } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -49,6 +49,12 @@ function Sidebar({ open, onClose }) {
       <div className="flex items-center gap-3 p-6 pt-0 md:pt-6 text-2xl font-extrabold tracking-wide border-b border-blue-100">
         <span className="bg-gradient-to-br from-blue-600 to-blue-400 text-white rounded-full w-10 h-10 flex items-center justify-center font-black text-lg shadow">T</span>
         <span className="bg-gradient-to-r from-blue-700 to-blue-400 bg-clip-text text-transparent">TravelBiz</span>
+        {agency && (
+          <span className="ml-2 flex items-center gap-2 text-blue-700 text-base font-bold">
+            {agency.logo && <img src={agency.logo} alt="Agency Logo" className="h-7 w-7 rounded-full object-cover border" />}
+            {agency.name}
+          </span>
+        )}
       </div>
       <nav className="flex-1 p-4 space-y-1">
         {navLinks.filter(link => link.roles.includes(user?.role)).map(link => (

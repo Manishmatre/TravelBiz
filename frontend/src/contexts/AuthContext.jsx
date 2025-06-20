@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { getAgencyProfile } from '../services/agencyService';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
 
@@ -9,6 +10,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const [agency, setAgency] = useState(null);
 
   const reloadUser = async () => {
     if (!token) return;
@@ -35,6 +37,20 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
+  useEffect(() => {
+    const fetchAgency = async () => {
+      if (user && user.token) {
+        try {
+          const agencyData = await getAgencyProfile(user.token);
+          setAgency(agencyData);
+        } catch (err) {
+          setAgency(null);
+        }
+      }
+    };
+    fetchAgency();
+  }, [user]);
+
   const login = async (email, password) => {
     console.log('Login attempt with:', { email });
     const res = await axios.post(`${API_URL}/auth/login`, { email, password });
@@ -53,7 +69,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, reloadUser }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, reloadUser, agency }}>
       {children}
     </AuthContext.Provider>
   );

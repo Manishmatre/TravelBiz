@@ -33,8 +33,8 @@ function ClientFormModal({ open, onClose, onSubmit, initialData }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative">
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 transition-all">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative">
         <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
         <h2 className="text-xl font-bold mb-4">{initialData ? 'Edit Client' : 'Add Client'}</h2>
         {error && <div className="mb-2 text-red-500">{error}</div>}

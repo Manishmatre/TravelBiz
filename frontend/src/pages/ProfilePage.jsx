@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Profile from "../components/common/Profile";
 import { useAuth } from "../contexts/AuthContext";
 import Card from "../components/common/Card";
@@ -6,19 +6,21 @@ import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import Tab from "../components/common/Tab";
 import { FaUser, FaBriefcase, FaUniversity, FaLock, FaHistory, FaCog, FaUpload, FaFileAlt } from 'react-icons/fa';
+import { getProfile, updateProfile } from '../services/userService';
+import ProfileBankSection from "../components/ProfileBankSection";
+import ProfileDocumentsSection from "../components/ProfileDocumentsSection";
+import { getFiles, uploadFile, deleteFile } from '../services/fileService';
 
 const tabList = [
-  { label: 'Personal', icon: <FaUser /> },
-  { label: 'Professional', icon: <FaBriefcase /> },
-  { label: 'Bank', icon: <FaUniversity /> },
-  { label: 'Account', icon: <FaLock /> },
+  { label: 'Personal & Address', icon: <FaUser /> },
+  { label: 'Professional Information', icon: <FaBriefcase /> },
+  { label: 'Bank Account & Payment', icon: <FaUniversity /> },
   { label: 'Documents', icon: <FaFileAlt /> },
-  { label: 'Activity', icon: <FaHistory /> },
   { label: 'Settings', icon: <FaCog /> },
 ];
 
 const ProfilePage = () => {
-  const { user, reloadUser } = useAuth();
+  const { user, token, reloadUser } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -26,16 +28,25 @@ const ProfilePage = () => {
   const [error, setError] = useState("");
   const [validationError, setValidationError] = useState("");
   // Local state for user documents (file objects)
-  const [documents, setDocuments] = useState([
-    // Example: { name: 'ID Proof.pdf', file: null }
-  ]);
+  const [documents, setDocuments] = useState([]);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docSuccess, setDocSuccess] = useState("");
+  const [docError, setDocError] = useState("");
   // Unified form state for all fields
   const [formData, setFormData] = useState({
     avatarUrl: user?.avatarUrl || '',
     name: user?.name || '',
     email: user?.email || '',
-    // Personal
-    // password: '',
+    phone: user?.phone || '',
+    dateOfBirth: user?.dateOfBirth || '',
+    gender: user?.gender || '',
+    address: {
+      street: user?.address?.street || '',
+      city: user?.address?.city || '',
+      state: user?.address?.state || '',
+      country: user?.address?.country || '',
+      postalCode: user?.address?.postalCode || '',
+    },
     // Professional
     jobTitle: user?.jobTitle || '',
     department: user?.department || '',
@@ -53,8 +64,6 @@ const ProfilePage = () => {
     pan: user?.pan || '',
     salary: user?.salary || '',
     // Account
-    password: '',
-    confirmPassword: '',
     twofa: user?.twofa || false,
     emailVerified: user?.emailVerified || false,
     // Settings
@@ -64,11 +73,31 @@ const ProfilePage = () => {
     privacy: user?.privacy || false,
   });
   const [formDataBackup, setFormDataBackup] = useState(formData);
+  // Add state for bankAccounts and paymentMethods
+  const [bankAccounts, setBankAccounts] = useState(user?.bankAccounts?.length ? user.bankAccounts : [{
+    bankHolder: user?.bankHolder || '',
+    bankName: user?.bankName || '',
+    account: user?.account || '',
+    ifsc: user?.ifsc || '',
+    upi: user?.upi || '',
+    pan: user?.pan || '',
+    salary: user?.salary || ''
+  }]);
+  const [paymentMethods, setPaymentMethods] = useState(user?.paymentMethods || []);
+  const [loading, setLoading] = useState(true);
 
   // Unified handleChange supports dot notation for nested fields
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    if (name.startsWith('address.')) {
+      const key = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        address: { ...prev.address, [key]: value }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    }
   };
 
   const handleEdit = () => {
@@ -85,17 +114,66 @@ const ProfilePage = () => {
     // Optionally reset documents to previous state if desired
   };
 
-  // Handle document file selection
-  const handleDocumentUpload = (e) => {
+  // Fetch documents on mount
+  useEffect(() => {
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    const fetchDocs = async () => {
+      setDocLoading(true);
+      try {
+        const docs = await getFiles(token);
+        setDocuments(docs);
+      } catch (err) {
+        setDocError("Failed to load documents");
+      } finally {
+        setDocLoading(false);
+      }
+    };
+    fetchDocs();
+  }, [token]);
+
+  // Document upload handler
+  const handleDocumentUpload = async (e) => {
     const files = Array.from(e.target.files);
-    setDocuments(prevDocs => [
-      ...prevDocs,
-      ...files.map(f => ({ name: f.name, file: f }))
-    ]);
+    setDocLoading(true);
+    setDocError("");
+    setDocSuccess("");
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', file.name);
+        await uploadFile(formData, token);
+      }
+      setDocSuccess("Documents uploaded successfully!");
+      // Refresh document list
+      const docs = await getFiles(token);
+      setDocuments(docs);
+    } catch (err) {
+      setDocError("Failed to upload document(s)");
+    } finally {
+      setDocLoading(false);
+    }
   };
-  // Remove a document from the list
-  const handleRemoveDocument = (index) => {
-    setDocuments(prevDocs => prevDocs.filter((_, i) => i !== index));
+
+  // Document remove handler
+  const handleRemoveDocument = async (id) => {
+    setDocLoading(true);
+    setDocError("");
+    setDocSuccess("");
+    try {
+      await deleteFile(id, token);
+      setDocSuccess("Document removed successfully!");
+      // Refresh document list
+      const docs = await getFiles(token);
+      setDocuments(docs);
+    } catch (err) {
+      setDocError("Failed to remove document");
+    } finally {
+      setDocLoading(false);
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -107,24 +185,144 @@ const ProfilePage = () => {
     }
   };
 
+  // Handlers for bank accounts
+  const handleBankChange = (idx, field, value) => {
+    setBankAccounts(prev => prev.map((b, i) => i === idx ? { ...b, [field]: value } : b));
+  };
+  const handleAddBank = () => {
+    setBankAccounts(prev => [...prev, { bankHolder: '', bankName: '', account: '', ifsc: '', upi: '', pan: '', salary: '' }]);
+  };
+  const handleRemoveBank = (idx) => {
+    setBankAccounts(prev => prev.filter((_, i) => i !== idx));
+  };
+  // Handlers for payment methods
+  const handlePaymentChange = (idx, field, value) => {
+    setPaymentMethods(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+  const handleAddPayment = () => {
+    setPaymentMethods(prev => [...prev, { type: '', details: '' }]);
+  };
+  const handleRemovePayment = (idx) => {
+    setPaymentMethods(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // Fetch user profile on mount and after update
+  const fetchUserProfile = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const userData = await getProfile(token);
+      setFormData({
+        avatarUrl: userData.avatarUrl || '',
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        dateOfBirth: userData.dateOfBirth || '',
+        gender: userData.gender || '',
+        address: {
+          street: userData.address?.street || '',
+          city: userData.address?.city || '',
+          state: userData.address?.state || '',
+          country: userData.address?.country || '',
+          postalCode: userData.address?.postalCode || '',
+        },
+        jobTitle: userData.jobTitle || '',
+        department: userData.department || '',
+        employeeId: userData.employeeId || '',
+        joiningDate: userData.joiningDate || '',
+        skills: userData.skills || '',
+        linkedin: userData.linkedin || '',
+        resume: userData.resume || '',
+        bankHolder: userData.bankHolder || '',
+        bankName: userData.bankName || '',
+        account: userData.account || '',
+        ifsc: userData.ifsc || '',
+        upi: userData.upi || '',
+        pan: userData.pan || '',
+        salary: userData.salary || '',
+        twofa: userData.twofa || false,
+        emailVerified: userData.emailVerified || false,
+        notifications: userData.notifications ?? true,
+        language: userData.language || 'en',
+        theme: userData.theme || 'light',
+        privacy: userData.privacy || false,
+      });
+      setFormDataBackup({
+        avatarUrl: userData.avatarUrl || '',
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        dateOfBirth: userData.dateOfBirth || '',
+        gender: userData.gender || '',
+        address: {
+          street: userData.address?.street || '',
+          city: userData.address?.city || '',
+          state: userData.address?.state || '',
+          country: userData.address?.country || '',
+          postalCode: userData.address?.postalCode || '',
+        },
+        jobTitle: userData.jobTitle || '',
+        department: userData.department || '',
+        employeeId: userData.employeeId || '',
+        joiningDate: userData.joiningDate || '',
+        skills: userData.skills || '',
+        linkedin: userData.linkedin || '',
+        resume: userData.resume || '',
+        bankHolder: userData.bankHolder || '',
+        bankName: userData.bankName || '',
+        account: userData.account || '',
+        ifsc: userData.ifsc || '',
+        upi: userData.upi || '',
+        pan: userData.pan || '',
+        salary: userData.salary || '',
+        twofa: userData.twofa || false,
+        emailVerified: userData.emailVerified || false,
+        notifications: userData.notifications ?? true,
+        language: userData.language || 'en',
+        theme: userData.theme || 'light',
+        privacy: userData.privacy || false,
+      });
+      setBankAccounts(userData.bankAccounts?.length ? userData.bankAccounts : [{
+        bankHolder: userData.bankHolder || '',
+        bankName: userData.bankName || '',
+        account: userData.account || '',
+        ifsc: userData.ifsc || '',
+        upi: userData.upi || '',
+        pan: userData.pan || '',
+        salary: userData.salary || ''
+      }]);
+      setPaymentMethods(userData.paymentMethods || []);
+    } catch (err) {
+      setError("Failed to fetch profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    fetchUserProfile();
+    // eslint-disable-next-line
+  }, [token]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setValidationError("");
-    // Password validation (only if editing Account tab and in editMode)
-    if (activeTab === 3 && editMode) {
-      if ((formData.password || formData.confirmPassword) && formData.password !== formData.confirmPassword) {
-        setValidationError("Passwords do not match.");
-        return;
-      }
-    }
     setSaving(true);
     setError("");
     setSuccess("");
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const payload = {
+        ...formData,
+        bankAccounts,
+        paymentMethods
+      };
+      await updateProfile(payload, token);
       setSuccess("Profile updated successfully!");
       setEditMode(false);
+      await fetchUserProfile(); // Re-fetch user data after update
       reloadUser && reloadUser();
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
@@ -133,6 +331,8 @@ const ProfilePage = () => {
       setSaving(false);
     }
   };
+
+  if (loading) return <div className="flex justify-center items-center min-h-[300px]">Loading...</div>;
 
   if (!user) return null;
 
@@ -220,55 +420,48 @@ const ProfilePage = () => {
 
         {/* Tab Panels */}
         <div className="w-full">
-          {/* Personal Tab */}
+          {/* Profile Tab */}
           {activeTab === 0 && (
             <form onSubmit={handleSubmit}>
-              <Card title="Personal Info" className="p-6 mb-6">
+              <Card title="Personal & Address" className="p-6 mb-6">
                 <div className="flex flex-col gap-4">
                   {editMode ? (
                     <>
-                      <Input
-                        label="Name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        required
-                      />
-                      <Input
-                        label="Email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        disabled
-                      />
-                      {/* Uncomment to allow password change
-                      <Input
-                        label="New Password"
-                        name="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                      />
-                      */}
+                      <Input label="Name" name="name" value={formData.name} onChange={handleChange} required />
+                      <Input label="Email" name="email" value={formData.email} onChange={handleChange} required disabled />
+                      <Input label="Phone" name="phone" value={formData.phone} onChange={handleChange} />
+                      <Input label="Date of Birth" name="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={handleChange} />
+                      <Input label="Gender" name="gender" value={formData.gender} onChange={handleChange} />
+                      <Input label="Street" name="address.street" value={formData.address.street} onChange={handleChange} />
+                      <Input label="City" name="address.city" value={formData.address.city} onChange={handleChange} />
+                      <Input label="State" name="address.state" value={formData.address.state} onChange={handleChange} />
+                      <Input label="Country" name="address.country" value={formData.address.country} onChange={handleChange} />
+                      <Input label="Postal Code" name="address.postalCode" value={formData.address.postalCode} onChange={handleChange} />
                     </>
                   ) : (
                     <>
                       <div className="mb-2"><span className="font-semibold">Name:</span> {formData.name}</div>
                       <div className="mb-2"><span className="font-semibold">Email:</span> {formData.email}</div>
+                      <div className="mb-2"><span className="font-semibold">Phone:</span> {formData.phone}</div>
+                      <div className="mb-2"><span className="font-semibold">Date of Birth:</span> {formData.dateOfBirth}</div>
+                      <div className="mb-2"><span className="font-semibold">Gender:</span> {formData.gender}</div>
+                      <div className="mb-2"><span className="font-semibold">Street:</span> {formData.address.street}</div>
+                      <div className="mb-2"><span className="font-semibold">City:</span> {formData.address.city}</div>
+                      <div className="mb-2"><span className="font-semibold">State:</span> {formData.address.state}</div>
+                      <div className="mb-2"><span className="font-semibold">Country:</span> {formData.address.country}</div>
+                      <div className="mb-2"><span className="font-semibold">Postal Code:</span> {formData.address.postalCode}</div>
                     </>
                   )}
-
                   {success && <div className="text-green-600 text-center mt-2">{success}</div>}
                   {error && <div className="text-red-600 text-center mt-2">{error}</div>}
                 </div>
               </Card>
             </form>
           )}
-          {/* Professional Tab */}
+          {/* Professional Information Tab */}
           {activeTab === 1 && (
             <form onSubmit={handleSubmit}>
-              <Card title="Professional Info" className="p-6 mb-6">
+              <Card title="Professional Information" className="p-6 mb-6">
                 <div className="flex flex-col gap-4">
                   {editMode ? (
                     <>
@@ -291,142 +484,44 @@ const ProfilePage = () => {
                       <div className="mb-2"><span className="font-semibold">Resume Link:</span> {formData.resume}</div>
                     </>
                   )}
-                  <div className="flex justify-end gap-3 w-full mt-2">
-                    {!editMode && <Button type="button" color="primary" onClick={handleEdit}>Edit</Button>}
-                    {editMode && (
-                      <>
-                        <Button type="button" color="secondary" onClick={handleCancel}>Cancel</Button>
-                        <Button type="submit" color="primary" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
-                      </>
-                    )}
-                  </div>
                   {success && <div className="text-green-600 text-center mt-2">{success}</div>}
                   {error && <div className="text-red-600 text-center mt-2">{error}</div>}
                 </div>
               </Card>
             </form>
           )}
-          {/* Bank Tab */}
+          {/* Bank Account & Payment Methods Tab */}
           {activeTab === 2 && (
-            <form onSubmit={handleSubmit}>
-              <Card title="Bank Details" className="p-6 mb-6">
-                <div className="flex flex-col gap-4">
-                  {editMode ? (
-                    <>
-                      <Input label="Account Holder" name="bankHolder" value={formData.bankHolder} onChange={handleChange} />
-                      <Input label="Bank Name" name="bankName" value={formData.bankName} onChange={handleChange} />
-                      <Input label="Account Number" name="account" value={formData.account} onChange={handleChange} />
-                      <Input label="IFSC" name="ifsc" value={formData.ifsc} onChange={handleChange} />
-                      <Input label="UPI" name="upi" value={formData.upi} onChange={handleChange} />
-                      <Input label="PAN" name="pan" value={formData.pan} onChange={handleChange} />
-                      <Input label="Salary/Pay Info" name="salary" value={formData.salary} onChange={handleChange} />
-                    </>
-                  ) : (
-                    <>
-                      <div className="mb-2"><span className="font-semibold">Account Holder:</span> {formData.bankHolder}</div>
-                      <div className="mb-2"><span className="font-semibold">Bank Name:</span> {formData.bankName}</div>
-                      <div className="mb-2"><span className="font-semibold">Account Number:</span> {formData.account}</div>
-                      <div className="mb-2"><span className="font-semibold">IFSC:</span> {formData.ifsc}</div>
-                      <div className="mb-2"><span className="font-semibold">UPI:</span> {formData.upi}</div>
-                      <div className="mb-2"><span className="font-semibold">PAN:</span> {formData.pan}</div>
-                      <div className="mb-2"><span className="font-semibold">Salary/Pay Info:</span> {formData.salary}</div>
-                    </>
-                  )}
-                  <div className="flex justify-end gap-3 w-full mt-2">
-                    {!editMode && <Button type="button" color="primary" onClick={handleEdit}>Edit</Button>}
-                    {editMode && (
-                      <>
-                        <Button type="button" color="secondary" onClick={handleCancel}>Cancel</Button>
-                        <Button type="submit" color="primary" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
-                      </>
-                    )}
-                  </div>
-                  {success && <div className="text-green-600 text-center mt-2">{success}</div>}
-                  {error && <div className="text-red-600 text-center mt-2">{error}</div>}
-                </div>
-              </Card>
-            </form>
+            <ProfileBankSection
+              bankAccounts={bankAccounts}
+              paymentMethods={paymentMethods}
+              editMode={editMode}
+              onBankChange={handleBankChange}
+              onAddBank={handleAddBank}
+              onRemoveBank={handleRemoveBank}
+              onPaymentChange={handlePaymentChange}
+              onAddPayment={handleAddPayment}
+              onRemovePayment={handleRemovePayment}
+              onSubmit={handleSubmit}
+              saving={saving}
+              success={success}
+              error={error}
+            />
           )}
-          {/* Account Tab */}
-          {activeTab === 3 && (
-            <form onSubmit={handleSubmit}>
-              <Card title="Account Security" className="p-6 mb-6">
-                <div className="flex flex-col gap-4">
-                  {editMode ? (
-                    <>
-                      <Input label="New Password" name="password" type="password" value={formData.password} onChange={handleChange} autoComplete="new-password" />
-                      <Input label="Confirm Password" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" />
-                      <div className="flex items-center gap-2">
-                        <label className="font-semibold">2FA Enabled:</label>
-                        <input type="checkbox" name="twofa" checked={formData.twofa} onChange={handleChange} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="font-semibold">Email Verified:</label>
-                        <input type="checkbox" name="emailVerified" checked={formData.emailVerified} onChange={handleChange} />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="mb-2"><span className="font-semibold">Password:</span> ******</div>
-                      <div className="mb-2"><span className="font-semibold">2FA Enabled:</span> {formData.twofa ? 'Yes' : 'No'}</div>
-                      <div className="mb-2"><span className="font-semibold">Email Verified:</span> {formData.emailVerified ? 'Yes' : 'No'}</div>
-                    </>
-                  )}
-                  <div className="flex justify-end gap-3 w-full mt-2">
-                    {!editMode && <Button type="button" color="primary" onClick={handleEdit}>Edit</Button>}
-                    {editMode && (
-                      <>
-                        <Button type="button" color="secondary" onClick={handleCancel}>Cancel</Button>
-                        <Button type="submit" color="primary" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
-                      </>
-                    )}
-                  </div>
-                  {success && <div className="text-green-600 text-center mt-2">{success}</div>}
-                  {error && <div className="text-red-600 text-center mt-2">{error}</div>}
-                </div>
-              </Card>
-            </form>
-          )}
-
           {/* Documents Tab */}
-          {activeTab === 4 && (
-            <Card title="User Documents" className="p-6 mb-6">
-              <div className="flex flex-col gap-4">
-                {editMode && (
-                  <div>
-                    <label className="block font-medium mb-2">Upload Document</label>
-                    <input type="file" multiple className="block" onChange={handleDocumentUpload} />
-                  </div>
-                )}
-                {/* Uploaded documents list */}
-                <div className="mt-4">
-                  <div className="font-semibold mb-2">Uploaded Documents:</div>
-                  <ul className="list-disc ml-6 text-gray-700">
-                    {documents.length === 0 && <li className="text-gray-400">No documents uploaded.</li>}
-                    {documents.map((doc, idx) => (
-                      <li key={idx} className="flex items-center justify-between">
-                        <span>{doc.name}</span>
-                        {editMode && (
-                          <button type="button" className="ml-4 text-red-500 hover:underline" onClick={() => handleRemoveDocument(idx)}>
-                            Remove
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </Card>
+          {activeTab === 3 && (
+            <ProfileDocumentsSection
+              documents={documents}
+              editMode={editMode}
+              onUpload={handleDocumentUpload}
+              onRemove={handleRemoveDocument}
+              loading={docLoading}
+              success={docSuccess}
+              error={docError}
+            />
           )}
-          {/* Activity Tab */}
-          {activeTab === 5 && (
-            <Card title="Activity" className="p-6 mb-6">
-              <div className="text-gray-500">(To be implemented: Login history, recent actions, etc.)</div>
-            </Card>
-          )}
-
           {/* Settings Tab */}
-          {activeTab === 6 && (
+          {activeTab === 4 && (
             <Card title="Settings" className="p-6 mb-6">
               <div className="flex flex-col gap-4">
                 {editMode ? (
@@ -452,47 +547,6 @@ const ProfilePage = () => {
                 )}
               </div>
             </Card>
-          )}
-          {/* Settings Tab */}
-          {activeTab === 5 && (
-            <form onSubmit={handleSubmit}>
-              <Card title="Settings" className="p-6 mb-6">
-                <div className="flex flex-col gap-4">
-                  {editMode ? (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <label className="font-semibold">Notifications</label>
-                        <input type="checkbox" name="notifications" checked={formData.notifications} onChange={handleChange} />
-                      </div>
-                      <Input label="Language" name="language" value={formData.language} onChange={handleChange} />
-                      <Input label="Theme" name="theme" value={formData.theme} onChange={handleChange} />
-                      <div className="flex items-center gap-2">
-                        <label className="font-semibold">Privacy</label>
-                        <input type="checkbox" name="privacy" checked={formData.privacy} onChange={handleChange} />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="mb-2"><span className="font-semibold">Notifications:</span> {formData.notifications ? 'On' : 'Off'}</div>
-                      <div className="mb-2"><span className="font-semibold">Language:</span> {formData.language}</div>
-                      <div className="mb-2"><span className="font-semibold">Theme:</span> {formData.theme}</div>
-                      <div className="mb-2"><span className="font-semibold">Privacy:</span> {formData.privacy ? 'Enabled' : 'Disabled'}</div>
-                    </>
-                  )}
-                  <div className="flex justify-end gap-3 w-full mt-2">
-                    {!editMode && <Button type="button" color="primary" onClick={handleEdit}>Edit</Button>}
-                    {editMode && (
-                      <>
-                        <Button type="button" color="secondary" onClick={handleCancel}>Cancel</Button>
-                        <Button type="submit" color="primary" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
-                      </>
-                    )}
-                  </div>
-                  {success && <div className="text-green-600 text-center mt-2">{success}</div>}
-                  {error && <div className="text-red-600 text-center mt-2">{error}</div>}
-                </div>
-              </Card>
-            </form>
           )}
         </div>
       </div>

@@ -42,3 +42,39 @@ exports.removeUser = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Update own profile
+exports.updateMe = async (req, res) => {
+  try {
+    const allowedFields = [
+      'name', 'avatarUrl', 'phone', 'dateOfBirth', 'gender',
+      'jobTitle', 'department', 'employeeId', 'joiningDate', 'skills', 'linkedin', 'resume',
+      // Deprecated single bank fields
+      'bankHolder', 'bankName', 'account', 'ifsc', 'upi', 'pan', 'salary',
+      // New multi-bank/payment fields
+      'bankAccounts', 'paymentMethods',
+      'twofa', 'emailVerified', 'notifications', 'language', 'theme', 'privacy',
+      // Address fields
+      'address.street', 'address.city', 'address.state', 'address.country', 'address.postalCode'
+    ];
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (field.startsWith('address.')) {
+        const key = field.split('.')[1];
+        if (!updates.address) updates.address = {};
+        if (req.body.address && req.body.address[key] !== undefined) updates.address[key] = req.body.address[key];
+      } else if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};

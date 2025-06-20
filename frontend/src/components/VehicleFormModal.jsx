@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import Modal from './common/Modal';
+import Input from './common/Input';
+import Button from './common/Button';
 
 function VehicleFormModal({ open, onClose, onSubmit, initialData }) {
   const [form, setForm] = useState({
@@ -37,57 +40,39 @@ function VehicleFormModal({ open, onClose, onSubmit, initialData }) {
     onSubmit(form);
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative">
-        <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
-        <h2 className="text-xl font-bold mb-4">{initialData ? 'Edit Vehicle' : 'Add Vehicle'}</h2>
-        {error && <div className="mb-2 text-red-500">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Name</label>
-            <input name="name" value={form.name} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Vehicle Type</label>
-            <input name="vehicleType" value={form.vehicleType} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Number Plate</label>
-            <input name="numberPlate" value={form.numberPlate} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Insurance Expiry</label>
-            <input name="insuranceExpiry" type="date" value={form.insuranceExpiry?.slice(0, 10) || ''} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Driver Name</label>
-            <input name="driverName" value={form.driverName} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Driver Contact</label>
-            <input name="driverContact" value={form.driverContact} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-          </div>
-          <div className="mb-3">
-            <label className="block mb-1 font-medium">Status</label>
-            <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded px-3 py-2" required>
-              <option value="available">Available</option>
-              <option value="on-trip">On Trip</option>
-              <option value="maintenance">Maintenance</option>
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="block mb-1 font-medium">Photo</label>
-            <input name="photo" type="file" onChange={handleChange} className="w-full" accept="image/*" />
-          </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition">
-            {initialData ? 'Update' : 'Add'} Vehicle
-          </button>
-        </form>
-      </div>
-    </div>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={initialData ? 'Edit Vehicle' : 'Add Vehicle'}
+      overlayClassName="bg-black/10 backdrop-blur-sm"
+      cardClassName="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative"
+    >
+      {error && <div className="mb-2 text-red-500">{error}</div>}
+      <form onSubmit={handleSubmit}>
+        <Input label="Name" name="name" value={form.name} onChange={handleChange} required />
+        <Input label="Vehicle Type" name="vehicleType" value={form.vehicleType} onChange={handleChange} required />
+        <Input label="Number Plate" name="numberPlate" value={form.numberPlate} onChange={handleChange} required />
+        <Input label="Insurance Expiry" name="insuranceExpiry" type="date" value={form.insuranceExpiry?.slice(0, 10) || ''} onChange={handleChange} required />
+        <Input label="Driver Name" name="driverName" value={form.driverName} onChange={handleChange} />
+        <Input label="Driver Contact" name="driverContact" value={form.driverContact} onChange={handleChange} />
+        <div className="mb-4">
+          <label className="block mb-2 font-semibold text-gray-700">Status</label>
+          <select name="status" value={form.status} onChange={handleChange} className="w-full rounded-xl border border-gray-200 bg-white/70 shadow-sm px-4 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+            <option value="available">Available</option>
+            <option value="on-trip">On Trip</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </div>
+        <div className="mb-4">
+          <label className="block mb-2 font-semibold text-gray-700">Photo</label>
+          <input name="photo" type="file" onChange={handleChange} className="w-full" accept="image/*" />
+        </div>
+        <Button type="submit" color="primary" className="w-full mt-2">
+          {initialData ? 'Update' : 'Add'} Vehicle
+        </Button>
+      </form>
+    </Modal>
   );
 }
 
