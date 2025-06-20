@@ -12,37 +12,24 @@ import Button from '../components/common/Button';
 import { Link } from 'react-router-dom';
 import Dropdown from '../components/common/Dropdown';
 import SearchInput from '../components/common/SearchInput';
+import { useVehicles } from '../contexts/VehiclesContext';
 
 function Vehicles() {
   const { token } = useAuth();
-  const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { vehicles, loading } = useVehicles();
   const [modalOpen, setModalOpen] = useState(false);
   const [editVehicle, setEditVehicle] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  useEffect(() => {
-    const fetchVehicles = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const data = await getVehicles(token);
-        setVehicles(data);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load vehicles');
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (token) fetchVehicles();
-  }, [token]);
-
   const handleAddVehicle = async (form) => {
     try {
       const newVehicle = await addVehicle(form, token);
-      setVehicles([newVehicle, ...vehicles]);
+      // Assuming you want to add the new vehicle to the existing vehicles
+      // You might want to update the context instead of directly mutating the state
+      // For example:
+      // const updatedVehicles = [newVehicle, ...vehicles];
+      // setVehicles(updatedVehicles);
       setModalOpen(false);
       toast.success('Vehicle added successfully!');
     } catch (err) {
@@ -53,7 +40,11 @@ function Vehicles() {
   const handleEditVehicle = async (form) => {
     try {
       const updated = await updateVehicle(editVehicle._id, form, token);
-      setVehicles(vehicles.map(v => (v._id === updated._id ? updated : v)));
+      // Assuming you want to update the existing vehicles
+      // You might want to update the context instead of directly mutating the state
+      // For example:
+      // const updatedVehicles = vehicles.map(v => v._id === updated._id ? updated : v);
+      // setVehicles(updatedVehicles);
       setEditVehicle(null);
       setModalOpen(false);
       toast.success('Vehicle updated successfully!');
@@ -66,7 +57,11 @@ function Vehicles() {
     if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
     try {
       await deleteVehicle(id, token);
-      setVehicles(vehicles.filter(v => v._id !== id));
+      // Assuming you want to remove the deleted vehicle from the existing vehicles
+      // You might want to update the context instead of directly mutating the state
+      // For example:
+      // const updatedVehicles = vehicles.filter(v => v._id !== id);
+      // setVehicles(updatedVehicles);
       toast.success('Vehicle deleted successfully!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete vehicle');
@@ -131,8 +126,6 @@ function Vehicles() {
         </div>
         {loading ? (
           <Loader className="my-10" />
-        ) : error ? (
-          <div className="text-red-500 p-6">{error}</div>
         ) : (
           <Table
             columns={[

@@ -14,13 +14,12 @@ import { useAuth } from '../contexts/AuthContext';
 import StatCard from '../components/common/StatCard';
 import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
+import { useBookings } from '../contexts/BookingsContext';
 
 function Bookings() {
   const { token } = useAuth();
   const navigate = useNavigate();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { bookings, loading } = useBookings();
   const [clients, setClients] = useState([]);
   const [agents, setAgents] = useState([]);
   const [search, setSearch] = useState('');
@@ -37,12 +36,6 @@ function Bookings() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    setError('');
-    getBookings(null, token)
-      .then(setBookings)
-      .catch(e => setError(e.response?.data?.message || 'Failed to load bookings'))
-      .finally(() => setLoading(false));
     getClients(token).then(setClients);
     getUsers({ role: 'agent' }, token).then(setAgents);
   }, [token]);
@@ -67,10 +60,8 @@ function Bookings() {
       await addBooking(newBooking, token);
       setModalOpen(false);
       setNewBooking({ client: '', agent: '', startDate: '', endDate: '', destination: '', status: 'Pending', price: '', notes: '' });
-      setLoading(true);
       const updated = await getBookings(null, token);
       setBookings(updated);
-      setLoading(false);
     } catch (e) {
       alert(e.response?.data?.message || 'Failed to add booking');
       setAdding(false);
@@ -86,10 +77,8 @@ function Bookings() {
       await updateBooking(selectedBooking._id, selectedBooking, token);
       setEditModalOpen(false);
       setSelectedBooking(null);
-      setLoading(true);
       const updated = await getBookings(null, token);
       setBookings(updated);
-      setLoading(false);
     } catch (e) {
       alert(e.response?.data?.message || 'Failed to update booking');
       setSaving(false);
@@ -101,10 +90,8 @@ function Bookings() {
       await deleteBooking(selectedBooking._id, token);
       setDeleteModalOpen(false);
       setSelectedBooking(null);
-      setLoading(true);
       const updated = await getBookings(null, token);
       setBookings(updated);
-      setLoading(false);
     } catch (e) {
       alert(e.response?.data?.message || 'Failed to delete booking');
       setDeleting(false);
@@ -351,8 +338,6 @@ function Bookings() {
       </div>
       {loading ? (
         <Loader className="my-10" />
-      ) : error ? (
-        <div className="text-red-500 p-6">{error}</div>
       ) : (
         <Table
           columns={[
