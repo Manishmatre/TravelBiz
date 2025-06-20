@@ -19,16 +19,18 @@ function Button({
   color = 'primary',
   size = 'md',
   disabled = false,
+  loading = false,
   className = '',
   ...props
 }) {
   return (
     <button
       type={type}
-      disabled={disabled}
-      className={`rounded font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${COLORS[color] || COLORS.primary} ${SIZES[size] || SIZES.md} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      disabled={disabled || loading}
+      className={`rounded font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${COLORS[color] || COLORS.primary} ${SIZES[size] || SIZES.md} ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
       {...props}
     >
+      {loading ? <span className="loader mr-2 inline-block align-middle" /> : null}
       {children}
     </button>
   );

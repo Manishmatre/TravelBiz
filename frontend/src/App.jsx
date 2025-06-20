@@ -23,6 +23,9 @@ import VehicleDetail from './pages/VehicleDetail';
 import Drivers from './pages/Drivers';
 import DriverDashboard from './pages/DriverDashboard';
 import DriverDetail from './pages/DriverDetail';
+import ClientDetail from './pages/ClientDetail';
+import Bookings from './pages/Bookings';
+import BookingFlow from './pages/BookingFlow';
 import './App.css'
 
 function ProtectedRoute({ children, requireAgency = false }) {
@@ -231,6 +234,36 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <DriverDetail />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ClientDetail />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bookings"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Bookings />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/booking-flow"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <BookingFlow />
                 </Layout>
               </ProtectedRoute>
             }

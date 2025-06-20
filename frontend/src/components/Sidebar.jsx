@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FaTachometerAlt, FaUsers, FaUserCog, FaFileAlt, FaCar, FaMapMarkedAlt, FaHistory, FaSignOutAlt, FaChevronDown, FaChevronUp, FaUserTie } from 'react-icons/fa';
+import { FaTachometerAlt, FaUsers, FaUserCog, FaFileAlt, FaCar, FaMapMarkedAlt, FaHistory, FaSignOutAlt, FaChevronDown, FaChevronUp, FaUserTie, FaCalendarAlt, FaCalendarPlus } from 'react-icons/fa';
 
 const navLinks = [
   { to: '/', label: 'Dashboard', icon: <FaTachometerAlt />, roles: ['admin', 'agent', 'driver'] },
@@ -29,12 +29,18 @@ const driverMenuLinks = [
   { to: '/drivers', label: 'Drivers' },
 ];
 
+const bookingsMenuLinks = [
+  { to: '/bookings', label: 'All Bookings', icon: <FaCalendarAlt /> },
+  { to: '/booking-flow', label: 'New Booking', icon: <FaCalendarPlus /> },
+];
+
 function Sidebar({ open, onClose }) {
   const { user, logout, agency } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [vehicleMenuOpen, setVehicleMenuOpen] = useState(false);
   const [driverMenuOpen, setDriverMenuOpen] = useState(false);
+  const [bookingsMenuOpen, setBookingsMenuOpen] = useState(false);
 
   // Open vehicle menu if on a vehicle-related page
   useEffect(() => {
@@ -144,6 +150,36 @@ function Sidebar({ open, onClose }) {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
                     onClick={onClose}
                   >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Bookings Dropdown */}
+        {(user?.role === 'admin' || user?.role === 'agent') && (
+          <div className="mt-2">
+            <button
+              className={`flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none ${bookingsMenuOpen ? 'bg-blue-50' : ''}`}
+              onClick={() => setBookingsMenuOpen(v => !v)}
+              type="button"
+              style={{ minHeight: '44px' }}
+            >
+              <FaCalendarAlt className="text-lg mr-2 shrink-0" />
+              <span className="flex-1 text-left whitespace-nowrap truncate">Bookings</span>
+              {bookingsMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
+            </button>
+            {bookingsMenuOpen && (
+              <div className="ml-7 mt-1 space-y-1">
+                {bookingsMenuLinks.map(link => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                    onClick={onClose}
+                  >
+                    {link.icon}
                     {link.label}
                   </Link>
                 ))}

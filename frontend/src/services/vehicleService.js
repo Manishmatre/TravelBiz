@@ -42,7 +42,7 @@ export const deleteVehicle = async (id, token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
-}; 
+};
 
 // Vehicle Document Management
 export const getVehicleDocuments = async (vehicleId, token) => {

@@ -38,7 +38,9 @@ app.use('/api/agency', agencyRoutes);
 // User management (agency)
 const userRoutes = require('./routes/user');
 app.use('/api/users', userRoutes);
-// TODO: Import routes and middlewares here
+
+const bookingRoutes = require('./routes/booking');
+app.use('/api/bookings', bookingRoutes);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {

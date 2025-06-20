@@ -1,6 +1,6 @@
 import React from 'react';
 
-function Dropdown({ label, options, value, onChange, className = '', ...props }) {
+function Dropdown({ label, options, value, onChange, className = '', helperText = '', ...props }) {
   return (
     <div className={`mb-2 ${className}`}>
       {label && <label className="block mb-1 font-semibold text-gray-700">{label}</label>}
@@ -14,6 +14,7 @@ function Dropdown({ label, options, value, onChange, className = '', ...props })
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
+      {helperText && <div className="text-xs text-gray-500 mt-1">{helperText}</div>}
     </div>
   );
 }

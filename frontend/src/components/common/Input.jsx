@@ -9,6 +9,7 @@ function Input({
   error = '',
   name,
   className = '',
+  helperText = '',
   ...props
 }) {
   return (
@@ -23,6 +24,7 @@ function Input({
         className={`w-full rounded-xl border border-gray-200 bg-white/70 shadow-sm px-4 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition ${error ? 'border-red-500 focus:ring-red-200 focus:border-red-400' : ''}`}
         {...props}
       />
+      {helperText && <div className="text-xs text-gray-500 mt-1">{helperText}</div>}
       {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
     </div>
   );
