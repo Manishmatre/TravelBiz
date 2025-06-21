@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native
 import { useRouter, usePathname } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const tabs = [
   { name: 'Dashboard', route: '/dashboard', icon: 'view-dashboard' },
@@ -14,6 +15,7 @@ const tabs = [
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const { bottom } = useSafeAreaInsets();
 
   const handlePress = (route) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -30,7 +32,7 @@ export default function BottomNav() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: 70 + bottom, paddingBottom: bottom }]}>
       {tabs.map(tab => {
         const isActive = pathname.startsWith(tab.route);
         return (
@@ -59,12 +61,10 @@ export default function BottomNav() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 90 : 70,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     paddingHorizontal: 10,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
