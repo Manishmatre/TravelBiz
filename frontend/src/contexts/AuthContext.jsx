@@ -18,8 +18,10 @@ export function AuthProvider({ children }) {
       const res = await axios.get(`${API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('User data loaded:', res.data);
       setUser(res.data);
-    } catch {
+    } catch (error) {
+      console.error('Error loading user:', error);
       setUser(null);
     }
   };
@@ -29,8 +31,14 @@ export function AuthProvider({ children }) {
       axios.get(`${API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(res => setUser(res.data))
-        .catch(() => setUser(null))
+        .then(res => {
+          console.log('User data loaded on mount:', res.data);
+          setUser(res.data);
+        })
+        .catch((error) => {
+          console.error('Error loading user on mount:', error);
+          setUser(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -39,17 +47,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const fetchAgency = async () => {
-      if (user && user.token) {
+      if (user && token) {
         try {
-          const agencyData = await getAgencyProfile(user.token);
+          const agencyData = await getAgencyProfile(token);
+          console.log('Agency data loaded:', agencyData);
           setAgency(agencyData);
         } catch (err) {
+          console.error('Error loading agency:', err);
           setAgency(null);
         }
       }
     };
     fetchAgency();
-  }, [user]);
+  }, [user, token]);
 
   const login = async (email, password) => {
     console.log('Login attempt with:', { email });
@@ -65,6 +75,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setToken(null);
     setUser(null);
+    setAgency(null);
     localStorage.removeItem('token');
   };
 

@@ -6,13 +6,39 @@ const upload = require('../middlewares/upload');
 const Agency = require('../models/Agency'); // Agency model
 const User = require('../models/User'); // User model
 
-// Apply protect middleware to all routes
+// Get all agencies (for agency selection) - no auth required
+router.get('/list', async (req, res) => {
+  try {
+    const agencies = await Agency.find({})
+      .select('name address phone email website')
+      .populate('owner', 'name email')
+      .lean();
+    
+    // Add user count for each agency
+    const agenciesWithUserCount = await Promise.all(
+      agencies.map(async (agency) => {
+        const userCount = await User.countDocuments({ agencyId: agency._id });
+        return {
+          ...agency,
+          userCount
+        };
+      })
+    );
+    
+    res.json(agenciesWithUserCount);
+  } catch (error) {
+    console.error('Error fetching agencies:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Apply protect middleware to all routes below
 router.use(protect);
 
 // Create agency and link to user
 router.post('/', async (req, res) => {
   try {
-    const { name, address, phone, website } = req.body;
+    const { name, address, phone, website, email, description } = req.body;
     if (!name) return res.status(400).json({ message: 'Agency name is required' });
     
     // Check if user already has an agency
@@ -26,8 +52,9 @@ router.post('/', async (req, res) => {
       address,
       phone,
       website,
-      owner: req.user._id,
-      email: req.user.email // Use user's email as default agency email
+      email,
+      description,
+      owner: req.user._id
     });
     
     await agency.save();

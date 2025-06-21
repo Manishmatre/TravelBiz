@@ -11,11 +11,13 @@ import ClientDetail from './pages/ClientDetail';
 import AddClient from './pages/AddClient';
 import Files from './pages/Files';
 import Users from './pages/Users';
+import AddUser from './pages/AddUser';
 import Vehicles from './pages/Vehicles';
 import LiveTracking from './pages/LiveTracking';
 import ActivityLog from './pages/ActivityLog';
 import ProfilePage from './pages/ProfilePage';
 import AgencyInfoForm from './pages/AgencyInfoForm';
+import AgencySelection from './pages/AgencySelection';
 import AgencyProfile from './pages/AgencyProfile';
 import VehicleDashboard from './pages/VehicleDashboard';
 import VehicleMaintenance from './pages/VehicleMaintenance';
@@ -27,6 +29,7 @@ import Drivers from './pages/Drivers';
 import DriverDashboard from './pages/DriverDashboard';
 import DriverDetail from './pages/DriverDetail';
 import Bookings from './pages/Bookings';
+import BookingList from './pages/BookingList';
 import BookingFlow from './pages/BookingFlow';
 import BookingDetail from './pages/BookingDetail';
 import './App.css'
@@ -35,7 +38,14 @@ function ProtectedRoute({ children, requireAgency = false }) {
   const { user, loading } = useAuth();
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" />;
-  if (requireAgency && !user.agencyId) return <Navigate to="/agency-info" />;
+  if (requireAgency && !user.agencyId) {
+    // Redirect based on user role
+    if (user.role === 'admin') {
+      return <Navigate to="/agency-info" />;
+    } else {
+      return <Navigate to="/agency-selection" />;
+    }
+  }
   return children;
 }
 
@@ -50,6 +60,11 @@ function App() {
             <Route path="/agency-info" element={
               <ProtectedRoute>
                 <AgencyInfoForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/agency-selection" element={
+              <ProtectedRoute>
+                <AgencySelection />
               </ProtectedRoute>
             } />
             <Route
@@ -118,6 +133,16 @@ function App() {
                 <ProtectedRoute requireAgency={true}>
                   <Layout>
                     <Users />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users/add"
+              element={
+                <ProtectedRoute requireAgency={true}>
+                  <Layout>
+                    <AddUser />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -273,97 +298,17 @@ function App() {
               }
             />
             <Route
-              path="/bookings/pending"
+              path="/bookings/list"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Bookings filterStatus="Pending" />
+                    <BookingList />
                   </Layout>
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/bookings/confirmed"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings filterStatus="Confirmed" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/completed"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings filterStatus="Completed" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/cancelled"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings filterStatus="Cancelled" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/calendar"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings view="calendar" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/reports"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings view="reports" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/today"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings filterDate="today" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/upcoming"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings filterDate="upcoming" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/overdue"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bookings filterDate="overdue" />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/booking-flow"
+              path="/bookings/add"
               element={
                 <ProtectedRoute>
                   <Layout>

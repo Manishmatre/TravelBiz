@@ -33,7 +33,7 @@ const locationRoutes = require('./routes/location');
 app.use('/api/location', locationRoutes);
 
 const agencyRoutes = require('./routes/agency');
-app.use('/api/agency', agencyRoutes);
+app.use('/api/agencies', agencyRoutes);
 
 // User management (agency)
 const userRoutes = require('./routes/user');
@@ -55,6 +55,14 @@ mongoose.connect(process.env.MONGO_URI, {
 // Health check route
 app.get('/', (req, res) => {
   res.send('TravelBiz API is running');
+});
+
+// Test auth route
+app.get('/api/test-auth', (req, res) => {
+  res.json({ 
+    message: 'Auth test endpoint',
+    headers: req.headers.authorization ? 'Authorization header present' : 'No authorization header'
+  });
 });
 
 const server = http.createServer(app);

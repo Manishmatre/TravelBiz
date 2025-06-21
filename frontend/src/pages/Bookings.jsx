@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBookings, addBooking, updateBooking, deleteBooking } from '../services/bookingService';
+import { getBookings, addBooking, deleteBooking } from '../services/bookingService';
 import { getClients } from '../services/clientService';
 import { getUsers } from '../services/userService';
 import Table from '../components/common/Table';
@@ -12,7 +12,7 @@ import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
 import { useAuth } from '../contexts/AuthContext';
 import StatCard from '../components/common/StatCard';
-import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave, FaPlus, FaFilter, FaSearch } from 'react-icons/fa';
+import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave, FaPlus, FaFilter, FaSearch, FaEye } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useBookings } from '../contexts/BookingsContext';
 import Notification from '../components/common/Notification';
@@ -28,12 +28,10 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const [filterAgent, setFilterAgent] = useState('');
   const [filterStatus, setFilterStatus] = useState(initialFilterStatus || '');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [newBooking, setNewBooking] = useState({ client: '', agent: '', startDate: '', endDate: '', destination: '', status: 'Pending', price: '', notes: '' });
   const [adding, setAdding] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [notification, setNotification] = useState(null);
@@ -84,46 +82,41 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
     const { name, value } = e.target;
     setNewBooking(b => ({ ...b, [name]: value }));
   };
+
+  // Note: We removed the popup edit modal since we have a comprehensive edit mode
+  // in the BookingDetail page (/bookings/:id) that provides a much better user experience
+  // with full-width layout, better form organization, and real-time validation.
+
   const handleAddBooking = async () => {
     setAdding(true);
     try {
       await addBooking(newBooking, token);
       setModalOpen(false);
       setNewBooking({ client: '', agent: '', startDate: '', endDate: '', destination: '', status: 'Pending', price: '', notes: '' });
-      const updated = await getBookings(null, token);
-      setBookings(updated);
+      if (fetchBookings) {
+        await fetchBookings();
+      }
+      setNotification({ message: 'Booking added successfully!', type: 'success' });
     } catch (e) {
-      alert(e.response?.data?.message || 'Failed to add booking');
+      setNotification({ message: e.response?.data?.message || 'Failed to add booking', type: 'error' });
+    } finally {
       setAdding(false);
     }
   };
-  const handleEditInput = e => {
-    const { name, value } = e.target;
-    setSelectedBooking(b => ({ ...b, [name]: value }));
-  };
-  const handleEditBooking = async () => {
-    setSaving(true);
-    try {
-      await updateBooking(selectedBooking._id, selectedBooking, token);
-      setEditModalOpen(false);
-      setSelectedBooking(null);
-      const updated = await getBookings(null, token);
-      setBookings(updated);
-    } catch (e) {
-      alert(e.response?.data?.message || 'Failed to update booking');
-      setSaving(false);
-    }
-  };
+
   const handleDeleteBooking = async () => {
     setDeleting(true);
     try {
       await deleteBooking(selectedBooking._id, token);
       setDeleteModalOpen(false);
       setSelectedBooking(null);
-      const updated = await getBookings(null, token);
-      setBookings(updated);
+      if (fetchBookings) {
+        await fetchBookings();
+      }
+      setNotification({ message: 'Booking deleted successfully!', type: 'success' });
     } catch (e) {
-      alert(e.response?.data?.message || 'Failed to delete booking');
+      setNotification({ message: e.response?.data?.message || 'Failed to delete booking', type: 'error' });
+    } finally {
       setDeleting(false);
     }
   };
@@ -275,7 +268,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           </Button>
           <Button 
             color="primary" 
-            onClick={() => navigate('/booking-flow')}
+            onClick={() => navigate('/bookings/add')}
             className="flex items-center gap-2"
           >
             <FaPlus /> New Booking
@@ -454,9 +447,22 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           data={paginatedBookings}
           actions={row => (
             <>
-              <Button color="primary" size="sm" className="mr-2" onClick={() => navigate(`/bookings/${row._id}`)}>View</Button>
-              <Button color="secondary" size="sm" className="mr-2" onClick={() => { setSelectedBooking(row); setEditModalOpen(true); }}>Edit</Button>
-              <Button color="danger" size="sm" onClick={() => { setSelectedBooking(row); setDeleteModalOpen(true); }}>Delete</Button>
+              <Button 
+                color="primary" 
+                size="sm" 
+                className="mr-2 flex items-center gap-1" 
+                onClick={() => navigate(`/bookings/${row._id}`)}
+              >
+                <FaEye className="w-3 h-3" />
+                View & Edit
+              </Button>
+              <Button 
+                color="danger" 
+                size="sm" 
+                onClick={() => { setSelectedBooking(row); setDeleteModalOpen(true); }}
+              >
+                Delete
+              </Button>
             </>
           )}
         />
@@ -497,44 +503,6 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           <Input label="Price" name="price" type="number" value={newBooking.price} onChange={handleInput} />
           <Input label="Notes" name="notes" value={newBooking.notes} onChange={handleInput} />
           <Button color="primary" className="mt-2 w-full" onClick={handleAddBooking} loading={adding}>Save</Button>
-        </div>
-      </Modal>
-      {/* Edit Booking Modal */}
-      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)}>
-        <div className="p-4">
-          <h3 className="font-bold mb-2">Edit Booking</h3>
-          <Dropdown
-            label="Client"
-            name="client"
-            value={selectedBooking?.client || ''}
-            onChange={handleEditInput}
-            options={[{ value: '', label: 'Select Client' }, ...clients.map(c => ({ value: c._id, label: c.name }))]}
-          />
-          <Dropdown
-            label="Agent"
-            name="agent"
-            value={selectedBooking?.agent || ''}
-            onChange={handleEditInput}
-            options={[{ value: '', label: 'Select Agent' }, ...agents.map(a => ({ value: a._id, label: a.name }))]}
-          />
-          <Input label="Start Date" name="startDate" type="date" value={selectedBooking?.startDate?.slice(0,10) || ''} onChange={handleEditInput} />
-          <Input label="End Date" name="endDate" type="date" value={selectedBooking?.endDate?.slice(0,10) || ''} onChange={handleEditInput} />
-          <Input label="Destination" name="destination" value={selectedBooking?.destination || ''} onChange={handleEditInput} />
-          <Dropdown
-            label="Status"
-            name="status"
-            value={selectedBooking?.status || 'Pending'}
-            onChange={handleEditInput}
-            options={[
-              { value: 'Pending', label: 'Pending' },
-              { value: 'Confirmed', label: 'Confirmed' },
-              { value: 'Completed', label: 'Completed' },
-              { value: 'Cancelled', label: 'Cancelled' },
-            ]}
-          />
-          <Input label="Price" name="price" type="number" value={selectedBooking?.price || ''} onChange={handleEditInput} />
-          <Input label="Notes" name="notes" value={selectedBooking?.notes || ''} onChange={handleEditInput} />
-          <Button color="primary" className="mt-2 w-full" onClick={handleEditBooking} loading={saving}>Save</Button>
         </div>
       </Modal>
       {/* Delete Booking Modal */}

@@ -5,8 +5,6 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
 import { FaUserPlus, FaArrowLeft } from 'react-icons/fa';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate, useParams } from 'react-router-dom';
 import Loader from '../components/common/Loader';
 
@@ -39,7 +37,6 @@ const AddUser = () => {
           });
         } catch (err) {
           setError(err.response?.data?.message || 'Failed to load user data');
-          toast.error('Failed to load user data');
         } finally {
           setInitialLoading(false);
         }
@@ -59,15 +56,12 @@ const AddUser = () => {
     try {
       if (isEditMode) {
         await updateUser(id, form, token);
-        toast.success('User updated successfully!');
       } else {
         await inviteUser(form, token);
-        toast.success('User invited successfully!');
       }
-      navigate('/users');
+      navigate('/users', { state: { refresh: true } });
     } catch (err) {
       setError(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'invite'} user`);
-      toast.error(`Failed to ${isEditMode ? 'update' : 'invite'} user`);
     } finally {
       setLoading(false);
     }
@@ -90,26 +84,22 @@ const AddUser = () => {
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
-      <ToastContainer position="top-right" autoClose={3000} />
-      
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            color="secondary" 
-            onClick={() => navigate('/users')}
-            className="flex items-center gap-2"
-          >
-            <FaArrowLeft /> Back
-          </Button>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            {isEditMode ? 'Edit User' : 'Add New User'}
-          </h1>
-        </div>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          {isEditMode ? 'Edit User' : 'Add New User'}
+        </h1>
+        <Button 
+          color="secondary" 
+          onClick={() => navigate('/users')}
+          className="flex items-center gap-2"
+        >
+          <FaArrowLeft /> Back to Users
+        </Button>
       </div>
 
       {/* Form Card */}
-      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-2xl mx-auto">
+      <div className="bg-white rounded-2xl shadow-xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-3 bg-blue-100 rounded-full">
             <FaUserPlus className="text-blue-600 text-xl" />
@@ -128,8 +118,8 @@ const AddUser = () => {
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 font-medium">{error}</p>
           </div>
         )}
 
@@ -165,7 +155,7 @@ const AddUser = () => {
             ]}
           />
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-4 pt-6 border-t border-gray-200">
             <Button 
               type="button"
               color="secondary" 
