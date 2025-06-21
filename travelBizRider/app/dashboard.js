@@ -8,7 +8,7 @@ import Header from '../src/components/Header';
 import ScreenLayout from '../src/components/ScreenLayout';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState({
     todayTrips: [],
@@ -24,7 +24,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError('');
-      const data = await getDriverDashboard();
+      const data = await getDriverDashboard(token);
       setDashboardData({
         todayTrips: data.todayTrips || [],
         completedTrips: data.completedTrips || [],
@@ -36,11 +36,13 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    if (token) {
+      fetchDashboardData();
+    }
+  }, [token, fetchDashboardData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

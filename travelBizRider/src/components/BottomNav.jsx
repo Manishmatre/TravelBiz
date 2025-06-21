@@ -20,6 +20,15 @@ export default function BottomNav() {
     router.push(route);
   };
 
+  const getIconName = (icon, isActive) => {
+    if (isActive) return icon;
+    
+    // Try outline version first, fallback to regular icon
+    const outlineIcon = `${icon}-outline`;
+    // For now, we'll use the regular icon with reduced opacity for inactive state
+    return icon;
+  };
+
   return (
     <View style={styles.container}>
       {tabs.map(tab => {
@@ -32,9 +41,9 @@ export default function BottomNav() {
           >
             <View style={[styles.tabContent, isActive && styles.activeTabContent]}>
               <MaterialCommunityIcons
-                name={isActive ? tab.icon : `${tab.icon}-outline`}
+                name={getIconName(tab.icon, isActive)}
                 size={26}
-                color={isActive ? '#fff' : '#4b5563'}
+                color={isActive ? '#fff' : '#9ca3af'}
               />
               {isActive && (
                 <Text style={styles.label}>{tab.name}</Text>

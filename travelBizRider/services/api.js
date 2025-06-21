@@ -107,4 +107,15 @@ export async function changePassword(token, oldPassword, newPassword) {
   });
   if (!res.ok) throw new Error('Failed to change password');
   return res.json();
+}
+
+export async function getDriverDashboard(token) {
+  const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/driver/dashboard`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to fetch dashboard data');
+  }
+  return data;
 } 

@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const Agency = require('../models/Agency');
 const mongoose = require('mongoose');
+const Booking = require('../models/Booking');
+const Vehicle = require('../models/Vehicle');
 
 // List all users in the current agency, with optional role filter
 exports.listUsers = async (req, res) => {
@@ -264,5 +266,47 @@ exports.updateMyPhoto = async (req, res) => {
     res.json(userObj);
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+};
+
+exports.getDriverDashboard = async (req, res, next) => {
+  try {
+    const driverId = req.user.id;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayTrips = await Booking.find({
+      driver: driverId,
+      status: { $in: ['Pending', 'In-Progress'] },
+      pickupTime: { $gte: today, $lt: tomorrow },
+    }).populate('client', 'name');
+
+    const completedTrips = await Booking.find({
+      driver: driverId,
+      status: 'Completed',
+    });
+
+    const pendingTrips = await Booking.find({
+      driver: driverId,
+      status: 'Pending',
+    });
+
+    const vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        todayTrips,
+        completedTrips,
+        pendingTrips,
+        vehicle,
+      },
+    });
+  } catch (error) {
+    next(error);
   }
 };

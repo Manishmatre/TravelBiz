@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfile, changePassword } from '../services/api';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomNav from '../src/components/BottomNav';
 import Header from '../src/components/Header';
 import ScreenLayout from '../src/components/ScreenLayout';
+import ProfileInfoCard from '../src/components/ProfileInfoCard';
+import ProfileSecurityCard from '../src/components/ProfileSecurityCard';
 
 export default function Profile() {
   const { user, token, logout } = useAuth();
@@ -17,6 +19,10 @@ export default function Profile() {
   const [avatarError, setAvatarError] = useState(false);
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '' });
   const [pwLoading, setPwLoading] = useState(false);
+
+  const handlePwFormChange = (key, value) => {
+    setPwForm(f => ({ ...f, [key]: value }));
+  };
 
   useEffect(() => {
     async function fetchProfile() {
@@ -67,14 +73,6 @@ export default function Profile() {
     </View>
   );
   
-  const InfoRow = ({ icon, label, value }) => (
-    <View style={styles.infoRow}>
-      <MaterialCommunityIcons name={icon} size={22} color="#6b7280" style={styles.infoIcon} />
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue} numberOfLines={2}>{value}</Text>
-    </View>
-  );
-
   if (loading) {
     return (
       <ScreenLayout header={<Header title="Profile" />} footer={<BottomNav />}>
@@ -92,6 +90,20 @@ export default function Profile() {
   }
 
   const address = profile.address ? [profile.address.street, profile.address.city, profile.address.state, profile.address.country, profile.address.postalCode].filter(Boolean).join(', ') : '';
+
+  const personalInfoItems = [
+    { icon: 'email-outline', label: 'Email', value: profile.email },
+    profile.phone && { icon: 'phone-outline', label: 'Phone', value: profile.phone },
+    profile.gender && { icon: 'gender-male-female', label: 'Gender', value: profile.gender },
+    profile.dateOfBirth && { icon: 'calendar-outline', label: 'Date of Birth', value: new Date(profile.dateOfBirth).toLocaleDateString() },
+    address && { icon: 'map-marker-outline', label: 'Address', value: address },
+  ];
+
+  const driverInfoItems = [
+    profile.licenseNumber && { icon: 'card-account-details-outline', label: 'License #', value: profile.licenseNumber },
+    profile.licenseExpiry && { icon: 'calendar-check-outline', label: 'License Expiry', value: new Date(profile.licenseExpiry).toLocaleDateString() },
+    profile.assignedVehicle && { icon: 'car-outline', label: 'Vehicle', value: `${profile.assignedVehicle.name} (${profile.assignedVehicle.numberPlate})` },
+  ];
 
   return (
     <ScreenLayout
@@ -117,56 +129,15 @@ export default function Profile() {
             )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <View style={styles.card}>
-            <InfoRow icon="email-outline" label="Email" value={profile.email} />
-            {profile.phone && <InfoRow icon="phone-outline" label="Phone" value={profile.phone} />}
-            {profile.gender && <InfoRow icon="gender-male-female" label="Gender" value={profile.gender} />}
-            {profile.dateOfBirth && <InfoRow icon="calendar-outline" label="Date of Birth" value={new Date(profile.dateOfBirth).toLocaleDateString()} />}
-            {address && <InfoRow icon="map-marker-outline" label="Address" value={address} />}
-          </View>
-        </View>
+        <ProfileInfoCard title="Personal Information" items={personalInfoItems} />
+        <ProfileInfoCard title="Driver Information" items={driverInfoItems} />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Driver Information</Text>
-          <View style={styles.card}>
-            {profile.licenseNumber && <InfoRow icon="card-account-details-outline" label="License #" value={profile.licenseNumber} />}
-            {profile.licenseExpiry && <InfoRow icon="calendar-check-outline" label="License Expiry" value={new Date(profile.licenseExpiry).toLocaleDateString()} />}
-            {profile.assignedVehicle && <InfoRow icon="car-outline" label="Vehicle" value={`${profile.assignedVehicle.name} (${profile.assignedVehicle.numberPlate})`} />}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
-          <View style={styles.card}>
-            <View style={styles.inputContainer}>
-              <MaterialCommunityIcons name="lock-outline" size={20} color="#9ca3af" />
-              <TextInput
-                style={styles.input}
-                value={pwForm.oldPassword}
-                onChangeText={v => setPwForm(f => ({ ...f, oldPassword: v }))}
-                placeholder="Current Password"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry
-              />
-            </View>
-            <View style={styles.inputContainer}>
-              <MaterialCommunityIcons name="lock-plus-outline" size={20} color="#9ca3af" />
-              <TextInput
-                style={styles.input}
-                value={pwForm.newPassword}
-                onChangeText={v => setPwForm(f => ({ ...f, newPassword: v }))}
-                placeholder="New Password"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry
-              />
-            </View>
-            <TouchableOpacity style={[styles.button, pwLoading && styles.buttonDisabled]} onPress={handleChangePassword} disabled={pwLoading}>
-              <Text style={styles.buttonText}>{pwLoading ? 'Changing...' : 'Change Password'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <ProfileSecurityCard
+          pwForm={pwForm}
+          onPwFormChange={handlePwFormChange}
+          onSubmit={handleChangePassword}
+          isLoading={pwLoading}
+        />
 
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutButton} onPress={() => { logout(); router.replace('/login'); }}>
@@ -210,62 +181,19 @@ const styles = StyleSheet.create({
   initialsText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
 
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#374151', marginBottom: 12 },
-  
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  infoRowLast: { borderBottomWidth: 0 },
-  infoIcon: { marginRight: 12 },
-  infoLabel: { fontSize: 15, color: '#6b7280', width: 110 },
-  infoValue: { flex: 1, fontSize: 15, color: '#1f2937', fontWeight: '500', textAlign: 'left' },
-  
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-  input: { flex: 1, paddingVertical: 12, fontSize: 16, marginLeft: 8 },
-
-  button: {
-    backgroundColor: '#2563eb',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonDisabled: { backgroundColor: '#9ca3af' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fef2f2',
-    padding: 14,
+    backgroundColor: '#fee2e2',
+    paddingVertical: 14,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#fecaca',
   },
-  logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 16, marginLeft: 8 },
+  logoutText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
 }); 
