@@ -1,13 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Button, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllDriverTrips, startTrip, completeTrip, cancelTrip } from '../../services/api';
+import { getTripDetails, startTrip, completeTrip } from '../../services/api';
+import ScreenLayout from '../../src/components/ScreenLayout';
+import Header from '../../src/components/Header';
 
-export default function TripDetail() {
-  const { id } = useLocalSearchParams();
+const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+export default function TripDetailScreen() {
+  const { id: tripId } = useLocalSearchParams();
   const { token } = useAuth();
   const router = useRouter();
+
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,104 +22,179 @@ export default function TripDetail() {
 
   useEffect(() => {
     async function fetchTrip() {
-      setLoading(true);
-      setError(null);
+      if (!tripId || !token) return;
       try {
-        // For demo, fetch all trips and find by id (replace with getTripById if available)
-        const trips = await getAllDriverTrips(token);
-        const found = trips.find(t => t._id === id);
-        setTrip(found);
+        setLoading(true);
+        const tripData = await getTripDetails(token, tripId);
+        setTrip(tripData);
       } catch (err) {
         setError(err.message);
+        Alert.alert('Error', 'Failed to fetch trip details.');
       } finally {
         setLoading(false);
       }
     }
     fetchTrip();
-  }, [id, token]);
+  }, [tripId, token]);
 
-  async function handleAction(action) {
+  const handleTripAction = async (action) => {
     setActionLoading(true);
     try {
-      if (action === 'start') await startTrip(token, id);
-      if (action === 'complete') await completeTrip(token, id);
-      if (action === 'cancel') await cancelTrip(token, id);
-      Alert.alert('Success', `Trip ${action}ed successfully!`);
-      router.back();
+      let updatedTrip;
+      if (action === 'start') {
+        updatedTrip = await startTrip(token, tripId);
+      } else if (action === 'complete') {
+        updatedTrip = await completeTrip(token, tripId);
+      }
+      setTrip(updatedTrip); // Update trip state with the latest data from the server
+      Alert.alert('Success', `Trip successfully ${action}ed!`);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      Alert.alert('Error', `Failed to ${action} the trip.`);
     } finally {
       setActionLoading(false);
     }
+  };
+
+  if (loading) {
+    return (
+      <ScreenLayout header={<Header title="Loading Trip..." />}>
+        <ActivityIndicator size="large" style={styles.center} />
+      </ScreenLayout>
+    );
   }
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" /></View>;
-  if (error) return <View style={styles.center}><Text style={{color:'red'}}>{error}</Text></View>;
-  if (!trip) return <View style={styles.center}><Text>Trip not found.</Text></View>;
-
+  if (error || !trip) {
+    return (
+      <ScreenLayout header={<Header title="Error" />}>
+        <Text style={styles.center}>{error || 'Trip details could not be loaded.'}</Text>
+      </ScreenLayout>
+    );
+  }
+  
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Trip Details</Text>
-      <View style={styles.infoCard}>
-        {trip.client?.name && <Text style={styles.label}>Client: <Text style={styles.value}>{trip.client.name}</Text></Text>}
-        {trip.status && <Text style={styles.label}>Status: <Text style={styles.value}>{trip.status}</Text></Text>}
-        {trip.pickup && <Text style={styles.label}>Pickup: <Text style={styles.value}>{trip.pickup}</Text></Text>}
-        {trip.destination && <Text style={styles.label}>Drop-off: <Text style={styles.value}>{trip.destination}</Text></Text>}
-        {trip.startDate && <Text style={styles.label}>Start Date: <Text style={styles.value}>{new Date(trip.startDate).toLocaleString()}</Text></Text>}
-        {trip.endDate && <Text style={styles.label}>End Date: <Text style={styles.value}>{new Date(trip.endDate).toLocaleString()}</Text></Text>}
-        {trip.vehicle?.name && <Text style={styles.label}>Vehicle: <Text style={styles.value}>{trip.vehicle.name} ({trip.vehicle.numberPlate})</Text></Text>}
-      </View>
-      
-      <View style={styles.actions}>
-        {(trip.status === 'Pending' || trip.status === 'Confirmed') && <Button title="Start Trip" onPress={() => handleAction('start')} disabled={actionLoading} />}
-        {trip.status === 'in_progress' && <Button title="Complete Trip" onPress={() => handleAction('complete')} disabled={actionLoading} />}
-        {trip.status !== 'Completed' && trip.status !== 'Cancelled' && <Button title="Cancel Trip" color="red" onPress={() => handleAction('cancel')} disabled={actionLoading} />}
-      </View>
-    </View>
+    <ScreenLayout
+      header={
+        <Header
+          title="Trip Details"
+          subtitle={`For ${trip.client?.name || 'Client'}`}
+          showBackButton
+        />
+      }
+    >
+      <ScrollView style={styles.container}>
+        <View style={styles.mapContainer}>
+          <MapView
+            style={styles.map}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            initialRegion={{
+              latitude: trip.pickupCoordinates.lat,
+              longitude: trip.pickupCoordinates.lng,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          >
+            <Marker coordinate={trip.pickupCoordinates} title="Pickup" pinColor="green" />
+            <Marker coordinate={trip.destinationCoordinates} title="Destination" pinColor="red" />
+            <MapViewDirections
+              origin={trip.pickupCoordinates}
+              destination={trip.destinationCoordinates}
+              apikey={GOOGLE_MAPS_APIKEY}
+              strokeWidth={4}
+              strokeColor="hotpink"
+            />
+          </MapView>
+        </View>
+
+        <View style={styles.detailsContainer}>
+          <View style={styles.detailItem}>
+            <Text style={styles.label}>Pickup</Text>
+            <Text style={styles.value}>{trip.pickup}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={styles.label}>Destination</Text>
+            <Text style={styles.value}>{trip.destination}</Text>
+          </View>
+        </View>
+
+        <View style={styles.actionsContainer}>
+          {trip.status === 'Pending' && (
+            <TouchableOpacity 
+              style={[styles.button, actionLoading && styles.disabledButton]} 
+              onPress={() => handleTripAction('start')}
+              disabled={actionLoading}
+            >
+              <Text style={styles.buttonText}>{actionLoading ? 'Starting...' : 'Start Trip'}</Text>
+            </TouchableOpacity>
+          )}
+          {trip.status === 'In-Progress' && (
+            <TouchableOpacity 
+              style={[styles.button, styles.completeButton, actionLoading && styles.disabledButton]} 
+              onPress={() => handleTripAction('complete')}
+              disabled={actionLoading}
+            >
+              <Text style={styles.buttonText}>{actionLoading ? 'Completing...' : 'Complete Trip'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-  },
   center: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#333',
+  container: {
+    flex: 1,
   },
-  infoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+  mapContainer: {
+    height: 300,
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  detailsContainer: {
     padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  detailItem: {
+    marginBottom: 15,
   },
   label: {
-    fontWeight: 'bold',
-    marginBottom: 8,
     fontSize: 16,
-    color: '#555',
+    fontWeight: 'bold',
+    color: '#6b7280',
   },
   value: {
-    fontWeight: 'normal',
-    color: '#333',
+    fontSize: 18,
+    color: '#1f2937',
+    marginTop: 4,
   },
-  actions: {
-    marginTop: 16,
-    gap: 8,
+  actionsContainer: {
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  button: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 10,
+    alignItems: 'center',
+  },
+  completeButton: {
+    backgroundColor: '#10b981',
+  },
+  disabledButton: {
+    backgroundColor: '#9ca3af',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

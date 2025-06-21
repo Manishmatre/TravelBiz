@@ -7,6 +7,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const User = require('./models/User');
 
 // Load environment variables
 dotenv.config();
@@ -68,6 +70,56 @@ app.get('/api/test-auth', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 app.set('io', io); // Make io accessible in controllers
+
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+
+  socket.on('authenticate', async (data) => {
+    try {
+      const decoded = jwt.verify(data.token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
+      const user = await User.findById(socket.userId);
+      if (user && user.role === 'admin') {
+        socket.join('admins');
+        console.log(`Admin ${socket.userId} joined the 'admins' room`);
+      }
+      console.log(`Socket ${socket.id} authenticated as user ${socket.userId}`);
+    } catch (err) {
+      console.log('Authentication error:', err.message);
+      socket.disconnect();
+    }
+  });
+
+  socket.on('updateLocation', async (location) => {
+    if (!socket.userId) {
+      return console.log('Location update from unauthenticated socket');
+    }
+    console.log(`Location update from ${socket.userId}:`, location);
+    
+    // Optional: Save location to the database
+    try {
+      await User.findByIdAndUpdate(socket.userId, {
+        lastLocation: {
+          type: 'Point',
+          coordinates: [location.longitude, location.latitude],
+        },
+        lastLocationUpdate: Date.now(),
+      });
+    } catch (err) {
+      console.error('Error saving location to DB:', err);
+    }
+    
+    // Broadcast the location update to all admins
+    io.to('admins').emit('driverLocationUpdate', {
+      driverId: socket.userId,
+      location: location,
+    });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

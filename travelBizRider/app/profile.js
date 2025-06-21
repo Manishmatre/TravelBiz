@@ -155,12 +155,11 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 10, fontSize: 16, color: '#6b7280' },
   errorText: { fontSize: 16, color: '#ef4444', textAlign: 'center' },
   scrollContainer: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingVertical: 24 },
   
   avatarContainer: {
     alignItems: 'center',
-    marginTop: -60, // Pull the avatar up to overlap with the header area
-    marginBottom: 16,
+    marginBottom: 24,
   },
   avatar: {
     width: 100,

@@ -8,6 +8,9 @@ import { getCurrentTrip, sendLocation } from '../services/api';
 import BottomNav from '../src/components/BottomNav';
 import Header from '../src/components/Header';
 import ScreenLayout from '../src/components/ScreenLayout';
+import io from 'socket.io-client';
+
+const socket = io(process.env.EXPO_PUBLIC_API_URL);
 
 export default function LocationScreen() {
   const { token } = useAuth();
@@ -20,15 +23,24 @@ export default function LocationScreen() {
   const [loading, setLoading] = useState(true);
   
   const mapRef = useRef(null);
-  const locationIntervalRef = useRef(null);
+  const locationSubscriber = useRef(null);
 
   const initializeLocation = useCallback(async () => {
     setLoading(true);
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      setErrorMsg('Permission to access location was denied');
+    let { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+    if (foregroundStatus !== 'granted') {
+      setErrorMsg('Permission to access foreground location was denied');
       setLoading(false);
       return;
+    }
+
+    let { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+    if (backgroundStatus !== 'granted') {
+      Alert.alert(
+        'Background Location Required',
+        'This app requires background location access to track your trip progress even when the app is not in the foreground.',
+        [{ text: 'OK' }]
+      );
     }
 
     try {
@@ -45,34 +57,49 @@ export default function LocationScreen() {
 
   useEffect(() => {
     initializeLocation();
-    return () => {
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket server');
+      if (token) {
+        socket.emit('authenticate', { token });
       }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from WebSocket server');
+    });
+
+    return () => {
+      if (locationSubscriber.current) {
+        locationSubscriber.current.remove();
+      }
+      socket.off('connect');
+      socket.off('disconnect');
     };
-  }, [initializeLocation]);
+  }, [initializeLocation, token]);
 
   const startLocationTracking = async () => {
     if (tracking) return;
     setTracking(true);
-    locationIntervalRef.current = setInterval(async () => {
-      try {
-        const newLocation = await Location.getCurrentPositionAsync({});
+    
+    locationSubscriber.current = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 5000, // 5 seconds
+        distanceInterval: 10, // 10 meters
+      },
+      (newLocation) => {
         const { latitude, longitude } = newLocation.coords;
         setLocation(newLocation.coords);
         setLocationHistory(prev => [...prev, { latitude, longitude }]);
-        if (currentTrip?._id) {
-          await sendLocation(token, { tripId: currentTrip._id, latitude, longitude });
-        }
-      } catch (error) {
-        console.error("Error sending location:", error);
+        socket.emit('updateLocation', { latitude, longitude });
       }
-    }, 10000); // every 10 seconds
+    );
   };
 
   const stopLocationTracking = () => {
-    if (locationIntervalRef.current) {
-      clearInterval(locationIntervalRef.current);
+    if (locationSubscriber.current) {
+      locationSubscriber.current.remove();
     }
     setTracking(false);
   };

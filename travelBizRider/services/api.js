@@ -118,4 +118,15 @@ export async function getDriverDashboard(token) {
     throw new Error(data.message || 'Failed to fetch dashboard data');
   }
   return data;
+}
+
+export async function getTripDetails(token, tripId) {
+  const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/${tripId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to fetch trip details');
+  }
+  return data;
 } 

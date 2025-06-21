@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'agent', 'driver', 'client'], default: 'agent' },
-  agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency' },
+  agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency', required: true },
   createdAt: { type: Date, default: Date.now },
   // Profile fields
   avatarUrl: { type: String, default: '' },
@@ -68,7 +68,7 @@ const userSchema = new mongoose.Schema({
     url: { type: String, default: '' },
     expiryDate: { type: String, default: '' }
   }],
-  status: { type: String, default: 'Active' },
+  status: { type: String, enum: ['Active', 'Inactive', 'On-Trip'], default: 'Inactive' },
   nationality: { type: String, default: '' },
   passportNumber: { type: String, default: '' },
   emergencyContact: {
@@ -79,6 +79,21 @@ const userSchema = new mongoose.Schema({
   assignedAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   bookings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Booking' }],
   notes: { type: String, default: '' },
+  // Location tracking fields
+  lastLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point',
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere',
+    },
+  },
+  lastLocationUpdate: {
+    type: Date,
+  },
 });
 
 // Hash password before saving
