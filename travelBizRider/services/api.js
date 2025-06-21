@@ -1,5 +1,5 @@
 export async function loginDriver(email, password) {
-  const res = await fetch('http://localhost:5000/api/auth/login', {
+  const res = await fetch('http://192.168.67.77:5000/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
