@@ -1,24 +1,31 @@
 const Location = require('../models/Location');
 const Vehicle = require('../models/Vehicle');
 
-// Update or create vehicle location (now always creates for history)
+// Update or create location (by vehicle or driver)
 exports.updateLocation = async (req, res) => {
   try {
-    const { vehicleId, latitude, longitude, speed, status } = req.body;
-    // Check agency access
-    const vehicle = await Vehicle.findOne({ _id: vehicleId, agencyId: req.user.agencyId });
+    const { vehicleId, driverId, latitude, longitude, speed, status } = req.body;
+    let agencyId = req.user.agencyId;
+    if (!vehicleId && !driverId) {
+      return res.status(400).json({ message: 'vehicleId or driverId is required' });
+    }
+    // If vehicleId, check agency access
+    if (vehicleId) {
+      const vehicle = await Vehicle.findOne({ _id: vehicleId, agencyId });
     if (!vehicle) {
       return res.status(403).json({ message: 'Forbidden: vehicle not in your agency' });
+    }
     }
     // Always create a new location document for history
     const location = await Location.create({
       vehicleId,
+      driverId,
       latitude,
       longitude,
       speed,
       status,
       updatedAt: new Date(),
-      agencyId: req.user.agencyId,
+      agencyId,
     });
     // Emit real-time update (latest only)
     const io = req.app.get('io');
@@ -79,6 +86,18 @@ exports.getLocationHistory = async (req, res) => {
     }
     const history = await Location.find(query).sort({ updatedAt: 1 });
     res.json(history);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get current location for a driver (latest)
+exports.getLocationByDriver = async (req, res) => {
+  try {
+    const driverId = req.params.driverId;
+    const location = await Location.findOne({ driverId }).sort({ updatedAt: -1 });
+    if (!location) return res.status(404).json({ message: 'Location not found' });
+    res.json(location);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

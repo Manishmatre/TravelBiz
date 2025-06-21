@@ -412,9 +412,9 @@ function ClientDetail() {
                 Edit Client
               </Button>
             )}
-            <Link to="/clients">
-              <Button color="secondary">Back to Clients</Button>
-            </Link>
+          <Link to="/clients">
+            <Button color="secondary">Back to Clients</Button>
+          </Link>
           </div>
         </div>
         <Tab
@@ -519,27 +519,27 @@ function ClientDetail() {
               </form>
             ) : (
               // Read-only Info
-              <div className="flex flex-col md:flex-row gap-6">
-                {/* Avatar */}
-                <div className="flex-shrink-0">
-                  <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center text-4xl font-bold text-blue-600">
-                    {client.name?.[0] || '?'}
-                  </div>
-                </div>
-                {/* Info */}
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><span className="font-semibold">Name:</span> {client.name}</div>
-                  <div><span className="font-semibold">Email:</span> {client.email}</div>
-                  <div><span className="font-semibold">Phone:</span> {client.phone || '-'}</div>
-                  <div><span className="font-semibold">Passport #:</span> {client.passportNumber}</div>
-                  <div><span className="font-semibold">Nationality:</span> {client.nationality}</div>
-                  <div><span className="font-semibold">Status:</span> {client.status || 'Active'}</div>
-                  <div><span className="font-semibold">Assigned Agent:</span> {client.assignedAgent?.name || '-'}</div>
-                  <div><span className="font-semibold">Notes:</span> {client.notes || '-'}</div>
-                  <div><span className="font-semibold">Emergency Contact:</span> {client.emergencyContact ? `${client.emergencyContact.name} (${client.emergencyContact.relation}) - ${client.emergencyContact.phone}` : '-'}</div>
-                  <div><span className="font-semibold">Created At:</span> {client.createdAt ? new Date(client.createdAt).toLocaleString() : '-'}</div>
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Avatar */}
+              <div className="flex-shrink-0">
+                <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center text-4xl font-bold text-blue-600">
+                  {client.name?.[0] || '?'}
                 </div>
               </div>
+              {/* Info */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><span className="font-semibold">Name:</span> {client.name}</div>
+                <div><span className="font-semibold">Email:</span> {client.email}</div>
+                <div><span className="font-semibold">Phone:</span> {client.phone || '-'}</div>
+                <div><span className="font-semibold">Passport #:</span> {client.passportNumber}</div>
+                <div><span className="font-semibold">Nationality:</span> {client.nationality}</div>
+                <div><span className="font-semibold">Status:</span> {client.status || 'Active'}</div>
+                <div><span className="font-semibold">Assigned Agent:</span> {client.assignedAgent?.name || '-'}</div>
+                <div><span className="font-semibold">Notes:</span> {client.notes || '-'}</div>
+                <div><span className="font-semibold">Emergency Contact:</span> {client.emergencyContact ? `${client.emergencyContact.name} (${client.emergencyContact.relation}) - ${client.emergencyContact.phone}` : '-'}</div>
+                <div><span className="font-semibold">Created At:</span> {client.createdAt ? new Date(client.createdAt).toLocaleString() : '-'}</div>
+              </div>
+            </div>
             )}
           </div>
         )}
@@ -635,11 +635,11 @@ function ClientDetail() {
             ) : (
               // Read-only Files
               (client.files && client.files.length > 0) ? (
-                <Table
-                  columns={[
-                    { label: 'Title', accessor: 'title' },
-                    { label: 'Type', accessor: 'fileType' },
-                    { label: 'Uploaded', accessor: 'createdAt', render: v => v ? new Date(v).toLocaleString() : '-' },
+              <Table
+                columns={[
+                  { label: 'Title', accessor: 'title' },
+                  { label: 'Type', accessor: 'fileType' },
+                  { label: 'Uploaded', accessor: 'createdAt', render: v => v ? new Date(v).toLocaleString() : '-' },
                     { 
                       label: 'Actions', 
                       accessor: 'actions',
@@ -649,11 +649,11 @@ function ClientDetail() {
                         </Button>
                       )
                     }
-                  ]}
-                  data={client.files}
-                />
-              ) : (
-                <div className="text-gray-500">No files found for this client.</div>
+                ]}
+                data={client.files}
+              />
+            ) : (
+              <div className="text-gray-500">No files found for this client.</div>
               )
             )}
 

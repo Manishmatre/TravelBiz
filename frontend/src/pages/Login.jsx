@@ -33,7 +33,7 @@ function Login() {
       await login(form.email, form.password);
       setNotification({ message: 'Login successful! Redirecting...', type: 'success' });
       setTimeout(() => {
-        navigate('/');
+      navigate('/');
       }, 1000);
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials.';

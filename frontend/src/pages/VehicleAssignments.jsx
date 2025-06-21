@@ -200,6 +200,10 @@ function VehicleAssignments() {
         )}
       </div>
       <Modal open={modalOpen} onClose={handleCloseModal} title={editRecord ? 'Edit Assignment' : 'Add Assignment'}>
+        {/* Show error message inside modal if present */}
+        {error && (
+          <div className="mb-3 text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 text-sm font-semibold">{error}</div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-2">
           <div className="mb-2">
             <label className="block mb-1 font-semibold text-gray-700">Vehicle</label>

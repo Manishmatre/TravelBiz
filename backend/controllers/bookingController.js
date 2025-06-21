@@ -1,20 +1,36 @@
 const Booking = require('../models/Booking');
+const Vehicle = require('../models/Vehicle');
+const User = require('../models/User');
 
 // Create a new booking
 exports.createBooking = async (req, res) => {
   try {
-    const { vehicle, startDate, pickup, payment } = req.body;
+    const { vehicle, startDate, endDate, agent, status } = req.body;
     // Validate required fields
-    if (!pickup) return res.status(400).json({ message: 'Pickup location is required' });
-    if (!payment || !payment.mode || !payment.amountPaid) return res.status(400).json({ message: 'Payment details are required' });
-    // Prevent double booking for the same vehicle and date
+    if (!req.body.pickup) return res.status(400).json({ message: 'Pickup location is required' });
+    if (!req.body.payment || !req.body.payment.mode || !req.body.payment.amountPaid) return res.status(400).json({ message: 'Payment details are required' });
+    // Prevent overlapping bookings for the same vehicle
     if (vehicle && startDate) {
-      const conflict = await Booking.findOne({ vehicle, startDate: new Date(startDate) });
-      if (conflict) {
-        return res.status(409).json({ message: 'This vehicle is already booked for the selected date/time.' });
+      const overlap = await Booking.findOne({
+        vehicle,
+        status: { $nin: ['Cancelled', 'Completed'] },
+        $or: [
+          { startDate: { $lte: new Date(endDate || startDate) }, endDate: { $gte: new Date(startDate) } },
+          { startDate: { $lte: new Date(startDate) }, endDate: { $exists: false } },
+        ],
+      });
+      if (overlap) {
+        return res.status(409).json({ message: 'This vehicle is already booked for the selected time range.' });
       }
     }
     const booking = await Booking.create(req.body);
+    // If booking is confirmed, update vehicle and driver assignment
+    if (vehicle && status === 'Confirmed') {
+      await Vehicle.findByIdAndUpdate(vehicle, { status: 'on-trip', assignedTrip: booking._id });
+      if (agent) {
+        await User.findByIdAndUpdate(agent, { assignedVehicle: vehicle });
+      }
+    }
     // Emit real-time event
     const io = req.app.get('io');
     if (io) io.emit('bookingCreated', booking);
@@ -57,6 +73,13 @@ exports.updateBooking = async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    // If booking is completed or cancelled, update vehicle and driver status
+    if (booking.vehicle && ['Completed', 'Cancelled'].includes(booking.status)) {
+      await Vehicle.findByIdAndUpdate(booking.vehicle, { status: 'available', assignedTrip: null });
+      if (booking.agent) {
+        await User.findByIdAndUpdate(booking.agent, { assignedVehicle: null });
+      }
+    }
     // Emit real-time event
     const io = req.app.get('io');
     if (io) io.emit('bookingUpdated', booking);

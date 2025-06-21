@@ -101,7 +101,7 @@ export const updateUserPhoto = async (userId, file, token) => {
     },
   });
   return res.data;
-};
+}; 
 
 // Fetch all agents in the agency
 export async function getAgents(token) {

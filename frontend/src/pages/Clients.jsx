@@ -251,13 +251,13 @@ function Clients() {
             </svg>
             Refresh
           </Button>
-          <Button 
-            color="primary" 
-            onClick={() => navigate('/clients/add')}
-            className="flex items-center gap-2"
-          >
-            <FaUsers /> Add Client
-          </Button>
+        <Button 
+          color="primary" 
+          onClick={() => navigate('/clients/add')}
+          className="flex items-center gap-2"
+        >
+          <FaUsers /> Add Client
+        </Button>
         </div>
       </div>
 

@@ -45,11 +45,11 @@ exports.getMe = async (req, res) => {
     const user = await User.findById(req.user._id).select('-password');
     res.json({
       _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      agencyId: user.agencyId
-    });
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  agencyId: user.agencyId
+});
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

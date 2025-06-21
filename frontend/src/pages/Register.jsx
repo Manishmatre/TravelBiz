@@ -64,7 +64,7 @@ function Register() {
       });
       
       setTimeout(() => {
-        navigate('/login');
+      navigate('/login');
       }, 2000);
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.';
@@ -214,7 +214,7 @@ function Register() {
                   )}
                 </button>
               </div>
-            </div>
+        </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -223,18 +223,18 @@ function Register() {
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <FaShieldAlt className="h-4 w-4 text-gray-400" />
-                </div>
+        </div>
                 <select
                   name="role"
                   value={form.role}
                   onChange={handleChange}
                   className="block w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
                 >
-                  <option value="admin">Admin</option>
-                  <option value="agent">Agent</option>
-                  <option value="driver">Driver</option>
-                </select>
-              </div>
+            <option value="admin">Admin</option>
+            <option value="agent">Agent</option>
+            <option value="driver">Driver</option>
+          </select>
+        </div>
             </div>
 
             <div className="flex items-start text-sm">
@@ -280,7 +280,7 @@ function Register() {
           </div>
 
           {/* Login Link */}
-          <div className="mt-4 text-center">
+        <div className="mt-4 text-center">
             <Link
               to="/login"
               className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"

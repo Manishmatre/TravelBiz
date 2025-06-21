@@ -46,7 +46,7 @@ export default function AgencyInfoForm() {
       });
       
       setTimeout(() => {
-        navigate('/dashboard');
+      navigate('/dashboard');
       }, 1500);
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Failed to create agency. Please try again.';

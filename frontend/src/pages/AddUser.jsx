@@ -89,13 +89,13 @@ const AddUser = () => {
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
           {isEditMode ? 'Edit User' : 'Add New User'}
         </h1>
-        <Button 
-          color="secondary" 
-          onClick={() => navigate('/users')}
-          className="flex items-center gap-2"
-        >
+          <Button 
+            color="secondary" 
+            onClick={() => navigate('/users')}
+            className="flex items-center gap-2"
+          >
           <FaArrowLeft /> Back to Users
-        </Button>
+          </Button>
       </div>
 
       {/* Form Card */}

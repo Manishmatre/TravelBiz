@@ -117,13 +117,13 @@ const AddClient = () => {
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
           {isEditMode ? 'Edit Client' : 'Add New Client'}
         </h1>
-        <Button 
-          color="secondary" 
-          onClick={() => navigate('/clients')}
-          className="flex items-center gap-2"
-        >
+          <Button 
+            color="secondary" 
+            onClick={() => navigate('/clients')}
+            className="flex items-center gap-2"
+          >
           <FaArrowLeft /> Back to Clients
-        </Button>
+          </Button>
       </div>
 
       {/* Form Card */}

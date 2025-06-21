@@ -53,50 +53,50 @@ function App() {
   return (
     <AuthProvider>
       <BookingsProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/agency-info" element={
-              <ProtectedRoute>
-                <AgencyInfoForm />
-              </ProtectedRoute>
-            } />
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/agency-info" element={
+            <ProtectedRoute>
+              <AgencyInfoForm />
+            </ProtectedRoute>
+          } />
             <Route path="/agency-selection" element={
               <ProtectedRoute>
                 <AgencySelection />
               </ProtectedRoute>
             } />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute requireAgency={true}>
-                  <Layout>
-                    <Dashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute requireAgency={true}>
-                  <Layout>
-                    <Dashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/clients"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Clients />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute requireAgency={true}>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute requireAgency={true}>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Clients />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
             <Route
               path="/clients/add"
               element={
@@ -117,26 +117,26 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/files"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Files />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/users"
-              element={
-                <ProtectedRoute requireAgency={true}>
-                  <Layout>
-                    <Users />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/files"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Files />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute requireAgency={true}>
+                <Layout>
+                  <Users />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
             <Route
               path="/users/add"
               element={
@@ -147,146 +147,146 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/vehicles"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Vehicles />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tracking"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <LiveTracking />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/activity-log"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ActivityLog />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ProfilePage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/agency-profile"
-              element={
-                <ProtectedRoute requireAgency={true}>
-                  <Layout>
-                    <AgencyProfile />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/vehicles/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <VehicleDashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/vehicles/maintenance"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <VehicleMaintenance />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/vehicles/fuel"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <VehicleFuel />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/vehicles/documents"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <VehicleDocuments />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/vehicles/assignments"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <VehicleAssignments />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/vehicles/:id"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <VehicleDetail />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/drivers"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Drivers />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/drivers/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <DriverDashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/drivers/:id"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <DriverDetail />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/vehicles"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Vehicles />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tracking"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <LiveTracking />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/activity-log"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ActivityLog />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agency-profile"
+            element={
+              <ProtectedRoute requireAgency={true}>
+                <Layout>
+                  <AgencyProfile />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleDashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/maintenance"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleMaintenance />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/fuel"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleFuel />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/documents"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleDocuments />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/assignments"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleAssignments />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VehicleDetail />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/drivers"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Drivers />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/drivers/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DriverDashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/drivers/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DriverDetail />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
             <Route
               path="/bookings"
               element={
@@ -327,8 +327,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-          </Routes>
-        </Router>
+        </Routes>
+      </Router>
       </BookingsProvider>
     </AuthProvider>
   );

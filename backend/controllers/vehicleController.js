@@ -205,7 +205,23 @@ exports.getVehicleAssignments = async (req, res) => {
 exports.addVehicleAssignment = async (req, res) => {
   const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+  // Conflict check: is this vehicle already assigned to a driver?
+  const alreadyAssigned = vehicle.assignments.find(a => a.status !== 'Unassigned');
+  if (alreadyAssigned) {
+    return res.status(409).json({ message: 'This vehicle is already assigned to a driver.' });
+  }
+  // Conflict check: is this driver already assigned to another vehicle?
+  if (req.body.driver) {
+    const driver = await User.findById(req.body.driver);
+    if (driver && driver.assignedVehicle && String(driver.assignedVehicle) !== String(vehicle._id)) {
+      return res.status(409).json({ message: 'This driver is already assigned to another vehicle.' });
+    }
+  }
   vehicle.assignments.push(req.body);
+  // Set persistent assignedDriver field
+  if (req.body.driver && req.body.status !== 'Unassigned') {
+    vehicle.assignedDriver = req.body.driver;
+  }
   await vehicle.save();
   // Update assignedVehicle on user if status is not 'Unassigned'
   if (req.body.driver && req.body.status !== 'Unassigned') {
@@ -219,12 +235,31 @@ exports.updateVehicleAssignment = async (req, res) => {
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
   const assign = vehicle.assignments.id(req.params.assignId);
   if (!assign) return res.status(404).json({ message: 'Assignment not found' });
+  // Conflict check: if updating to assigned, make sure no other assignment is active
+  if (req.body.status !== 'Unassigned') {
+    const otherAssigned = vehicle.assignments.find(a => a._id.toString() !== assign._id.toString() && a.status !== 'Unassigned');
+    if (otherAssigned) {
+      return res.status(409).json({ message: 'This vehicle is already assigned to another driver.' });
+    }
+    if (req.body.driver) {
+      const driver = await User.findById(req.body.driver);
+      if (driver && driver.assignedVehicle && String(driver.assignedVehicle) !== String(vehicle._id)) {
+        return res.status(409).json({ message: 'This driver is already assigned to another vehicle.' });
+      }
+    }
+  }
   Object.assign(assign, req.body);
+  // Update persistent assignedDriver field
+  if (req.body.driver && req.body.status !== 'Unassigned') {
+    vehicle.assignedDriver = req.body.driver;
+  }
+  if (req.body.status === 'Unassigned') {
+    vehicle.assignedDriver = null;
+  }
   await vehicle.save();
   // Update assignedVehicle on user
   if (req.body.driver) {
     if (req.body.status === 'Unassigned') {
-      // Only clear if this vehicle is currently assigned
       await User.findOneAndUpdate({ _id: req.body.driver, assignedVehicle: vehicle._id }, { assignedVehicle: null });
     } else {
       await User.findByIdAndUpdate(req.body.driver, { assignedVehicle: vehicle._id });

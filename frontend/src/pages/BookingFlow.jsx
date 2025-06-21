@@ -137,10 +137,10 @@ function BookingFlow() {
         </div>
       </div>
 
-      {/* Stepper */}
+        {/* Stepper */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Stepper steps={steps} currentStep={step} />
+        <Stepper steps={steps} currentStep={step} />
         </div>
       </div>
 
@@ -243,8 +243,8 @@ function Stepper({ steps, currentStep }) {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between">
-        {steps.map((step, idx) => (
-          <div key={step.label} className="flex-1 flex flex-col items-center relative">
+      {steps.map((step, idx) => (
+        <div key={step.label} className="flex-1 flex flex-col items-center relative">
             {/* Step Circle */}
             <div className={`relative z-10 rounded-full w-12 h-12 flex items-center justify-center text-lg font-bold border-2 transition-all duration-300 ${
               idx + 1 < currentStep 
@@ -270,7 +270,7 @@ function Stepper({ steps, currentStep }) {
             </span>
             
             {/* Progress Line */}
-            {idx < steps.length - 1 && (
+          {idx < steps.length - 1 && (
               <div className="absolute top-6 left-1/2 w-full h-0.5 bg-gray-200">
                 <div 
                   className={`h-full transition-all duration-500 ease-out ${
@@ -279,9 +279,9 @@ function Stepper({ steps, currentStep }) {
                   style={{ width: idx + 1 < currentStep ? '100%' : '0%' }}
                 />
               </div>
-            )}
-          </div>
-        ))}
+          )}
+        </div>
+      ))}
       </div>
     </div>
   );
@@ -300,7 +300,7 @@ function StepClient({ clients, filteredClients, clientSearch, setClientSearch, s
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Select Client</h2>
             <p className="text-gray-600">Choose an existing client or create a new one</p>
-          </div>
+      </div>
         </div>
 
         <div className="space-y-4">
@@ -472,9 +472,9 @@ function StepClient({ clients, filteredClients, clientSearch, setClientSearch, s
               color="primary" 
               className="flex-1" 
               onClick={() => {
-                const errors = validateClient(newClient);
-                setClientErrors(errors);
-                if (Object.keys(errors).length === 0) handleAddClient();
+            const errors = validateClient(newClient);
+            setClientErrors(errors);
+            if (Object.keys(errors).length === 0) handleAddClient();
               }} 
               loading={loading}
             >
@@ -510,7 +510,7 @@ function StepVehicle({ vehicles, selectedVehicle, setSelectedVehicle, setStep, v
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-              {vehicles.map(v => (
+        {vehicles.map(v => (
                 <div 
                   key={v._id} 
                   className={`p-6 border-2 rounded-xl cursor-pointer hover:shadow-lg transition-all ${
@@ -563,9 +563,9 @@ function StepVehicle({ vehicles, selectedVehicle, setSelectedVehicle, setStep, v
                       <span className="text-green-600 font-medium">Available</span>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+          </div>
+        ))}
+      </div>
           )}
 
           {vehicleError && (
@@ -708,7 +708,7 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
           </div>
 
           {/* Location Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Location</label>
               <input
@@ -723,7 +723,7 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
               {detailsErrors.pickup && (
                 <div className="text-red-500 text-sm mt-1">{detailsErrors.pickup}</div>
               )}
-            </div>
+      </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Destination</label>
               <input
@@ -884,9 +884,9 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
             color="primary" 
             className="flex-1" 
             onClick={() => {
-              const errors = validateDetails(bookingDetails);
-              setDetailsErrors(errors);
-              if (Object.keys(errors).length === 0) setStep(4);
+          const errors = validateDetails(bookingDetails);
+          setDetailsErrors(errors);
+          if (Object.keys(errors).length === 0) setStep(4);
             }}
           >
             Continue to Payment
@@ -931,7 +931,7 @@ function StepPayment({ payment, setPayment, totalAmount, advanceAmount, balanceA
           </div>
 
           {/* Advance Percentage for Partial Payment */}
-          {payment.type === 'partial' && (
+        {payment.type === 'partial' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Advance Percentage (%)</label>
               <input
@@ -967,7 +967,7 @@ function StepPayment({ payment, setPayment, totalAmount, advanceAmount, balanceA
             {paymentErrors.mode && (
               <div className="text-red-500 text-sm mt-1">{paymentErrors.mode}</div>
             )}
-          </div>
+      </div>
 
           {/* Amount Paid */}
           <div>
@@ -1081,9 +1081,9 @@ function StepPayment({ payment, setPayment, totalAmount, advanceAmount, balanceA
             color="primary" 
             className="flex-1" 
             onClick={() => {
-              const errors = validatePayment(payment, advanceAmount);
-              setPaymentErrors(errors);
-              if (Object.keys(errors).length === 0) setStep(5);
+          const errors = validatePayment(payment, advanceAmount);
+          setPaymentErrors(errors);
+          if (Object.keys(errors).length === 0) setStep(5);
             }}
           >
             Continue to Review
@@ -1104,7 +1104,7 @@ function StepReview({ selectedClient, selectedVehicle, agents, bookingDetails, p
         <div className="flex items-center gap-3 mb-6">
           <div className="p-3 bg-indigo-100 rounded-full">
             <FaClipboardCheck className="text-indigo-600 text-xl" />
-          </div>
+      </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Final Review</h2>
             <p className="text-gray-600">Review and confirm booking details</p>
@@ -1294,8 +1294,8 @@ function StepSuccess({ bookingId, navigate, bookingDetails, payment, totalAmount
             <div className="text-center">
               <div className="text-sm text-gray-600 mb-2">Booking ID</div>
               <div className="text-2xl font-bold text-blue-600">{bookingId}</div>
-            </div>
           </div>
+        </div>
 
           <div className="space-y-3">
             <Button 
@@ -1394,18 +1394,18 @@ function StepSuccess({ bookingId, navigate, bookingDetails, payment, totalAmount
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h4 className="font-semibold text-gray-900 mb-3">Payment Breakdown</h4>
               <div className="w-full h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
-                      {data.map((entry, idx) => (
-                        <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                {data.map((entry, idx) => (
+                  <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                ))}
+              </Pie>
+              <RechartsTooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
           )}
         </div>
       </div>

@@ -47,6 +47,7 @@ const vehicleSchema = new mongoose.Schema({
   fuelLogs: [fuelLogSchema],
   assignments: [assignmentSchema],
   documents: [documentSchema],
+  assignedDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 });
 
 vehicleSchema.index({ agencyId: 1 });

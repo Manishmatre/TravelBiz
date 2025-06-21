@@ -8,6 +8,7 @@ const locationSchema = new mongoose.Schema({
   status: { type: String, enum: ['moving', 'stopped'], required: true },
   updatedAt: { type: Date, default: Date.now },
   agencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency', required: true, index: true },
+  driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 });
 
 locationSchema.index({ vehicleId: 1, updatedAt: 1 });

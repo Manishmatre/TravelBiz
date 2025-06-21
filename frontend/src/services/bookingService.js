@@ -36,4 +36,11 @@ export const deleteBooking = async (id, token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
+};
+
+export const getBookingsByVehicle = async (vehicleId, token) => {
+  const res = await axios.get(`${API_URL}/bookings?vehicle=${vehicleId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
 }; 

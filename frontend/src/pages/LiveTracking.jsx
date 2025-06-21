@@ -13,8 +13,15 @@ import { io } from 'socket.io-client';
 import StatCard from '../components/common/StatCard';
 import { FaMapMarkerAlt, FaBars, FaTimes, FaCarSide, FaSyncAlt } from 'react-icons/fa';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { getAgents } from '../services/userService';
+import { getAgents, getUsers } from '../services/userService';
 import { getClients } from '../services/clientService';
+import VehicleDetailsCard from '../components/VehicleDetailsCard';
+import { getBookingsByVehicle } from '../services/bookingService';
+import Draggable from 'react-draggable';
+import axios from 'axios';
+import DriverDetailsCard from '../components/DriverDetailsCard';
+import AgentDetailsCard from '../components/AgentDetailsCard';
+import ClientDetailsCard from '../components/ClientDetailsCard';
 
 const containerStyle = {
   width: '100%',
@@ -95,7 +102,7 @@ function LiveTracking() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Add sidebar tab state and search/filter state
-  const [sidebarTab, setSidebarTab] = useState('vehicles'); // 'vehicles' | 'agents' | 'clients'
+  const [sidebarTab, setSidebarTab] = useState('vehicles'); // 'vehicles' | 'agents' | 'clients' | 'drivers'
   const [showOnline, setShowOnline] = useState(true);
   const [showOffline, setShowOffline] = useState(true);
   const [vehicleSearch, setVehicleSearch] = useState('');
@@ -117,6 +124,32 @@ function LiveTracking() {
   const [clientSearch, setClientSearch] = useState('');
   const [showClientsOnline, setShowClientsOnline] = useState(true);
   const [showClientsOffline, setShowClientsOffline] = useState(true);
+
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [vehicleTrip, setVehicleTrip] = useState(null);
+  const [tripLoading, setTripLoading] = useState(false);
+  const [tripError, setTripError] = useState(null);
+  const [tripCoords, setTripCoords] = useState(null);
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
+  const [geocodeError, setGeocodeError] = useState(null);
+
+  const [mapCenter, setMapCenter] = useState(userLocation || center);
+  const [mapZoom, setMapZoom] = useState(12);
+
+  const [isCardFloating, setIsCardFloating] = useState(false);
+  const detailsCardRef = useRef(null);
+
+  const [driverLocations, setDriverLocations] = useState({});
+
+  const [drivers, setDrivers] = useState([]);
+  const [driversLoading, setDriversLoading] = useState(false);
+  const [driversError, setDriversError] = useState(null);
+  const [driverSearch, setDriverSearch] = useState('');
+  const [showDriversOnline, setShowDriversOnline] = useState(true);
+  const [showDriversOffline, setShowDriversOffline] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -274,28 +307,57 @@ function LiveTracking() {
     setIsPlaying(false);
   }, [history]);
 
+  // Fetch latest driver locations for all assigned drivers
+  useEffect(() => {
+    async function fetchDriverLocations() {
+      if (!vehicles.length || !token) return;
+      const assignedDrivers = vehicles.map(v => v.assignedDriver).filter(Boolean);
+      const locs = {};
+      await Promise.all(assignedDrivers.map(async (driverId) => {
+        try {
+          const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/location/driver/${driverId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.data && res.data.latitude && res.data.longitude) {
+            locs[driverId] = res.data;
+          }
+        } catch {}
+      }));
+      setDriverLocations(locs);
+    }
+    fetchDriverLocations();
+  }, [vehicles, token]);
+
+  // Helper to get the live location for a vehicle (driver if available, else vehicle)
+  function getLiveLocationForVehicle(vehicle) {
+    if (vehicle.assignedDriver && driverLocations[vehicle.assignedDriver]) {
+      return driverLocations[vehicle.assignedDriver];
+    }
+    return locations.find(l => l.vehicleId === vehicle._id);
+  }
+
   // Helper to render clustered markers with animated icon
   const renderClusteredMarkers = (clusterer) =>
-    locations.map(loc => {
-      const vehicle = getVehicleInfo(loc.vehicleId);
+    vehicles.map(vehicle => {
+      const loc = getLiveLocationForVehicle(vehicle);
+      if (!loc) return null;
       const online = isOnline(loc.updatedAt);
-      // Choose color based on status and online
-      let color = '#ef4444'; // default red
-      if (online) color = loc.status === 'moving' ? '#22c55e' : '#f59e42'; // green for moving, orange for stopped
-      if (!online) color = '#6b7280'; // gray for offline
-      return (
-        <Marker
-          key={loc.vehicleId}
-          position={{ lat: loc.latitude, lng: loc.longitude }}
-          label={vehicle.name || loc.vehicleId}
-          icon={{
+      let color = '#ef4444';
+      if (online) color = loc.status === 'moving' ? '#22c55e' : '#f59e42';
+      if (!online) color = '#6b7280';
+              return (
+                <Marker
+          key={vehicle._id}
+                  position={{ lat: loc.latitude, lng: loc.longitude }}
+          label={vehicle.name || vehicle._id}
+                  icon={{
             url: `data:image/svg+xml;utf8,${encodeURIComponent(
               renderToStaticMarkup(<PulsingMarker color={color} size={32} />)
             )}`,
             scaledSize: { width: 32, height: 32 },
           }}
           clusterer={clusterer}
-          onClick={() => setSelectedMarker({ type: 'live', vehicleId: loc.vehicleId })}
+          onClick={() => setSelectedMarker({ type: 'live', vehicleId: vehicle._id })}
         />
       );
     });
@@ -322,6 +384,114 @@ function LiveTracking() {
   const onlineVehicles = locations.filter(l => isOnline(l.updatedAt)).length;
   const offlineVehicles = vehicles.length - onlineVehicles;
 
+  // Helper to get driver info for a vehicle
+  const getDriverForVehicle = (vehicle) => {
+    // Adjust this logic if you have a driver object/field
+    return vehicle && (vehicle.driver || vehicle.driverName) ? { name: vehicle.driverName || vehicle.driver } : null;
+  };
+
+  // Fetch bookings for selected vehicle
+  useEffect(() => {
+    if (selectedVehicleId && token) {
+      setTripLoading(true);
+      setTripError(null);
+      getBookingsByVehicle(selectedVehicleId, token)
+        .then(bookings => {
+          // Sort by startDate descending, pick the most recent/active
+          const sorted = bookings.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+          setVehicleTrip(sorted[0] || null);
+        })
+        .catch(e => setTripError(e.message))
+        .finally(() => setTripLoading(false));
+    } else {
+      setVehicleTrip(null);
+    }
+  }, [selectedVehicleId, token]);
+
+  // Helper to extract coordinates from trip (if available)
+  function getTripCoords(trip) {
+    // Example: trip.pickupCoords = { lat, lng }, trip.destinationCoords = { lat, lng }
+    if (!trip) return null;
+    if (trip.pickupCoords && trip.destinationCoords) {
+      return [trip.pickupCoords, trip.destinationCoords];
+    }
+    return null;
+  }
+
+  // Geocode trip addresses to coordinates if needed
+  useEffect(() => {
+    async function geocodeAddress(address) {
+      if (!address) return null;
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'OK' && data.results[0]) {
+        const { lat, lng } = data.results[0].geometry.location;
+        return { lat, lng };
+      }
+      throw new Error(data.error_message || 'Geocoding failed');
+    }
+    setGeocodeError(null);
+    setGeocodeLoading(false);
+    if (vehicleTrip && (!vehicleTrip.pickupCoords || !vehicleTrip.destinationCoords) && (vehicleTrip.pickup || vehicleTrip.destination)) {
+      setGeocodeLoading(true);
+      (async () => {
+        try {
+          const pickupCoords = vehicleTrip.pickupCoords || await geocodeAddress(vehicleTrip.pickup);
+          const destinationCoords = vehicleTrip.destinationCoords || await geocodeAddress(vehicleTrip.destination);
+          setTripCoords({ pickupCoords, destinationCoords });
+          setGeocodeLoading(false);
+        } catch (err) {
+          setGeocodeError(err.message);
+          setTripCoords(null);
+          setGeocodeLoading(false);
+        }
+      })();
+    } else if (vehicleTrip && vehicleTrip.pickupCoords && vehicleTrip.destinationCoords) {
+      setTripCoords({ pickupCoords: vehicleTrip.pickupCoords, destinationCoords: vehicleTrip.destinationCoords });
+      setGeocodeLoading(false);
+      setGeocodeError(null);
+    } else {
+      setTripCoords(null);
+      setGeocodeLoading(false);
+      setGeocodeError(null);
+    }
+  }, [vehicleTrip]);
+
+  // When selectedVehicleId changes, zoom and center map
+  useEffect(() => {
+    if (selectedVehicleId) {
+      const loc = locations.find(l => l.vehicleId === selectedVehicleId);
+      if (loc) {
+        setMapCenter({ lat: loc.latitude, lng: loc.longitude });
+        setMapZoom(16);
+        setTimeout(() => {
+          mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+          mapRef.current?.setZoom(16);
+        }, 300);
+      }
+    } else {
+      setMapCenter(userLocation || center);
+      setMapZoom(12);
+      setTimeout(() => {
+        mapRef.current?.panTo(userLocation || center);
+        mapRef.current?.setZoom(12);
+      }, 300);
+    }
+  }, [selectedVehicleId, userLocation, locations]);
+
+  useEffect(() => {
+    if (token && sidebarTab === 'drivers') {
+      setDriversLoading(true);
+      setDriversError(null);
+      getUsers({ role: 'driver' }, token)
+        .then(setDrivers)
+        .catch(e => setDriversError(e.message))
+        .finally(() => setDriversLoading(false));
+    }
+  }, [token, sidebarTab]);
+
   return (
     <div className="flex flex-col md:flex-row h-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
       {/* Sidebar */}
@@ -332,10 +502,13 @@ function LiveTracking() {
           <span className="font-bold text-xl text-blue-700 tracking-wide">Live Tracking</span>
         </div>
         {/* Tabs */}
-        <div className="flex gap-2 mb-4">
-          <button className={`flex-1 px-3 py-1 rounded-t-lg font-bold transition ${sidebarTab === 'vehicles' ? 'bg-blue-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-blue-50'}`} onClick={() => setSidebarTab('vehicles')}>Vehicles <span className="ml-1 text-xs">({vehicles.length})</span></button>
-          <button className={`flex-1 px-3 py-1 rounded-t-lg font-bold transition ${sidebarTab === 'agents' ? 'bg-orange-500 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-orange-50'}`} onClick={() => setSidebarTab('agents')}>Agents <span className="ml-1 text-xs">({agents.length})</span></button>
-          <button className={`flex-1 px-3 py-1 rounded-t-lg font-bold transition ${sidebarTab === 'clients' ? 'bg-green-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-green-50'}`} onClick={() => setSidebarTab('clients')}>Clients <span className="ml-1 text-xs">({clients.length})</span></button>
+        <div className="w-full mb-4">
+          <div className="flex gap-0 w-full bg-gray-100 rounded-lg overflow-hidden border-b border-gray-200">
+            <button className={`flex-1 min-w-0 px-3 py-2 font-bold transition focus:outline-none text-ellipsis whitespace-nowrap overflow-hidden ${sidebarTab === 'vehicles' ? 'bg-blue-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-blue-50'}`} onClick={() => setSidebarTab('vehicles')}>Vehicles <span className="ml-1 text-xs">({vehicles.length})</span></button>
+            <button className={`flex-1 min-w-0 px-3 py-2 font-bold transition focus:outline-none text-ellipsis whitespace-nowrap overflow-hidden ${sidebarTab === 'agents' ? 'bg-orange-500 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-orange-50'}`} onClick={() => setSidebarTab('agents')}>Agents <span className="ml-1 text-xs">({agents.length})</span></button>
+            <button className={`flex-1 min-w-0 px-3 py-2 font-bold transition focus:outline-none text-ellipsis whitespace-nowrap overflow-hidden ${sidebarTab === 'clients' ? 'bg-green-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-green-50'}`} onClick={() => setSidebarTab('clients')}>Clients <span className="ml-1 text-xs">({clients.length})</span></button>
+            <button className={`flex-1 min-w-0 px-3 py-2 font-bold transition focus:outline-none text-ellipsis whitespace-nowrap overflow-hidden ${sidebarTab === 'drivers' ? 'bg-purple-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-purple-50'}`} onClick={() => setSidebarTab('drivers')}>Drivers <span className="ml-1 text-xs">({drivers.length})</span></button>
+          </div>
         </div>
         {/* Tab content */}
         <div className="flex-1">
@@ -359,7 +532,7 @@ function LiveTracking() {
                 <label className="flex items-center gap-1 text-xs">
                   <input type="checkbox" checked={showOffline} onChange={e => setShowOffline(e.target.checked)} /> Offline
                 </label>
-              </div>
+      </div>
               {/* Vehicle list */}
               <ul className="overflow-y-auto max-h-[calc(100vh-260px)] pr-2 divide-y divide-gray-100">
                 {vehicles.filter(v => {
@@ -381,8 +554,27 @@ function LiveTracking() {
                 }).map(v => {
                   const loc = locations.find(l => l.vehicleId === v._id);
                   const online = loc && isOnline(loc.updatedAt);
-                  return (
-                    <li key={v._id} className="flex items-center justify-between py-3 px-2 rounded transition hover:bg-blue-50 group">
+            return (
+                    <li
+                      key={v._id}
+                      className={`flex items-center justify-between py-3 px-2 rounded transition group cursor-pointer ${selectedVehicleId === v._id ? 'bg-blue-600 text-white shadow-lg scale-105 border-l-4 border-blue-800' : 'hover:bg-blue-50'}`}
+                      style={{ transition: 'all 0.2s' }}
+                      onClick={() => {
+                        setSelectedVehicleId(v._id);
+                        setSelectedDriverId('');
+                        setSelectedAgentId('');
+                        setSelectedClientId('');
+                        if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                      }}
+                      tabIndex={0}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setSelectedVehicleId(v._id);
+                          if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                        }
+                      }}
+                      aria-label={`Select vehicle ${v.name || v._id}`}
+                    >
                       <div>
                         <div className="font-semibold text-gray-800 flex items-center gap-2">
                           <FaCarSide className="text-blue-400" />
@@ -393,7 +585,8 @@ function LiveTracking() {
                       </div>
                       <button
                         className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-200 transition"
-                        onClick={() => {
+                        onClick={e => {
+                          e.stopPropagation();
                           if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
                         }}
                         disabled={!loc}
@@ -401,10 +594,10 @@ function LiveTracking() {
                       >
                         <FaMapMarkerAlt />
                       </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              </li>
+            );
+          })}
+        </ul>
             </>
           )}
           {sidebarTab === 'agents' && (
@@ -449,8 +642,16 @@ function LiveTracking() {
               }).map(agent => (
                 <button
                   key={agent._id}
-                  className="w-full text-left py-3 px-2 flex items-center gap-3 rounded transition hover:bg-orange-50 group focus:outline-none"
-                  // onClick={() => { /* TODO: Focus agent on map or open modal */ }}
+                  className={`w-full text-left py-3 px-3 flex items-center gap-3 rounded-lg transition group focus:outline-none relative ${selectedAgentId === agent._id ? 'bg-orange-100 border border-orange-400 shadow' : 'hover:bg-orange-50'}`}
+                  onClick={() => {
+                    setSelectedAgentId(agent._id);
+                    setSelectedVehicleId('');
+                    setSelectedDriverId('');
+                    setSelectedClientId('');
+                    const loc = Object.values(locations).find(l => l.agentId === agent._id);
+                    if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                  }}
+                  style={{ minHeight: 64 }}
                 >
                   {/* Avatar or initials */}
                   {agent.avatarUrl ? (
@@ -512,8 +713,16 @@ function LiveTracking() {
               }).map(client => (
                 <button
                   key={client._id}
-                  className="w-full text-left py-3 px-2 flex items-center gap-3 rounded transition hover:bg-green-100 group focus:outline-none"
-                  // onClick={() => { /* TODO: Focus client on map or open modal */ }}
+                  className={`w-full text-left py-3 px-3 flex items-center gap-3 rounded-lg transition group focus:outline-none relative ${selectedClientId === client._id ? 'bg-green-100 border border-green-400 shadow' : 'hover:bg-green-50'}`}
+                  onClick={() => {
+                    setSelectedClientId(client._id);
+                    setSelectedVehicleId('');
+                    setSelectedDriverId('');
+                    setSelectedAgentId('');
+                    const loc = Object.values(locations).find(l => l.clientId === client._id);
+                    if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                  }}
+                  style={{ minHeight: 64 }}
                 >
                   {/* Avatar or initials */}
                   {client.avatarUrl ? (
@@ -536,9 +745,111 @@ function LiveTracking() {
               ))}
             </div>
           )}
+          {sidebarTab === 'drivers' && (
+            <div className="overflow-y-auto max-h-[calc(100vh-260px)] pr-2 divide-y divide-purple-100">
+              {/* Search/filter bar */}
+              <div className="mb-2 flex gap-2 items-center">
+                <input
+                  type="text"
+                  className="border rounded px-2 py-1 flex-1"
+                  placeholder="Search drivers..."
+                  value={driverSearch}
+                  onChange={e => setDriverSearch(e.target.value)}
+                />
+              </div>
+              {/* Online/offline toggles */}
+              <div className="mb-4 flex gap-2 items-center">
+                <label className="flex items-center gap-1 text-xs">
+                  <input type="checkbox" checked={showDriversOnline} onChange={e => setShowDriversOnline(e.target.checked)} /> Online
+                </label>
+                <label className="flex items-center gap-1 text-xs">
+                  <input type="checkbox" checked={showDriversOffline} onChange={e => setShowDriversOffline(e.target.checked)} /> Offline
+                </label>
+              </div>
+              {driversLoading ? (
+                <div className="text-purple-500 py-4 text-center">Loading drivers...</div>
+              ) : driversError ? (
+                <div className="text-red-500 py-4 text-center">{driversError}</div>
+              ) : (() => {
+                const filteredDrivers = drivers.filter(driver => {
+                  // Determine online status by last location update if available
+                  const loc = Object.values(driverLocations).find(l => l.driverId === driver._id);
+                  const online = loc && isOnline(loc.updatedAt);
+                  if (!showDriversOnline && online) return false;
+                  if (!showDriversOffline && !online) return false;
+                  if (driverSearch && !(driver.name || '').toLowerCase().includes(driverSearch.toLowerCase()) && !(driver.email || '').toLowerCase().includes(driverSearch.toLowerCase())) return false;
+                  return true;
+                });
+                if (filteredDrivers.length === 0) {
+                  return <div className="text-gray-400 py-4 text-center">No drivers to display yet.</div>;
+                }
+                return filteredDrivers.map(driver => {
+                  const loc = Object.values(driverLocations).find(l => l.driverId === driver._id);
+                  const online = loc && isOnline(loc.updatedAt);
+                  // Assignment status logic
+                  let assignmentText = 'Unassigned';
+                  if (
+                    driver.assignedVehicle &&
+                    (typeof driver.assignedVehicle.numberPlate === 'string' && driver.assignedVehicle.numberPlate.trim() !== '' ||
+                     typeof driver.assignedVehicle.name === 'string' && driver.assignedVehicle.name.trim() !== '')
+                  ) {
+                    assignmentText = `Assigned: ${driver.assignedVehicle.numberPlate || driver.assignedVehicle.name}`;
+                  }
+                  // Defensive: never render an object
+                  const safeName = typeof driver.name === 'string' ? driver.name : '-';
+                  const safeEmail = typeof driver.email === 'string' ? driver.email : '-';
+                  const isSelected = selectedDriverId === driver._id;
+                  return (
+                    <button
+                      key={driver._id}
+                      className={`w-full text-left py-3 px-3 flex items-center gap-3 rounded-lg transition group focus:outline-none relative ${isSelected ? 'bg-purple-100 border border-purple-400 shadow' : 'hover:bg-purple-50'}`}
+                      onClick={() => {
+                        setSelectedDriverId(driver._id);
+                        setSelectedVehicleId('');
+                        setSelectedAgentId('');
+                        setSelectedClientId('');
+                        if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                      }}
+                      style={{ minHeight: 64 }}
+                    >
+                      {/* Avatar or initials, fallback if image fails */}
+                      {driver.avatarUrl ? (
+                        <img
+                          src={driver.avatarUrl}
+                          alt={safeName}
+                          className="w-9 h-9 rounded-full object-cover shadow"
+                          onError={e => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="w-9 h-9 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center font-bold text-lg shadow">
+                          {typeof safeName === 'string' ? getInitials(safeName) : '?'}
+                        </span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-800 truncate flex items-center gap-1">
+                          <span className="truncate max-w-[120px]">{safeName}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 truncate flex items-center gap-1">
+                          <span className="truncate max-w-[140px]">{safeEmail}</span>
+                          {safeEmail && safeEmail !== '-' && (
+                            <a href={`mailto:${safeEmail}`} className="ml-1 text-blue-400 hover:text-blue-600" title="Email">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="inline w-4 h-4 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 0a4 4 0 11-8 0 4 4 0 018 0zm0 0v4m0-4V8" /></svg>
+                            </a>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400 truncate">{assignmentText}</div>
+                      </div>
+                      {/* Single status badge, right-aligned and vertically centered */}
+                      <span className={`absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-bold text-white ${online ? 'bg-purple-600' : 'bg-gray-400'}`}>{online ? 'Online' : 'Offline'}</span>
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+          )}
         </div>
       </aside>
-      {/* Main content area */}
+      {/* Main content area with responsive map/card layout */}
       <main className="flex-1 flex flex-col gap-6 p-4 md:p-8">
         {/* Top controls row */}
         <div className="flex flex-col gap-4 mb-2">
@@ -580,226 +891,337 @@ function LiveTracking() {
               </div>
             </div>
           </div>
-          {/* Compact Route Playback Card */}
-          <div className="bg-white/90 border border-gray-100 rounded-lg shadow px-4 py-3 flex flex-col md:flex-row md:items-center gap-3">
-            <h2 className="text-base font-semibold flex items-center gap-2 text-blue-700 mb-2 md:mb-0"><FaCarSide className="text-blue-400" /> Route Playback</h2>
-            <div className="flex flex-col md:flex-row gap-2 flex-1">
-              <select
-                className="border-none rounded-md px-2 py-1 bg-gray-100 focus:ring-2 focus:ring-blue-400 text-sm min-w-[140px]"
-                value={selectedVehicle}
-                onChange={e => setSelectedVehicle(e.target.value)}
+        </div>
+        {/* Map area */}
+        <div className={`flex-1 flex transition-all duration-500 ease-in-out ${((selectedVehicleId || selectedDriverId || selectedAgentId || selectedClientId) && !isCardFloating) ? 'flex-row' : 'flex-col'}`}>
+          {/* Map Card */}
+          <div className={`bg-white/90 border border-gray-100 rounded-2xl shadow-lg p-0 md:p-2 min-h-[400px] max-h-[70vh] overflow-hidden transition-all duration-500 ease-in-out ${((selectedVehicleId || selectedDriverId || selectedAgentId || selectedClientId) && !isCardFloating) ? 'flex-1 mr-4' : 'w-full'}`}>
+            {isLoaded ? (
+              <GoogleMap
+                mapContainerStyle={{ width: '100%', height: '100%' }}
+                center={mapCenter}
+                zoom={mapZoom}
+                onLoad={map => (mapRef.current = map)}
+                mapTypeId={mapStyle.mapTypeId}
+                options={mapStyle.styles ? { styles: mapStyle.styles } : {}}
               >
-                <option value="">Select Vehicle</option>
-                {vehicles.map(v => (
-                  <option key={v._id} value={v._id}>{v.name || v._id}</option>
-                ))}
-              </select>
-              <select
-                className="border-none rounded-md px-2 py-1 bg-gray-100 focus:ring-2 focus:ring-blue-400 text-sm min-w-[140px]"
-                value={timeRange}
-                onChange={e => setTimeRange(e.target.value)}
-              >
-                <option value="1h">Last 1 hour</option>
-                <option value="24h">Last 24 hours</option>
-                <option value="custom">Custom</option>
-              </select>
-              {timeRange === 'custom' && (
-                <div className="flex gap-2">
-                  <input
-                    type="datetime-local"
-                    className="border-none rounded-md px-2 py-1 bg-gray-100 focus:ring-2 focus:ring-blue-400 text-sm"
-                    value={customFrom}
-                    onChange={e => setCustomFrom(e.target.value)}
-                    placeholder="From"
+                {/* Show user location marker with pulsing effect */}
+                {userLocation && (
+                  <Marker
+                    position={userLocation}
+                    label="You"
+                    icon={{
+                      url: `data:image/svg+xml;utf8,${encodeURIComponent(
+                        renderToStaticMarkup(<PulsingMarker color="#2563eb" size={32} />)
+                      )}`,
+                      scaledSize: { width: 32, height: 32 },
+                    }}
                   />
-                  <input
-                    type="datetime-local"
-                    className="border-none rounded-md px-2 py-1 bg-gray-100 focus:ring-2 focus:ring-blue-400 text-sm"
-                    value={customTo}
-                    onChange={e => setCustomTo(e.target.value)}
-                    placeholder="To"
+                )}
+                {/* Only show selected vehicle marker if selected, else show all clustered */}
+                {selectedVehicleId ? (
+                  (() => {
+                    const vehicle = vehicles.find(v => v._id === selectedVehicleId);
+                    const loc = getLiveLocationForVehicle(vehicle);
+                    return loc && vehicle ? (
+                      <Marker
+                        key={vehicle._id}
+                        position={{ lat: loc.latitude, lng: loc.longitude }}
+                        label={vehicle.name || vehicle._id}
+                        icon={{
+                          url: `data:image/svg+xml;utf8,${encodeURIComponent(
+                            renderToStaticMarkup(<PulsingMarker color={loc.status === 'moving' ? '#22c55e' : '#ef4444'} size={40} />)
+                          )}`,
+                          scaledSize: { width: 40, height: 40 },
+                        }}
+                        onClick={() => setSelectedMarker({ type: 'live', vehicleId: vehicle._id })}
+                      />
+                    ) : null;
+                  })()
+                ) : (
+                  <MarkerClusterer>
+                    {(clusterer) => renderClusteredMarkers(clusterer)}
+                  </MarkerClusterer>
+                )}
+                {/* Live marker info popup */}
+                {selectedMarker && selectedMarker.type === 'live' && (() => {
+                  const loc = locations.find(l => l.vehicleId === selectedMarker.vehicleId);
+                  const vehicle = getVehicleInfo(selectedMarker.vehicleId);
+                  if (!loc) return null;
+                  const online = isOnline(loc.updatedAt);
+                  return (
+                    <InfoWindow
+                      position={{ lat: loc.latitude, lng: loc.longitude }}
+                      onCloseClick={() => setSelectedMarker(null)}
+                    >
+                      <div className="min-w-[220px] p-2 rounded-xl bg-white/90 shadow-lg">
+                        <div className="font-bold text-blue-700 text-lg mb-1 flex items-center gap-2">
+                          <FaCarSide /> {vehicle.name || loc.vehicleId}
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white ${online ? 'bg-green-500' : 'bg-gray-400'}`}>{online ? 'Online' : 'Offline'}</span>
+                        </div>
+                        <div className="text-xs text-gray-700 mb-1">Driver: {getDriverName(vehicle) || 'N/A'}</div>
+                        <div className="text-xs mb-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-white text-xs font-bold ${loc.status === 'moving' ? 'bg-green-500' : 'bg-red-500'}`}>{loc.status}</span>
+                          <span className="ml-2 text-gray-700">Speed: {loc.speed} km/h</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mb-1">Last update: {formatTime(loc.updatedAt)}</div>
+                        <button
+                          className="mt-2 px-3 py-1 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700"
+                          onClick={() => mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude })}
+                        >Focus</button>
+                      </div>
+                    </InfoWindow>
+                  );
+                })()}
+                {/* Route playback polyline and markers (not clustered) */}
+                {selectedVehicleId && history.length > 1 && (
+                  <Polyline
+                    path={history.map(h => ({ lat: h.latitude, lng: h.longitude }))}
+                    options={{ strokeColor: '#007bff', strokeWeight: 4, strokeOpacity: 0.7 }}
                   />
-                </div>
-              )}
-            </div>
-            {/* Playback animation controls */}
-            {history.length > 1 && (
-              <>
-                <div className="flex items-center gap-3 mb-2">
-                  <button
-                    className={`px-3 py-1 rounded bg-blue-600 text-white font-semibold ${isPlaying ? 'opacity-60' : ''}`}
-                    onClick={() => setIsPlaying(p => !p)}
-                    disabled={history.length < 2}
-                  >
-                    {isPlaying ? 'Pause' : 'Play'}
-                  </button>
-                  <button
-                    className="px-2 py-1 rounded bg-gray-200 text-gray-700 font-semibold"
-                    onClick={() => setCurrentStep(s => Math.max(0, s - 1))}
-                    disabled={currentStep === 0}
-                  >
-                    &#8592;
-                  </button>
-                  <span className="text-sm font-mono">{currentStep + 1} / {history.length}</span>
-                  <button
-                    className="px-2 py-1 rounded bg-gray-200 text-gray-700 font-semibold"
-                    onClick={() => setCurrentStep(s => Math.min(history.length - 1, s + 1))}
-                    disabled={currentStep === history.length - 1}
-                  >
-                    &#8594;
-                  </button>
-                </div>
-                {/* Playback timeline slider */}
-                <div className="flex flex-col gap-1 mb-2">
-                  <input
-                    type="range"
-                    min={0}
-                    max={history.length - 1}
-                    value={currentStep}
-                    onChange={e => setCurrentStep(Number(e.target.value))}
-                    className="w-full accent-blue-600 h-2 rounded-lg appearance-none bg-blue-100"
+                )}
+                {/* Animated playback marker for selected vehicle only */}
+                {selectedVehicleId && history.length > 1 && (
+                  <Marker
+                    position={{ lat: history[currentStep].latitude, lng: history[currentStep].longitude }}
+                    label="▶"
+                    icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' }}
+                    onClick={() => setSelectedMarker({ type: 'history', vehicleId: selectedVehicleId, idx: currentStep })}
                   />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{formatTime(history[0]?.updatedAt)}</span>
-                    <span>{formatTime(history[history.length - 1]?.updatedAt)}</span>
-                  </div>
-                  <div className="text-xs text-blue-700 font-semibold text-center">
-                    {formatTime(history[currentStep]?.updatedAt)}
-                  </div>
-                </div>
-              </>
+                )}
+                {/* Start/end markers for playback for selected vehicle only */}
+                {selectedVehicleId && history.length > 0 && (
+                  <Marker
+                    position={{ lat: history[0].latitude, lng: history[0].longitude }}
+                    label="Start"
+                    icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}
+                    onClick={() => setSelectedMarker({ type: 'history', vehicleId: selectedVehicleId, idx: 0 })}
+                  />
+                )}
+                {selectedVehicleId && history.length > 1 && (
+                  <Marker
+                    position={{ lat: history[history.length - 1].latitude, lng: history[history.length - 1].longitude }}
+                    label="End"
+                    icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' }}
+                    onClick={() => setSelectedMarker({ type: 'history', vehicleId: selectedVehicleId, idx: history.length - 1 })}
+                  />
+                )}
+                {/* Info popup for playback markers */}
+                {selectedMarker && selectedMarker.type === 'history' && history[selectedMarker.idx] && (() => {
+                  const h = history[selectedMarker.idx];
+                  const vehicle = getVehicleInfo(selectedMarker.vehicleId);
+                  return (
+                    <InfoWindow
+                      position={{ lat: h.latitude, lng: h.longitude }}
+                      onCloseClick={() => setSelectedMarker(null)}
+                    >
+                      <div className="min-w-[220px] p-2 rounded-xl bg-white/90 shadow-lg">
+                        <div className="font-bold text-blue-700 text-lg mb-1 flex items-center gap-2">
+                          <FaCarSide /> {vehicle.name || h.vehicleId}
+                        </div>
+                        <div className="text-xs text-gray-700 mb-1">Driver: {getDriverName(vehicle) || 'N/A'}</div>
+                        <div className="text-xs mb-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-white text-xs font-bold ${h.status === 'moving' ? 'bg-green-500' : 'bg-red-500'}`}>{h.status}</span>
+                          <span className="ml-2 text-gray-700">Speed: {h.speed} km/h</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mb-1">Time: {formatTime(h.updatedAt)}</div>
+                        <button
+                          className="mt-2 px-3 py-1 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700"
+                          onClick={() => mapRef.current?.panTo({ lat: h.latitude, lng: h.longitude })}
+                        >Focus</button>
+                      </div>
+                    </InfoWindow>
+                  );
+                })()}
+                {/* In map rendering, show trip route and markers if available, or loader/error if geocoding */}
+                {selectedVehicleId && (
+                  geocodeLoading ? (
+                    <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 bg-white/80 p-4 rounded shadow">
+                      <span className="text-indigo-600 font-semibold">Geocoding trip addresses...</span>
+                    </div>
+                  ) : geocodeError ? (
+                    <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 bg-red-100 p-4 rounded shadow">
+                      <span className="text-red-600 font-semibold">{geocodeError}</span>
+                    </div>
+                  ) : tripCoords && tripCoords.pickupCoords && tripCoords.destinationCoords && (
+                    <>
+                      <Polyline
+                        path={[tripCoords.pickupCoords, tripCoords.destinationCoords]}
+                        options={{ strokeColor: '#8b5cf6', strokeWeight: 5, strokeOpacity: 0.8 }}
+                      />
+                      {/* Pickup marker */}
+                      <Marker
+                        position={tripCoords.pickupCoords}
+                        label="Pickup"
+                        icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}
+                      />
+                      {/* Dropoff marker */}
+                      <Marker
+                        position={tripCoords.destinationCoords}
+                        label="Dropoff"
+                        icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }}
+                      />
+                    </>
+                  )
+                )}
+                {/* Agent markers */}
+                {sidebarTab === 'agents' && agents.map(agent => {
+                  const loc = Object.values(locations).find(l => l.agentId === agent._id);
+                  if (!loc) return null;
+                  return (
+                    <Marker
+                      key={agent._id}
+                      position={{ lat: loc.latitude, lng: loc.longitude }}
+                      label={agent.name || agent._id}
+                      icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' }}
+                      onClick={() => setSelectedAgentId(agent._id)}
+                    />
+                  );
+                })}
+                {/* Client markers */}
+                {sidebarTab === 'clients' && clients.map(client => {
+                  const loc = Object.values(locations).find(l => l.clientId === client._id);
+                  if (!loc) return null;
+                  return (
+                    <Marker
+                      key={client._id}
+                      position={{ lat: loc.latitude, lng: loc.longitude }}
+                      label={client.name || client._id}
+                      icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}
+                      onClick={() => setSelectedClientId(client._id)}
+                    />
+                  );
+                })}
+              </GoogleMap>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500 text-lg">Loading map...</div>
             )}
-            {historyLoading ? (
-              <div className="text-blue-600">Loading route...</div>
-            ) : history.length === 0 && selectedVehicle ? (
-              <div className="text-gray-500">No route data for selected vehicle/time.</div>
-            ) : null}
           </div>
-        </div>
-        {/* Map Card */}
-        <div className="bg-white/90 border border-gray-100 rounded-2xl shadow-lg p-0 md:p-2 flex-1 min-h-[400px] max-h-[70vh] overflow-hidden">
-          {isLoaded ? (
-            <GoogleMap
-              mapContainerStyle={{ width: '100%', height: '100%' }}
-              center={userLocation || center}
-              zoom={12}
-              onLoad={map => (mapRef.current = map)}
-              mapTypeId={mapStyle.mapTypeId}
-              options={mapStyle.styles ? { styles: mapStyle.styles } : {}}
-            >
-              {/* Show user location marker with pulsing effect */}
-              {userLocation && (
-                <Marker
-                  position={userLocation}
-                  label="You"
-                  icon={{
-                    url: `data:image/svg+xml;utf8,${encodeURIComponent(
-                      renderToStaticMarkup(<PulsingMarker color="#2563eb" size={32} />)
-                    )}`,
-                    scaledSize: { width: 32, height: 32 },
-                  }}
-                />
-              )}
-              {/* Clustered live markers */}
-              <MarkerClusterer>
-                {(clusterer) => renderClusteredMarkers(clusterer)}
-              </MarkerClusterer>
-              {/* Live marker info popup */}
-              {selectedMarker && selectedMarker.type === 'live' && (() => {
-                const loc = locations.find(l => l.vehicleId === selectedMarker.vehicleId);
-                const vehicle = getVehicleInfo(selectedMarker.vehicleId);
-                if (!loc) return null;
-                const online = isOnline(loc.updatedAt);
-                return (
-                  <InfoWindow
-                    position={{ lat: loc.latitude, lng: loc.longitude }}
-                    onCloseClick={() => setSelectedMarker(null)}
-                  >
-                    <div className="min-w-[220px] p-2 rounded-xl bg-white/90 shadow-lg">
-                      <div className="font-bold text-blue-700 text-lg mb-1 flex items-center gap-2">
-                        <FaCarSide /> {vehicle.name || loc.vehicleId}
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white ${online ? 'bg-green-500' : 'bg-gray-400'}`}>{online ? 'Online' : 'Offline'}</span>
-                      </div>
-                      <div className="text-xs text-gray-700 mb-1">Driver: {getDriverName(vehicle) || 'N/A'}</div>
-                      <div className="text-xs mb-1">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-white text-xs font-bold ${loc.status === 'moving' ? 'bg-green-500' : 'bg-red-500'}`}>{loc.status}</span>
-                        <span className="ml-2 text-gray-700">Speed: {loc.speed} km/h</span>
-                      </div>
-                      <div className="text-xs text-gray-500 mb-1">Last update: {formatTime(loc.updatedAt)}</div>
-                      <button
-                        className="mt-2 px-3 py-1 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700"
-                        onClick={() => mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude })}
-                      >Focus</button>
-                    </div>
-                  </InfoWindow>
-                );
-              })()}
-              {/* Route playback polyline and markers (not clustered) */}
-              {history.length > 1 && (
-                <Polyline
-                  path={history.map(h => ({ lat: h.latitude, lng: h.longitude }))}
-                  options={{ strokeColor: '#007bff', strokeWeight: 4, strokeOpacity: 0.7 }}
-                />
-              )}
-              {/* Animated playback marker */}
-              {history.length > 1 && (
-                <Marker
-                  position={{ lat: history[currentStep].latitude, lng: history[currentStep].longitude }}
-                  label="▶"
-                  icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' }}
-                  onClick={() => setSelectedMarker({ type: 'history', vehicleId: selectedVehicle, idx: currentStep })}
-                />
-              )}
-              {/* Start/end markers for playback */}
-              {history.length > 0 && (
-                <Marker
-                  position={{ lat: history[0].latitude, lng: history[0].longitude }}
-                  label="Start"
-                  icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}
-                  onClick={() => setSelectedMarker({ type: 'history', vehicleId: selectedVehicle, idx: 0 })}
-                />
-              )}
-              {history.length > 1 && (
-                <Marker
-                  position={{ lat: history[history.length - 1].latitude, lng: history[history.length - 1].longitude }}
-                  label="End"
-                  icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' }}
-                  onClick={() => setSelectedMarker({ type: 'history', vehicleId: selectedVehicle, idx: history.length - 1 })}
-                />
-              )}
-              {/* Info popup for playback markers */}
-              {selectedMarker && selectedMarker.type === 'history' && history[selectedMarker.idx] && (() => {
-                const h = history[selectedMarker.idx];
-                const vehicle = getVehicleInfo(selectedMarker.vehicleId);
-                return (
-                  <InfoWindow
-                    position={{ lat: h.latitude, lng: h.longitude }}
-                    onCloseClick={() => setSelectedMarker(null)}
-                  >
-                    <div className="min-w-[220px] p-2 rounded-xl bg-white/90 shadow-lg">
-                      <div className="font-bold text-blue-700 text-lg mb-1 flex items-center gap-2">
-                        <FaCarSide /> {vehicle.name || h.vehicleId}
-                      </div>
-                      <div className="text-xs text-gray-700 mb-1">Driver: {getDriverName(vehicle) || 'N/A'}</div>
-                      <div className="text-xs mb-1">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-white text-xs font-bold ${h.status === 'moving' ? 'bg-green-500' : 'bg-red-500'}`}>{h.status}</span>
-                        <span className="ml-2 text-gray-700">Speed: {h.speed} km/h</span>
-                      </div>
-                      <div className="text-xs text-gray-500 mb-1">Time: {formatTime(h.updatedAt)}</div>
-                      <button
-                        className="mt-2 px-3 py-1 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700"
-                        onClick={() => mapRef.current?.panTo({ lat: h.latitude, lng: h.longitude })}
-                      >Focus</button>
-                    </div>
-                  </InfoWindow>
-                );
-              })()}
-            </GoogleMap>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 text-lg">Loading map...</div>
+          {/* Docked details card (right of map) for all types */}
+          {selectedVehicleId && !isCardFloating && (
+            <div className="w-full md:w-[370px] max-w-md transition-all duration-500 ease-in-out animate-fade-in">
+              <VehicleDetailsCard
+                vehicle={vehicles.find(v => v._id === selectedVehicleId)}
+                location={locations.find(l => l.vehicleId === selectedVehicleId)}
+                driver={getDriverForVehicle(vehicles.find(v => v._id === selectedVehicleId))}
+                trip={vehicleTrip}
+                onBack={() => setSelectedVehicleId('')}
+                onFocus={() => {
+                  const loc = locations.find(l => l.vehicleId === selectedVehicleId);
+                  if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                }}
+                isFloating={false}
+                onToggleFloating={() => setIsCardFloating(true)}
+              />
+            </div>
           )}
-        </div>
+          {selectedDriverId && !isCardFloating && (
+            <div className="w-full md:w-[370px] max-w-md transition-all duration-500 ease-in-out animate-fade-in">
+              <DriverDetailsCard
+                driver={drivers.find(d => d._id === selectedDriverId)}
+                location={Object.values(driverLocations).find(l => l.driverId === selectedDriverId)}
+                onBack={() => setSelectedDriverId('')}
+                onFocus={() => {
+                  const loc = Object.values(driverLocations).find(l => l.driverId === selectedDriverId);
+                  if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                }}
+                isFloating={false}
+                onToggleFloating={() => setIsCardFloating(true)}
+              />
+            </div>
+          )}
+          {selectedAgentId && !isCardFloating && (
+            <div className="w-full md:w-[370px] max-w-md transition-all duration-500 ease-in-out animate-fade-in">
+              <AgentDetailsCard
+                agent={agents.find(a => a._id === selectedAgentId)}
+                onBack={() => setSelectedAgentId('')}
+                isFloating={false}
+                onToggleFloating={() => setIsCardFloating(true)}
+              />
+            </div>
+          )}
+          {selectedClientId && !isCardFloating && (
+            <div className="w-full md:w-[370px] max-w-md transition-all duration-500 ease-in-out animate-fade-in">
+              <ClientDetailsCard
+                client={clients.find(c => c._id === selectedClientId)}
+                onBack={() => setSelectedClientId('')}
+                isFloating={false}
+                onToggleFloating={() => setIsCardFloating(true)}
+              />
+            </div>
+          )}
+          {/* Floating details card overlay for all types */}
+          {selectedVehicleId && isCardFloating && (
+            <Draggable nodeRef={detailsCardRef}>
+              <div ref={detailsCardRef} className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white/95 rounded-2xl shadow-2xl border border-blue-200 p-4 animate-fade-float">
+                <VehicleDetailsCard
+                  vehicle={vehicles.find(v => v._id === selectedVehicleId)}
+                  location={locations.find(l => l.vehicleId === selectedVehicleId)}
+                  driver={getDriverForVehicle(vehicles.find(v => v._id === selectedVehicleId))}
+                  trip={vehicleTrip}
+                  onBack={() => setSelectedVehicleId('')}
+                  onFocus={() => {
+                    const loc = locations.find(l => l.vehicleId === selectedVehicleId);
+                    if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                  }}
+                  isFloating={true}
+                  onToggleFloating={() => setIsCardFloating(false)}
+                />
+              </div>
+            </Draggable>
+          )}
+          {selectedDriverId && isCardFloating && (
+            <Draggable nodeRef={detailsCardRef}>
+              <div ref={detailsCardRef} className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white/95 rounded-2xl shadow-2xl border border-purple-200 p-4 animate-fade-float">
+                <DriverDetailsCard
+                  driver={drivers.find(d => d._id === selectedDriverId)}
+                  location={Object.values(driverLocations).find(l => l.driverId === selectedDriverId)}
+                  onBack={() => setSelectedDriverId('')}
+                  onFocus={() => {
+                    const loc = Object.values(driverLocations).find(l => l.driverId === selectedDriverId);
+                    if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                  }}
+                  isFloating={true}
+                  onToggleFloating={() => setIsCardFloating(false)}
+                />
+              </div>
+            </Draggable>
+          )}
+          {selectedAgentId && isCardFloating && (
+            <Draggable nodeRef={detailsCardRef}>
+              <div ref={detailsCardRef} className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white/95 rounded-2xl shadow-2xl border border-orange-200 p-4 animate-fade-float">
+                <AgentDetailsCard
+                  agent={agents.find(a => a._id === selectedAgentId)}
+                  onBack={() => setSelectedAgentId('')}
+                  isFloating={true}
+                  onToggleFloating={() => setIsCardFloating(false)}
+                />
+              </div>
+            </Draggable>
+          )}
+          {selectedClientId && isCardFloating && (
+            <Draggable nodeRef={detailsCardRef}>
+              <div ref={detailsCardRef} className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white/95 rounded-2xl shadow-2xl border border-green-200 p-4 animate-fade-float">
+                <ClientDetailsCard
+                  client={clients.find(c => c._id === selectedClientId)}
+                  onBack={() => setSelectedClientId('')}
+                  isFloating={true}
+                  onToggleFloating={() => setIsCardFloating(false)}
+                />
+              </div>
+            </Draggable>
+          )}
+      </div>
       </main>
+      {/* Add fade-in animation */}
+      <style>{`
+.animate-fade-in { animation: fadeIn 0.4s; } 
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.animate-slide-in-card { animation: slideInCard 0.5s cubic-bezier(.4,1.2,.4,1); }
+@keyframes slideInCard { from { opacity: 0; transform: translateX(100px);} to { opacity: 1; transform: none; } }
+.animate-fade-float { animation: fadeFloat 0.5s cubic-bezier(.4,1.2,.4,1); }
+@keyframes fadeFloat { from { opacity: 0; transform: scale(0.95);} to { opacity: 1; transform: none; } }
+`}</style>
     </div>
   );
 }
