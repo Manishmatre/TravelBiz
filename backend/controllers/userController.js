@@ -224,3 +224,45 @@ exports.updateUserPhoto = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+// Add this controller to allow users to update their own profile
+exports.updateCurrentUser = async (req, res) => {
+  try {
+    // Only allow updating certain fields for self-update
+    const allowedFields = [
+      'name', 'email', 'phone', 'avatarUrl', 'jobTitle', 'department', 'employeeId',
+      'joiningDate', 'skills', 'linkedin', 'resume', 'bankHolder', 'bankName', 'account',
+      'ifsc', 'upi', 'pan', 'salary', 'language', 'theme', 'privacy', 'address',
+      'dateOfBirth', 'gender', 'licenseNumber', 'licenseExpiry', 'nationality',
+      'passportNumber', 'emergencyContact', 'notes'
+    ];
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// Add/update current user's photo (avatar)
+exports.updateMyPhoto = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!req.file || !req.file.path) return res.status(400).json({ message: 'Photo file is required' });
+    user.avatarUrl = '/uploads/' + req.file.filename;
+    await user.save();
+    const userObj = user.toObject();
+    delete userObj.password;
+    res.json(userObj);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};

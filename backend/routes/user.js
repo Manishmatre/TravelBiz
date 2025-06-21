@@ -16,8 +16,8 @@ router.get('/:id', authorize('admin', 'agent'), userController.getUserById);
 router.post('/invite', authorize('admin'), userController.inviteUser);
 // Remove user (admin only)
 router.delete('/:id', authorize('admin'), userController.removeUser);
-// Add this route for updating own profile
-router.put('/me', userController.updateMe);
+// Add this route for updating the current user's profile
+router.put('/me', userController.updateCurrentUser);
 // Add this route for updating a user by ID (admin, agent)
 router.put('/:id', authorize('admin', 'agent'), userController.updateUserById);
 // Join agency (user can join any agency)
@@ -57,5 +57,7 @@ router.post('/:id/documents', authorize('admin', 'agent'), upload.single('file')
 router.delete('/:id/documents/:docId', authorize('admin', 'agent'), userController.deleteUserDocument);
 // Add this route for updating a user's photo (admin, agent)
 router.put('/:id/photo', authorize('admin', 'agent'), upload.single('photo'), userController.updateUserPhoto);
+// Add this route for updating the current user's profile photo
+router.put('/me/photo', upload.single('photo'), userController.updateMyPhoto);
 
 module.exports = router;

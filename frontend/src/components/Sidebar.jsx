@@ -28,24 +28,16 @@ const vehicleMenuLinks = [
 
 const bookingMenuLinks = [
   { to: '/bookings', label: 'All Bookings (Analytics)' },
-  { to: '/booking-list', label: 'All Bookings (Simple)' },
   { to: '/booking-flow', label: 'New Booking' },
   { to: '/bookings/pending', label: 'Pending (Analytics)' },
-  { to: '/booking-list/pending', label: 'Pending (Simple)' },
   { to: '/bookings/confirmed', label: 'Confirmed (Analytics)' },
-  { to: '/booking-list/confirmed', label: 'Confirmed (Simple)' },
   { to: '/bookings/completed', label: 'Completed (Analytics)' },
-  { to: '/booking-list/completed', label: 'Completed (Simple)' },
   { to: '/bookings/cancelled', label: 'Cancelled (Analytics)' },
-  { to: '/booking-list/cancelled', label: 'Cancelled (Simple)' },
   { to: '/bookings/calendar', label: 'Calendar View' },
   { to: '/bookings/reports', label: 'Reports' },
   { to: '/bookings/today', label: 'Today\'s Bookings (Analytics)' },
-  { to: '/booking-list/today', label: 'Today\'s Bookings (Simple)' },
   { to: '/bookings/upcoming', label: 'Upcoming (Analytics)' },
-  { to: '/booking-list/upcoming', label: 'Upcoming (Simple)' },
   { to: '/bookings/overdue', label: 'Overdue (Analytics)' },
-  { to: '/booking-list/overdue', label: 'Overdue (Simple)' },
 ];
 
 const driverMenuLinks = [
@@ -121,133 +113,160 @@ function Sidebar({ open, onClose }) {
       {/* Scrollable Navigation Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <nav className="p-4 space-y-1">
-          {/* Quick Action Button */}
-          {(user?.role === 'admin' || user?.role === 'agent') && (
-            <div className="mb-4">
+          {user?.role === 'driver' ? (
+            <>
               <Link
-                to="/bookings/add"
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105"
+                to="/dashboard"
+                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/dashboard' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
                 onClick={onClose}
               >
-                <FaCalendarAlt className="text-lg" />
-                <span>New Booking</span>
+                <FaTachometerAlt className="text-lg" />
+                <span>Dashboard</span>
               </Link>
-            </div>
-          )}
-          
-          {navLinks.filter(link => Array.isArray(link.roles) && link.roles.includes(user?.role) && link.label !== 'Vehicles' && link.label !== 'Drivers' && link.label !== 'Driver Dashboard' && link.label !== 'Bookings').map(link => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-            onClick={onClose}
-          >
-            <span className="text-lg">{link.icon}</span>
-            <span>{link.label}</span>
-          </Link>
-        ))}
-          
-        {/* Vehicle Management Dropdown */}
-        {(user?.role === 'admin' || user?.role === 'agent') && (
-          <div className="mt-6">
-            <button
-              className={`flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none ${vehicleMenuOpen ? 'bg-blue-50' : ''}`}
-              onClick={() => setVehicleMenuOpen(v => !v)}
-              type="button"
-              style={{ minHeight: '44px' }}
-            >
-              <FaCar className="text-lg mr-2 shrink-0" />
-              <span className="flex-1 text-left whitespace-nowrap truncate">Vehicle Management</span>
-              {vehicleMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
-            </button>
-            {vehicleMenuOpen && (
-              <div className="ml-7 mt-1 space-y-1">
-                {vehicleMenuLinks.map(link => (
+              <Link
+                to="/tracking"
+                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/tracking' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                onClick={onClose}
+              >
+                <FaMapMarkedAlt className="text-lg" />
+                <span>Live Tracking</span>
+              </Link>
+              <Link
+                to="/profile"
+                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/profile' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                onClick={onClose}
+              >
+                <FaUserCog className="text-lg" />
+                <span>Profile</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              {/* Quick Action Button */}
+              {(user?.role === 'admin' || user?.role === 'agent') && (
+                <div className="mb-4">
                   <Link
-                    key={link.to}
-                    to={link.to}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                    to="/bookings/add"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105"
                     onClick={onClose}
                   >
-                    {link.label}
+                    <FaCalendarAlt className="text-lg" />
+                    <span>New Booking</span>
                   </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-          
-          {/* Booking Management Dropdown */}
-          {(user?.role === 'admin' || user?.role === 'agent') && (
-            <div className="mt-6">
-              <button
-                className={`flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none ${bookingMenuOpen ? 'bg-blue-50' : ''}`}
-                onClick={() => setBookingMenuOpen(v => !v)}
-                type="button"
-                style={{ minHeight: '44px' }}
-              >
-                <FaCalendarAlt className="text-lg mr-2 shrink-0" />
-                <span className="flex-1 text-left whitespace-nowrap truncate">Booking Management</span>
-                {bookingMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
-              </button>
-              {bookingMenuOpen && (
-                <div className="ml-7 mt-1 space-y-1 max-h-64 overflow-y-auto">
-                  {bookingMenuLinks.map(link => (
-                    <Link
-                      key={link.to}
-                      to={link.to}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                      onClick={onClose}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
                 </div>
               )}
-            </div>
-          )}
-          
-        {/* Driver Management Dropdown */}
-        {(user?.role === 'admin' || user?.role === 'agent') && (
-          <div className="mt-6">
-            <button
-              className="flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none"
-              onClick={() => setDriverMenuOpen(v => !v)}
-              type="button"
-              style={{ minHeight: '44px' }}
-            >
-              <FaUserTie className="text-lg mr-2 shrink-0" />
-              <span className="flex-1 text-left whitespace-nowrap truncate">Driver Management</span>
-              {driverMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
-            </button>
-            {driverMenuOpen && (
-              <div className="ml-7 mt-1 space-y-1">
-                {driverMenuLinks.map(link => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                    onClick={onClose}
+              {navLinks.filter(link => Array.isArray(link.roles) && link.roles.includes(user?.role) && link.label !== 'Vehicles' && link.label !== 'Drivers' && link.label !== 'Driver Dashboard' && link.label !== 'Bookings').map(link => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                  onClick={onClose}
+                >
+                  <span className="text-lg">{link.icon}</span>
+                  <span>{link.label}</span>
+                </Link>
+              ))}
+              {/* Vehicle Management Dropdown */}
+              {(user?.role === 'admin' || user?.role === 'agent') && (
+                <div className="mt-6">
+                  <button
+                    className={`flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none ${vehicleMenuOpen ? 'bg-blue-50' : ''}`}
+                    onClick={() => setVehicleMenuOpen(v => !v)}
+                    type="button"
+                    style={{ minHeight: '44px' }}
                   >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </nav>
-      </div>
-      
-      {/* Fixed Footer */}
-      <div className="p-4 border-t border-blue-100 bg-white/80 backdrop-blur-md sticky bottom-0">
-        <div className="mb-2 text-sm text-blue-900">Logged in as <span className="font-semibold">{user?.name}</span> ({user?.role})</div>
-        <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-semibold shadow transition-all">
-          <FaSignOutAlt /> Logout
-        </button>
-      </div>
-    </aside>
-  );
-}
+                    <FaCar className="text-lg mr-2 shrink-0" />
+                    <span className="flex-1 text-left whitespace-nowrap truncate">Vehicle Management</span>
+                    {vehicleMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
+                  </button>
+                  {vehicleMenuOpen && (
+                    <div className="ml-7 mt-1 space-y-1">
+                      {vehicleMenuLinks.map(link => (
+                        <Link
+                          key={link.to}
+                          to={link.to}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                          onClick={onClose}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Booking Management Dropdown */}
+              {(user?.role === 'admin' || user?.role === 'agent') && (
+                <div className="mt-6">
+                  <button
+                    className={`flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none ${bookingMenuOpen ? 'bg-blue-50' : ''}`}
+                    onClick={() => setBookingMenuOpen(v => !v)}
+                    type="button"
+                    style={{ minHeight: '44px' }}
+                  >
+                    <FaCalendarAlt className="text-lg mr-2 shrink-0" />
+                    <span className="flex-1 text-left whitespace-nowrap truncate">Booking Management</span>
+                    {bookingMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
+                  </button>
+                  {bookingMenuOpen && (
+                    <div className="ml-7 mt-1 space-y-1 max-h-64 overflow-y-auto">
+                      {bookingMenuLinks.map(link => (
+                        <Link
+                          key={link.to}
+                          to={link.to}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                          onClick={onClose}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Driver Management Dropdown */}
+              {(user?.role === 'admin' || user?.role === 'agent') && (
+                <div className="mt-6">
+                  <button
+                    className="flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none"
+                    onClick={() => setDriverMenuOpen(v => !v)}
+                    type="button"
+                    style={{ minHeight: '44px' }}
+                  >
+                    <FaUserTie className="text-lg mr-2 shrink-0" />
+                    <span className="flex-1 text-left whitespace-nowrap truncate">Driver Management</span>
+                    {driverMenuOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
+                  </button>
+                  {driverMenuOpen && (
+                    <div className="ml-7 mt-1 space-y-1">
+                      {driverMenuLinks.map(link => (
+                        <Link
+                          key={link.to}
+                          to={link.to}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-100/80 transition text-blue-900 text-sm ${location.pathname === link.to ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
+                          onClick={onClose}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </nav>
+        </div>
+        
+        {/* Fixed Footer */}
+        <div className="p-4 border-t border-blue-100 bg-white/80 backdrop-blur-md sticky bottom-0">
+          <div className="mb-2 text-sm text-blue-900">Logged in as <span className="font-semibold">{user?.name}</span> ({user?.role})</div>
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-semibold shadow transition-all">
+            <FaSignOutAlt /> Logout
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
 export default Sidebar; 

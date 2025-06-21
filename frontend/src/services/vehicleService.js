@@ -158,4 +158,11 @@ export const deleteVehicleAssignment = async (vehicleId, assignId, token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
+};
+
+export const getVehicleById = async (id, token) => {
+  const res = await axios.get(`${API_URL}/vehicles/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
 }; 

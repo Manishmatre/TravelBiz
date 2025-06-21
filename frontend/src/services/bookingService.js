@@ -43,4 +43,11 @@ export const getBookingsByVehicle = async (vehicleId, token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
+};
+
+export const updateBookingStatus = async (id, status, token) => {
+  const res = await axios.put(`${API_URL}/bookings/${id}/status`, { status }, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
 }; 
