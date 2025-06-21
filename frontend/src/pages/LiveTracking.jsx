@@ -151,6 +151,10 @@ function LiveTracking() {
   const [showDriversOnline, setShowDriversOnline] = useState(true);
   const [showDriversOffline, setShowDriversOffline] = useState(true);
 
+  // --- Animated marker movement state ---
+  const [animatedVehiclePositions, setAnimatedVehiclePositions] = useState({}); // { vehicleId: { lat, lng } }
+  const [animatedDriverPositions, setAnimatedDriverPositions] = useState({}); // { driverId: { lat, lng } }
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -336,21 +340,70 @@ function LiveTracking() {
     return locations.find(l => l.vehicleId === vehicle._id);
   }
 
+  // --- Animate vehicle marker movement ---
+  useEffect(() => {
+    vehicles.forEach(vehicle => {
+      const loc = getLiveLocationForVehicle(vehicle);
+      if (!loc) return;
+      const prev = animatedVehiclePositions[vehicle._id] || { lat: loc.latitude, lng: loc.longitude };
+      if (prev.lat !== loc.latitude || prev.lng !== loc.longitude) {
+        const start = { ...prev };
+        const end = { lat: loc.latitude, lng: loc.longitude };
+        const duration = 500;
+        const startTime = performance.now();
+        function animate(now) {
+          const t = Math.min((now - startTime) / duration, 1);
+          const lat = start.lat + (end.lat - start.lat) * t;
+          const lng = start.lng + (end.lng - start.lng) * t;
+          setAnimatedVehiclePositions(pos => ({ ...pos, [vehicle._id]: { lat, lng } }));
+          if (t < 1) requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+      }
+    });
+    // eslint-disable-next-line
+  }, [locations, vehicles]);
+
+  // --- Animate driver marker movement ---
+  useEffect(() => {
+    drivers.forEach(driver => {
+      const loc = Object.values(driverLocations).find(l => l.driverId === driver._id);
+      if (!loc) return;
+      const prev = animatedDriverPositions[driver._id] || { lat: loc.latitude, lng: loc.longitude };
+      if (prev.lat !== loc.latitude || prev.lng !== loc.longitude) {
+        const start = { ...prev };
+        const end = { lat: loc.latitude, lng: loc.longitude };
+        const duration = 500;
+        const startTime = performance.now();
+        function animate(now) {
+          const t = Math.min((now - startTime) / duration, 1);
+          const lat = start.lat + (end.lat - start.lat) * t;
+          const lng = start.lng + (end.lng - start.lng) * t;
+          setAnimatedDriverPositions(pos => ({ ...pos, [driver._id]: { lat, lng } }));
+          if (t < 1) requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+      }
+    });
+    // eslint-disable-next-line
+  }, [driverLocations, drivers]);
+
   // Helper to render clustered markers with animated icon
   const renderClusteredMarkers = (clusterer) =>
     vehicles.map(vehicle => {
       const loc = getLiveLocationForVehicle(vehicle);
       if (!loc) return null;
+      const pos = animatedVehiclePositions[vehicle._id] || { lat: loc.latitude, lng: loc.longitude };
       const online = isOnline(loc.updatedAt);
       let color = '#ef4444';
       if (online) color = loc.status === 'moving' ? '#22c55e' : '#f59e42';
       if (!online) color = '#6b7280';
-              return (
-                <Marker
+      return (
+        <Marker
           key={vehicle._id}
-                  position={{ lat: loc.latitude, lng: loc.longitude }}
+          position={pos}
           label={vehicle.name || vehicle._id}
-                  icon={{
+          icon={{
             url: `data:image/svg+xml;utf8,${encodeURIComponent(
               renderToStaticMarkup(<PulsingMarker color={color} size={32} />)
             )}`,
@@ -482,7 +535,7 @@ function LiveTracking() {
   }, [selectedVehicleId, userLocation, locations]);
 
   useEffect(() => {
-    if (token && sidebarTab === 'drivers') {
+    if (token && (sidebarTab === 'drivers' || drivers.length === 0)) {
       setDriversLoading(true);
       setDriversError(null);
       getUsers({ role: 'driver' }, token)
@@ -532,7 +585,7 @@ function LiveTracking() {
                 <label className="flex items-center gap-1 text-xs">
                   <input type="checkbox" checked={showOffline} onChange={e => setShowOffline(e.target.checked)} /> Offline
                 </label>
-      </div>
+              </div>
               {/* Vehicle list */}
               <ul className="overflow-y-auto max-h-[calc(100vh-260px)] pr-2 divide-y divide-gray-100">
                 {vehicles.filter(v => {
@@ -760,10 +813,16 @@ function LiveTracking() {
               {/* Online/offline toggles */}
               <div className="mb-4 flex gap-2 items-center">
                 <label className="flex items-center gap-1 text-xs">
-                  <input type="checkbox" checked={showDriversOnline} onChange={e => setShowDriversOnline(e.target.checked)} /> Online
+                  <input type="checkbox" checked={showDriversOnline} onChange={e => {
+                    if (!e.target.checked && !showDriversOffline) return; // Prevent both off
+                    setShowDriversOnline(e.target.checked);
+                  }} /> Online
                 </label>
                 <label className="flex items-center gap-1 text-xs">
-                  <input type="checkbox" checked={showDriversOffline} onChange={e => setShowDriversOffline(e.target.checked)} /> Offline
+                  <input type="checkbox" checked={showDriversOffline} onChange={e => {
+                    if (!e.target.checked && !showDriversOnline) return; // Prevent both off
+                    setShowDriversOffline(e.target.checked);
+                  }} /> Offline
                 </label>
               </div>
               {driversLoading ? (
@@ -772,9 +831,10 @@ function LiveTracking() {
                 <div className="text-red-500 py-4 text-center">{driversError}</div>
               ) : (() => {
                 const filteredDrivers = drivers.filter(driver => {
-                  // Determine online status by last location update if available
                   const loc = Object.values(driverLocations).find(l => l.driverId === driver._id);
                   const online = loc && isOnline(loc.updatedAt);
+                  // If both toggles are checked and search is empty, show all drivers
+                  if (showDriversOnline && showDriversOffline && !driverSearch) return true;
                   if (!showDriversOnline && online) return false;
                   if (!showDriversOffline && !online) return false;
                   if (driverSearch && !(driver.name || '').toLowerCase().includes(driverSearch.toLowerCase()) && !(driver.email || '').toLowerCase().includes(driverSearch.toLowerCase())) return false;
@@ -785,6 +845,7 @@ function LiveTracking() {
                 }
                 return filteredDrivers.map(driver => {
                   const loc = Object.values(driverLocations).find(l => l.driverId === driver._id);
+                  const pos = loc ? (animatedDriverPositions[driver._id] || { lat: loc.latitude, lng: loc.longitude }) : null;
                   const online = loc && isOnline(loc.updatedAt);
                   // Assignment status logic
                   let assignmentText = 'Unassigned';
@@ -808,7 +869,7 @@ function LiveTracking() {
                         setSelectedVehicleId('');
                         setSelectedAgentId('');
                         setSelectedClientId('');
-                        if (loc) mapRef.current?.panTo({ lat: loc.latitude, lng: loc.longitude });
+                        if (loc && pos) mapRef.current?.panTo({ lat: pos.lat, lng: pos.lng });
                       }}
                       style={{ minHeight: 64 }}
                     >
@@ -838,6 +899,7 @@ function LiveTracking() {
                           )}
                         </div>
                         <div className="text-xs text-gray-400 truncate">{assignmentText}</div>
+                        {!loc && <div className="text-xs text-gray-400">No location</div>}
                       </div>
                       {/* Single status badge, right-aligned and vertically centered */}
                       <span className={`absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-bold text-white ${online ? 'bg-purple-600' : 'bg-gray-400'}`}>{online ? 'Online' : 'Offline'}</span>
@@ -923,10 +985,11 @@ function LiveTracking() {
                   (() => {
                     const vehicle = vehicles.find(v => v._id === selectedVehicleId);
                     const loc = getLiveLocationForVehicle(vehicle);
-                    return loc && vehicle ? (
+                    const pos = animatedVehiclePositions[vehicle?._id] || (loc ? { lat: loc.latitude, lng: loc.longitude } : null);
+                    return loc && vehicle && pos ? (
                       <Marker
                         key={vehicle._id}
-                        position={{ lat: loc.latitude, lng: loc.longitude }}
+                        position={pos}
                         label={vehicle.name || vehicle._id}
                         icon={{
                           url: `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -1068,12 +1131,13 @@ function LiveTracking() {
                 {sidebarTab === 'agents' && agents.map(agent => {
                   const loc = Object.values(locations).find(l => l.agentId === agent._id);
                   if (!loc) return null;
+                  const pos = animatedDriverPositions[agent._id] || { lat: loc.latitude, lng: loc.longitude };
                   return (
                     <Marker
                       key={agent._id}
-                      position={{ lat: loc.latitude, lng: loc.longitude }}
+                      position={pos}
                       label={agent.name || agent._id}
-                      icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' }}
+                      icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png' }}
                       onClick={() => setSelectedAgentId(agent._id)}
                     />
                   );
