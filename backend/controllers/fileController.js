@@ -30,6 +30,7 @@ exports.uploadFile = async (req, res) => {
       entityName: file.title,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: { fileType: file.fileType }
     });
     req.app.get('io').emit('activity', activity);
@@ -89,6 +90,7 @@ exports.deleteFile = async (req, res) => {
       entityName: deletedFile.title,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: { fileType: deletedFile.fileType }
     });
     req.app.get('io').emit('activity', activity);

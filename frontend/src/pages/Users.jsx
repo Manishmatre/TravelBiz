@@ -1,27 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getUsers, inviteUser, removeUser } from '../services/userService';
+import { getUsers, removeUser } from '../services/userService';
 import StatCard from '../components/common/StatCard';
 import Loader from '../components/common/Loader';
 import Table from '../components/common/Table';
 import Button from '../components/common/Button';
-import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
 import SearchInput from '../components/common/SearchInput';
 import { FaUsers, FaUserTie, FaUserCog, FaUserPlus } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useNavigate } from 'react-router-dom';
 
 const Users = () => {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'agent' });
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteError, setInviteError] = useState(null);
-  const [inviteSuccess, setInviteSuccess] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
@@ -41,26 +37,6 @@ const Users = () => {
     };
     if (token) fetchUsers();
   }, [token]);
-
-  // Invite user handler
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    setInviteLoading(true);
-    setInviteError(null);
-    setInviteSuccess(null);
-    try {
-      const res = await inviteUser(inviteForm, token);
-      setInviteSuccess('User invited successfully!');
-      setUsers((prev) => [...prev, res.user]);
-      setInviteForm({ name: '', email: '', role: 'agent' });
-      setModalOpen(false);
-      toast.success('User invited successfully!');
-    } catch (err) {
-      setInviteError(err.response?.data?.message || 'Failed to invite user');
-      toast.error('Failed to invite user');
-    }
-    setInviteLoading(false);
-  };
 
   // Remove user handler
   const handleRemove = async (id) => {
@@ -99,7 +75,7 @@ const Users = () => {
         {user.role === 'admin' && (
           <Button 
             color="primary" 
-            onClick={() => setModalOpen(true)}
+            onClick={() => navigate('/users/add')}
             className="flex items-center gap-2"
           >
             <FaUserPlus /> Invite User
@@ -114,53 +90,6 @@ const Users = () => {
         <StatCard icon={<FaUserTie />} label="Agents" value={agentUsers} accentColor="green" />
         <StatCard icon={<FaUserTie />} label="Drivers" value={driverUsers} accentColor="orange" />
       </div>
-
-      {/* Invite User Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-xl font-bold mb-4">Invite New User</h3>
-            {inviteError && <div className="text-red-500 mb-4">{inviteError}</div>}
-            {inviteSuccess && <div className="text-green-600 mb-4">{inviteSuccess}</div>}
-            <form onSubmit={handleInvite}>
-              <Input
-                label="Name"
-                name="name"
-                value={inviteForm.name}
-                onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
-                required
-              />
-              <Input
-                label="Email"
-                name="email"
-                type="email"
-                value={inviteForm.email}
-                onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                required
-              />
-              <Dropdown
-                label="Role"
-                name="role"
-                value={inviteForm.role}
-                onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                options={[
-                  { value: 'agent', label: 'Agent' },
-                  { value: 'driver', label: 'Driver' },
-                  { value: 'admin', label: 'Admin' },
-                ]}
-              />
-              <div className="flex gap-2 mt-4">
-                <Button color="secondary" className="flex-1" onClick={() => setModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button color="primary" className="flex-1" type="submit" loading={inviteLoading}>
-                  Invite User
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Table or Loader/Error */}
       <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
@@ -202,22 +131,16 @@ const Users = () => {
               name: u.name || '-',
               email: u.email || '-',
               role: u.role || '-',
+              status: u.status || 'Active',
             }))}
-            actions={userData => (
-              <>
-                {user.role === 'admin' && user.id !== userData._id && (
-                  <Button
-                    color="danger"
-                    size="sm"
-                    onClick={() => handleRemove(userData._id)}
-                  >
-                    Remove
-                  </Button>
-                )}
-                {user.id === userData._id && (
-                  <span className="text-gray-400 text-sm">(You)</span>
-                )}
-              </>
+            actions={user => (
+              <Button
+                color="danger"
+                size="sm"
+                onClick={() => handleRemove(user._id)}
+              >
+                Remove
+              </Button>
             )}
           />
         )}

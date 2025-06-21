@@ -15,7 +15,7 @@ const tableColumns = [
   { label: 'Vehicle', accessor: 'vehicleName' },
   { label: 'Type', accessor: 'type' },
   { label: 'Expiry', accessor: 'expiryDate', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-  { label: 'Status', accessor: 'expiryDate', render: v => {
+  { label: 'Status', accessor: 'expiryDate', key: 'status', render: v => {
     if (!v) return '-';
     const days = Math.ceil((new Date(v) - new Date()) / (1000 * 60 * 60 * 24));
     if (days < 0) return <span className="text-red-600 font-bold">Expired</span>;

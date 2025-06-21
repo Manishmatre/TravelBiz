@@ -10,6 +10,13 @@ export const getBookings = async (clientId, token) => {
   return res.data;
 };
 
+export const getBooking = async (id, token) => {
+  const res = await axios.get(`${API_URL}/bookings/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
 export const addBooking = async (data, token) => {
   const res = await axios.post(`${API_URL}/bookings`, data, {
     headers: { Authorization: `Bearer ${token}` },

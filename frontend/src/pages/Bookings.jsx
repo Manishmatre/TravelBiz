@@ -12,20 +12,21 @@ import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
 import { useAuth } from '../contexts/AuthContext';
 import StatCard from '../components/common/StatCard';
-import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave } from 'react-icons/fa';
+import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave, FaPlus, FaFilter, FaSearch } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useBookings } from '../contexts/BookingsContext';
+import Notification from '../components/common/Notification';
 
-function Bookings() {
+function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const { token } = useAuth();
   const navigate = useNavigate();
-  const { bookings, loading } = useBookings();
+  const bookingsContext = useBookings();
   const [clients, setClients] = useState([]);
   const [agents, setAgents] = useState([]);
   const [search, setSearch] = useState('');
   const [filterClient, setFilterClient] = useState('');
   const [filterAgent, setFilterAgent] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState(initialFilterStatus || '');
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -34,6 +35,16 @@ function Bookings() {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [notification, setNotification] = useState(null);
+  const [error, setError] = useState('');
+
+  // Use context if available, otherwise use local state
+  const bookings = bookingsContext?.bookings || [];
+  const loading = bookingsContext?.loading || false;
+  const fetchBookings = bookingsContext?.fetchBookings;
+
+  const bookingsPerPage = 10;
 
   useEffect(() => {
     getClients(token).then(setClients);
@@ -47,7 +58,26 @@ function Bookings() {
     const matchesClient = filterClient ? String(b.client?._id) === filterClient : true;
     const matchesAgent = filterAgent ? String(b.agent?._id) === filterAgent : true;
     const matchesStatus = filterStatus ? b.status === filterStatus : true;
-    return matchesSearch && matchesClient && matchesAgent && matchesStatus;
+    
+    // Date filtering
+    let matchesDate = true;
+    if (filterDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const bookingDate = b.startDate ? new Date(b.startDate) : null;
+      
+      if (filterDate === 'today' && bookingDate) {
+        const bookingDay = new Date(bookingDate);
+        bookingDay.setHours(0, 0, 0, 0);
+        matchesDate = bookingDay.getTime() === today.getTime();
+      } else if (filterDate === 'upcoming' && bookingDate) {
+        matchesDate = bookingDate > today;
+      } else if (filterDate === 'overdue' && bookingDate) {
+        matchesDate = bookingDate < today && b.status !== 'Completed' && b.status !== 'Cancelled';
+      }
+    }
+    
+    return matchesSearch && matchesClient && matchesAgent && matchesStatus && matchesDate;
   });
 
   const handleInput = e => {
@@ -175,11 +205,82 @@ function Bookings() {
     .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate))
     .slice(0, 10);
 
+  // Pagination
+  const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
+  const startIndex = (currentPage - 1) * bookingsPerPage;
+  const paginatedBookings = filteredBookings.slice(startIndex, startIndex + bookingsPerPage);
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    if (!fetchBookings) return; // Only refresh if context is available
+    
+    try {
+      await fetchBookings();
+      setNotification({ message: 'Bookings refreshed successfully!', type: 'success' });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to refresh bookings');
+      setNotification({ 
+        message: 'Failed to refresh bookings: ' + (err.response?.data?.message || err.message), 
+        type: 'error' 
+      });
+    }
+  };
+
+  // Get page title based on filter or view
+  const getPageTitle = () => {
+    if (view === 'calendar') return 'Booking Calendar';
+    if (view === 'reports') return 'Booking Reports';
+    if (filterDate === 'today') return 'Today\'s Bookings';
+    if (filterDate === 'upcoming') return 'Upcoming Bookings';
+    if (filterDate === 'overdue') return 'Overdue Bookings';
+    if (filterStatus) return `${filterStatus} Bookings`;
+    return 'All Bookings';
+  };
+
+  // Get page description based on filter or view
+  const getPageDescription = () => {
+    if (view === 'calendar') return 'Calendar view of all bookings';
+    if (view === 'reports') return 'Analytics and reports for bookings';
+    if (filterDate === 'today') return 'Bookings scheduled for today';
+    if (filterDate === 'upcoming') return 'Future bookings and reservations';
+    if (filterDate === 'overdue') return 'Past bookings that are not completed or cancelled';
+    if (filterStatus) return `Showing ${filterStatus.toLowerCase()} bookings`;
+    return 'Manage all client bookings and reservations';
+  };
+
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      {/* Notification */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Bookings</h1>
-        <Button color="primary" onClick={() => setModalOpen(true)}>Add Booking</Button>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{getPageTitle()}</h1>
+          <p className="text-gray-600 mt-1">{getPageDescription()}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            color="secondary" 
+            onClick={handleRefresh}
+            className="flex items-center gap-2"
+            disabled={loading || !fetchBookings}
+          >
+            <FaSearch className="w-4 h-4" />
+            Refresh
+          </Button>
+          <Button 
+            color="primary" 
+            onClick={() => navigate('/booking-flow')}
+            className="flex items-center gap-2"
+          >
+            <FaPlus /> New Booking
+          </Button>
+        </div>
       </div>
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
@@ -350,7 +451,7 @@ function Bookings() {
             { label: 'Price', accessor: 'price' },
             { label: 'Notes', accessor: 'notes' },
           ]}
-          data={filteredBookings}
+          data={paginatedBookings}
           actions={row => (
             <>
               <Button color="primary" size="sm" className="mr-2" onClick={() => navigate(`/bookings/${row._id}`)}>View</Button>

@@ -22,6 +22,7 @@ exports.createClient = async (req, res) => {
       entityName: client.name,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: { email: client.email }
     });
     req.app.get('io').emit('activity', activity);
@@ -79,6 +80,7 @@ exports.updateClient = async (req, res) => {
       entityName: updatedClient.name,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: req.body
     });
     req.app.get('io').emit('activity', activity);
@@ -106,6 +108,7 @@ exports.deleteClient = async (req, res) => {
       entityName: deletedClient.name,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: { email: deletedClient.email }
     });
     req.app.get('io').emit('activity', activity);

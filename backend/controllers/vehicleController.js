@@ -32,6 +32,7 @@ exports.createVehicle = async (req, res) => {
       entityName: vehicle.name,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: { numberPlate: vehicle.numberPlate }
     });
     req.app.get('io').emit('activity', activity);
@@ -85,6 +86,7 @@ exports.updateVehicle = async (req, res) => {
       entityName: updatedVehicle.name,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: req.body
     });
     req.app.get('io').emit('activity', activity);
@@ -113,6 +115,7 @@ exports.deleteVehicle = async (req, res) => {
       entityName: deletedVehicle.name,
       performedBy: req.user.id,
       performedByName: req.user.name,
+      agencyId: req.user.agencyId,
       details: { numberPlate: deletedVehicle.numberPlate }
     });
     req.app.get('io').emit('activity', activity);

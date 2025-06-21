@@ -53,7 +53,7 @@ export const updateUser = async (id, user, token) => {
   return res.data;
 };
 
-// Remove user from agency (admin only)
+// Remove user by ID (admin only)
 export const removeUser = async (id, token) => {
   const res = await axios.delete(`${API_URL}/users/${id}`, {
     headers: { Authorization: `Bearer ${token}` },

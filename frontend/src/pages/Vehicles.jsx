@@ -6,50 +6,57 @@ import StatCard from '../components/common/StatCard';
 import Loader from '../components/common/Loader';
 import Table from '../components/common/Table';
 import { FaCar } from 'react-icons/fa';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import Button from '../components/common/Button';
 import { Link } from 'react-router-dom';
 import Dropdown from '../components/common/Dropdown';
 import SearchInput from '../components/common/SearchInput';
-import { useVehicles } from '../contexts/VehiclesContext';
 
 function Vehicles() {
   const { token } = useAuth();
-  const { vehicles, loading } = useVehicles();
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editVehicle, setEditVehicle] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const data = await getVehicles(token);
+        setVehicles(data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load vehicles');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (token) fetchVehicles();
+  }, [token]);
+
   const handleAddVehicle = async (form) => {
     try {
-      const newVehicle = await addVehicle(form, token);
-      // Assuming you want to add the new vehicle to the existing vehicles
-      // You might want to update the context instead of directly mutating the state
-      // For example:
-      // const updatedVehicles = [newVehicle, ...vehicles];
-      // setVehicles(updatedVehicles);
+      await addVehicle(form, token);
+      const updatedData = await getVehicles(token);
+      setVehicles(updatedData);
       setModalOpen(false);
-      toast.success('Vehicle added successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add vehicle');
+      setError(err.response?.data?.message || 'Failed to add vehicle');
     }
   };
 
   const handleEditVehicle = async (form) => {
     try {
-      const updated = await updateVehicle(editVehicle._id, form, token);
-      // Assuming you want to update the existing vehicles
-      // You might want to update the context instead of directly mutating the state
-      // For example:
-      // const updatedVehicles = vehicles.map(v => v._id === updated._id ? updated : v);
-      // setVehicles(updatedVehicles);
+      await updateVehicle(editVehicle._id, form, token);
+      const updatedData = await getVehicles(token);
+      setVehicles(updatedData);
       setEditVehicle(null);
       setModalOpen(false);
-      toast.success('Vehicle updated successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update vehicle');
+      setError(err.response?.data?.message || 'Failed to update vehicle');
     }
   };
 
@@ -57,14 +64,24 @@ function Vehicles() {
     if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
     try {
       await deleteVehicle(id, token);
-      // Assuming you want to remove the deleted vehicle from the existing vehicles
-      // You might want to update the context instead of directly mutating the state
-      // For example:
-      // const updatedVehicles = vehicles.filter(v => v._id !== id);
-      // setVehicles(updatedVehicles);
-      toast.success('Vehicle deleted successfully!');
+      const updatedData = await getVehicles(token);
+      setVehicles(updatedData);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete vehicle');
+      setError(err.response?.data?.message || 'Failed to delete vehicle');
+    }
+  };
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await getVehicles(token);
+      setVehicles(data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to refresh data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -79,11 +96,29 @@ function Vehicles() {
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
-      <ToastContainer position="top-right" autoClose={3000} />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Vehicles</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold shadow hover:bg-blue-700 transition-all" onClick={() => { setEditVehicle(null); setModalOpen(true); }}>Add Vehicle</button>
+        <div className="flex gap-2">
+          <Button 
+            color="secondary" 
+            onClick={handleRefresh}
+            className="flex items-center gap-2"
+            disabled={loading}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            Refresh
+          </Button>
+          <Button 
+            color="primary" 
+            onClick={() => { setEditVehicle(null); setModalOpen(true); }}
+            className="flex items-center gap-2"
+          >
+            <FaCar /> Add Vehicle
+          </Button>
+        </div>
       </div>
       {/* Dashboard Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
@@ -126,6 +161,8 @@ function Vehicles() {
         </div>
         {loading ? (
           <Loader className="my-10" />
+        ) : error ? (
+          <div className="text-red-500 p-6">{error}</div>
         ) : (
           <Table
             columns={[

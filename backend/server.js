@@ -42,6 +42,8 @@ app.use('/api/users', userRoutes);
 const bookingRoutes = require('./routes/booking');
 app.use('/api/bookings', bookingRoutes);
 
+// TODO: Import routes and middlewares here
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
