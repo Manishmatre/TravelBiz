@@ -7,4 +7,15 @@ export const getAllLocations = async (token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
+};
+
+export const getLocationHistory = async (vehicleId, from, to, token) => {
+  const params = {};
+  if (from) params.from = from;
+  if (to) params.to = to;
+  const res = await axios.get(`${API_URL}/location/history/${vehicleId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    params,
+  });
+  return res.data;
 }; 

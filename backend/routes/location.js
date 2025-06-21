@@ -12,5 +12,7 @@ router.post('/update', authorize('admin', 'agent', 'driver'), locationController
 router.get('/:vehicleId', authorize('admin', 'agent', 'driver'), locationController.getLocationByVehicle);
 // Get all vehicle locations (for map)
 router.get('/', authorize('admin', 'agent', 'driver'), locationController.getAllLocations);
+// Get location history for a vehicle
+router.get('/history/:vehicleId', authorize('admin', 'agent', 'driver'), locationController.getLocationHistory);
 
 module.exports = router; 

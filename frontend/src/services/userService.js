@@ -101,4 +101,13 @@ export const updateUserPhoto = async (userId, file, token) => {
     },
   });
   return res.data;
-}; 
+};
+
+// Fetch all agents in the agency
+export async function getAgents(token) {
+  const res = await fetch(`${API_URL}/users?role=agent`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to fetch agents');
+  return res.json();
+} 
