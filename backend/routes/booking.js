@@ -8,5 +8,6 @@ router.post('/', bookingController.createBooking);
 router.put('/:id', bookingController.updateBooking);
 router.delete('/:id', bookingController.deleteBooking);
 router.put('/:id/status', bookingController.updateBookingStatus);
+router.get('/driver', bookingController.getBookingsByDriver);
 
 module.exports = router; 

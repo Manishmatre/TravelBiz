@@ -41,4 +41,7 @@ router.get('/:id/documents', authorize('admin', 'agent'), vehicleController.getV
 router.post('/:id/documents', authorize('admin', 'agent'), upload.single('file'), vehicleController.addVehicleDocument);
 router.delete('/:id/documents/:docId', authorize('admin', 'agent'), vehicleController.deleteVehicleDocument);
 
+// Get assigned vehicle for current user (driver)
+router.get('/assigned', vehicleController.getAssignedVehicle);
+
 module.exports = router; 

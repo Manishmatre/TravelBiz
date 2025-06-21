@@ -327,4 +327,20 @@ exports.deleteVehicleDocument = async (req, res) => {
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
+};
+
+// Get the vehicle assigned to the current user (driver)
+exports.getAssignedVehicle = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(400).json({ message: 'User ID required' });
+
+    const user = await User.findById(userId).populate('assignedVehicle');
+    if (!user || !user.assignedVehicle) {
+      return res.status(404).json({ message: 'No assigned vehicle found' });
+    }
+    res.json(user.assignedVehicle);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 }; 

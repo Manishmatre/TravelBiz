@@ -1,34 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { getAssignedVehicle, getDriverTrips } from '../services/api';
+import { getProfile } from '../services/api';
 import BottomNav from '../src/components/BottomNav';
 
 export default function Dashboard() {
   const { token } = useAuth();
-  const [vehicle, setVehicle] = useState(null);
-  const [trips, setTrips] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchProfile() {
       setLoading(true);
       setError(null);
       try {
-        const [vehicleData, tripsData] = await Promise.all([
-          getAssignedVehicle(token),
-          getDriverTrips(token)
-        ]);
-        setVehicle(vehicleData);
-        setTrips(tripsData);
+        const data = await getProfile(token);
+        setProfile(data);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || JSON.stringify(err));
       } finally {
         setLoading(false);
       }
     }
-    fetchData();
+    fetchProfile();
   }, [token]);
 
   if (loading) {
@@ -40,28 +35,12 @@ export default function Dashboard() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome, Driver!</Text>
-      {vehicle && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Assigned Vehicle</Text>
-          <Text>Model: {vehicle.model}</Text>
-          <Text>Plate: {vehicle.plateNumber}</Text>
-        </View>
-      )}
-      <Text style={styles.sectionTitle}>Today's Trips</Text>
-      <FlatList
-        data={trips}
-        keyExtractor={item => item._id}
-        renderItem={({ item }) => (
-          <View style={styles.tripCard}>
-            <Text style={styles.tripTitle}>{item.clientName || 'Trip'}</Text>
-            <Text>Status: {item.status}</Text>
-            <Text>Pickup: {item.pickupLocation}</Text>
-            <Text>Drop: {item.dropLocation}</Text>
-          </View>
-        )}
-        ListEmptyComponent={<Text>No trips for today.</Text>}
-      />
+      <Text style={styles.title}>Welcome, {profile?.name || 'Driver'}!</Text>
+      <View style={styles.card}>
+        <Text style={styles.label}>Email: {profile?.email}</Text>
+        <Text style={styles.label}>Role: {profile?.role}</Text>
+      </View>
+      <Text style={styles.sectionTitle}>More features coming soon...</Text>
       <BottomNav />
     </View>
   );
@@ -89,24 +68,16 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 16,
+    alignItems: 'center',
   },
-  cardTitle: {
-    fontWeight: 'bold',
-    marginBottom: 4,
+  label: {
+    fontSize: 16,
+    marginBottom: 6,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 8,
-  },
-  tripCard: {
-    backgroundColor: '#e6f7ff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  tripTitle: {
-    fontWeight: 'bold',
-    marginBottom: 2,
+    textAlign: 'center',
   },
 }); 

@@ -18,6 +18,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const data = await loginDriver(email, password);
+      console.log('LOGIN: token received:', data.token);
       await login(data.token, data.user);
       router.replace('/dashboard');
     } catch (err) {

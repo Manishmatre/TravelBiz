@@ -17,6 +17,8 @@ export function AuthProvider({ children }) {
           setToken(t);
           setUser(JSON.parse(u));
         }
+      } catch (err) {
+        console.error('Auth load error:', err);
       } finally {
         setLoading(false);
       }
@@ -27,16 +29,29 @@ export function AuthProvider({ children }) {
   const login = async (token, user) => {
     setToken(token);
     setUser(user);
-    await AsyncStorage.setItem('token', token);
-    await AsyncStorage.setItem('user', JSON.stringify(user));
+    try {
+      await AsyncStorage.setItem('token', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+    } catch (err) {
+      console.error('Auth save error:', err);
+    }
   };
 
   const logout = async () => {
     setToken(null);
     setUser(null);
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
+    try {
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('user');
+    } catch (err) {
+      console.error('Auth remove error:', err);
+    }
   };
+
+  if (loading) {
+    // Optionally, show a splash/loading screen here
+    return null;
+  }
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout }}>

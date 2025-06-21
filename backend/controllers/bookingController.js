@@ -118,4 +118,38 @@ exports.updateBookingStatus = async (req, res) => {
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
+};
+
+// Get all bookings for the driver based on their assigned vehicle
+exports.getBookingsByDriver = async (req, res) => {
+  try {
+    const driverId = req.user?._id;
+    if (!driverId) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // 1. Find the driver to get their assigned vehicle
+    const driver = await User.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    // 2. Check if a vehicle is assigned. If not, return empty array (no trips).
+    if (!driver.assignedVehicle) {
+      return res.json([]); 
+    }
+
+    // 3. Find all bookings for that vehicle
+    const vehicleId = driver.assignedVehicle;
+    const bookings = await Booking.find({ vehicle: vehicleId })
+      .populate('client', 'name email')
+      .populate('vehicle', 'name numberPlate')
+      .populate('agent', 'name email');
+      
+    res.json(bookings);
+
+  } catch (err) {
+    console.error('Error fetching bookings by driver:', err);
+    res.status(500).json({ message: 'Server error while fetching trips' });
+  }
 }; 

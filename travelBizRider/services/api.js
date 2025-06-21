@@ -13,6 +13,7 @@ export async function loginDriver(email, password) {
 
 // Fetch assigned vehicle for the logged-in driver
 export async function getAssignedVehicle(token) {
+  console.log('API: Using token (getAssignedVehicle):', token);
   const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/vehicles/assigned`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -22,6 +23,7 @@ export async function getAssignedVehicle(token) {
 
 // Fetch today's or active trips for the driver
 export async function getDriverTrips(token) {
+  console.log('API: Using token (getDriverTrips):', token);
   const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/driver/today`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -31,6 +33,7 @@ export async function getDriverTrips(token) {
 
 // Fetch all trips for the driver
 export async function getAllDriverTrips(token) {
+  console.log('API: Using token (getAllDriverTrips):', token);
   const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/driver`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -70,7 +73,8 @@ export async function cancelTrip(token, tripId) {
 
 // Fetch driver profile
 export async function getProfile(token) {
-  const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/me`, {
+  console.log('API: Using token (getProfile):', token);
+  const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/me`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Failed to fetch profile');
