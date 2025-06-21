@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "travelBizRider",
+    "slug": "travelBizRider",
+    "version": "1.0.0",
+    "scheme": "travelbizrider",
+    "platforms": ["ios", "android", "web"],
+    "sdkVersion": "53.0.0"
+  }
+} 

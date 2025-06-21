@@ -40,10 +40,12 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// Get all bookings, or by client if client param is present
+// Get all bookings, or by client or agent if param is present
 exports.getBookings = async (req, res) => {
   try {
-    const filter = req.query.client ? { client: req.query.client } : {};
+    const filter = {};
+    if (req.query.client) filter.client = req.query.client;
+    if (req.query.agent) filter.agent = req.query.agent; // Add agent filter for driver
     const bookings = await Booking.find(filter)
       .populate('client', 'name email')
       .populate('vehicle', 'name numberPlate')
@@ -100,5 +102,20 @@ exports.deleteBooking = async (req, res) => {
     res.json({ message: 'Booking deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Update only the status of a booking
+exports.updateBookingStatus = async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true }
+    );
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    res.json(booking);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 }; 
