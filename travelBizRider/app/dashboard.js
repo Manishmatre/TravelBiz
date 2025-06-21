@@ -1,377 +1,310 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { getProfile, getAssignedVehicle, getAllDriverTrips } from '../services/api';
-import BottomNav from '../src/components/BottomNav';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import { getDriverDashboard } from '../services/api';
+import BottomNav from '../src/components/BottomNav';
+import Header from '../src/components/Header';
+import ScreenLayout from '../src/components/ScreenLayout';
 
 export default function Dashboard() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
-  const [profile, setProfile] = useState(null);
-  const [vehicle, setVehicle] = useState(null);
-  const [trips, setTrips] = useState([]);
+  const [dashboardData, setDashboardData] = useState({
+    todayTrips: [],
+    completedTrips: [],
+    pendingTrips: [],
+    vehicle: null,
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await getDriverDashboard();
+      setDashboardData({
+        todayTrips: data.todayTrips || [],
+        completedTrips: data.completedTrips || [],
+        pendingTrips: data.pendingTrips || [],
+        vehicle: data.vehicle,
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to fetch dashboard data. Please pull down to refresh.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [profileData, vehicleData, tripsData] = await Promise.allSettled([
-          getProfile(token),
-          getAssignedVehicle(token),
-          getAllDriverTrips(token)
-        ]);
-
-        if (profileData.status === 'fulfilled') setProfile(profileData.value);
-        if (vehicleData.status === 'fulfilled') setVehicle(vehicleData.value);
-        if (tripsData.status === 'fulfilled') setTrips(tripsData.value);
-      } catch (err) {
-        setError(err.message || JSON.stringify(err));
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchDashboardData();
-  }, [token]);
+  }, [fetchDashboardData]);
 
-  // Helper to get initials
-  const getInitials = (name) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchDashboardData().finally(() => setRefreshing(false));
+  }, [fetchDashboardData]);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Morning';
+    if (hour < 18) return 'Afternoon';
+    return 'Evening';
   };
 
-  // Calculate stats
-  const todayTrips = trips.filter(trip => {
-    const today = new Date().toDateString();
-    const tripDate = new Date(trip.startDate).toDateString();
-    return tripDate === today;
-  });
+  const { todayTrips, completedTrips, vehicle } = dashboardData;
+  
+  const renderLoading = () => (
+    <View style={styles.center}>
+      <ActivityIndicator size="large" color="#2563eb" />
+      <Text style={styles.loadingText}>Loading Dashboard...</Text>
+    </View>
+  );
 
-  const completedTrips = trips.filter(trip => trip.status === 'Completed');
-  const pendingTrips = trips.filter(trip => trip.status === 'Pending' || trip.status === 'Confirmed');
+  const renderContent = () => (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={styles.content}>
+        {error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" /></View>;
-  }
-  if (error) {
-    return <View style={styles.center}><Text style={{color:'red'}}>{error}</Text></View>;
-  }
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📅 Today's Schedule</Text>
+          {todayTrips.length === 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.emptyText}>No trips scheduled for today</Text>
+              <Text style={styles.emptySubtext}>Check back later for updates</Text>
+            </View>
+          ) : (
+            todayTrips.map(trip => (
+              <TouchableOpacity
+                key={trip._id}
+                style={styles.tripCard}
+                onPress={() => router.push(`/trips/${trip._id}`)}
+              >
+                <View style={styles.tripHeader}>
+                  <Text style={styles.tripTime}>
+                    {new Date(trip.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={styles.tripStatus}>{trip.status}</Text>
+                </View>
+                <Text style={styles.tripClient}>👤 {trip.client?.name || 'Client'}</Text>
+                <Text style={styles.tripRoute}>
+                  📍 {trip.pickup} → {trip.destination}
+                </Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
 
-  return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Welcome Section */}
-      <View style={styles.welcomeSection}>
-        <View style={styles.welcomeHeader}>
-          <View style={styles.avatarContainer}>
-            {profile?.avatarUrl ? (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>👤</Text>
-              </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Assigned Vehicle</Text>
+          <View style={styles.card}>
+            {vehicle ? (
+              <>
+                <Text style={styles.vehicleName}>{vehicle.name}</Text>
+                <Text style={styles.vehiclePlate}>{vehicle.numberPlate}</Text>
+                <Text style={[styles.vehicleStatus, { color: vehicle.status === 'Active' ? '#10b981' : '#f59e0b' }]}>
+                  Status: {vehicle.status}
+                </Text>
+              </>
             ) : (
-              <View style={[styles.avatar, styles.initialsContainer]}>
-                <Text style={styles.initialsText}>{getInitials(profile?.name)}</Text>
-              </View>
+              <Text style={styles.emptyText}>No vehicle assigned</Text>
             )}
           </View>
-          <View style={styles.welcomeText}>
-            <Text style={styles.greeting}>Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}!</Text>
-            <Text style={styles.name}>{profile?.name || 'Driver'}</Text>
-            <Text style={styles.role}>{profile?.role || 'Driver'}</Text>
-          </View>
         </View>
       </View>
-
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{todayTrips.length}</Text>
-          <Text style={styles.statLabel}>Today's Trips</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{completedTrips.length}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{pendingTrips.length}</Text>
-          <Text style={styles.statLabel}>Pending</Text>
-        </View>
-      </View>
-
-      {/* Vehicle Status */}
-      {vehicle && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🚗 Assigned Vehicle</Text>
-          <View style={styles.card}>
-            <Text style={styles.vehicleName}>{vehicle.name || 'Vehicle'}</Text>
-            <Text style={styles.vehiclePlate}>{vehicle.numberPlate || 'No Plate'}</Text>
-            <Text style={styles.vehicleStatus}>Status: {vehicle.status || 'Available'}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Today's Schedule */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📅 Today's Schedule</Text>
-        {todayTrips.length > 0 ? (
-          todayTrips.map((trip, index) => (
-            <View key={trip._id || index} style={styles.tripCard}>
-              <View style={styles.tripHeader}>
-                <Text style={styles.tripTime}>
-                  {new Date(trip.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-                <Text style={[styles.tripStatus, { color: trip.status === 'Completed' ? '#10b981' : trip.status === 'in_progress' ? '#f59e0b' : '#6b7280' }]}>
-                  {trip.status}
-                </Text>
-              </View>
-              <Text style={styles.tripClient}>{trip.client?.name || 'Client'}</Text>
-              <Text style={styles.tripRoute}>
-                📍 {trip.pickup} → {trip.destination}
-              </Text>
-            </View>
-          ))
-        ) : (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No trips scheduled for today</Text>
-            <Text style={styles.emptySubtext}>Check back later for updates</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/trips')}>
-            <Text style={styles.actionIcon}>📋</Text>
-            <Text style={styles.actionText}>View Trips</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/profile')}>
-            <Text style={styles.actionIcon}>👤</Text>
-            <Text style={styles.actionText}>Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/location')}>
-            <Text style={styles.actionIcon}>📍</Text>
-            <Text style={styles.actionText}>Location</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <BottomNav />
     </ScrollView>
+  );
+
+  return (
+    <ScreenLayout
+      header={
+        <Header
+          title="Dashboard"
+          subtitle={`Good ${getGreeting()}, ${user?.name?.split(' ')[0] || 'Driver'}!`}
+          rightActions={[
+            { icon: '⚙️', onPress: () => router.push('/profile') },
+            { icon: '📍', onPress: () => router.push('/location') },
+          ]}
+          infoRow={
+            <View style={styles.headerStats}>
+              <View style={styles.headerStatItem}>
+                <Text style={styles.headerStatNumber}>{todayTrips.length}</Text>
+                <Text style={styles.headerStatLabel}>Today</Text>
+              </View>
+              <View style={styles.headerStatDivider} />
+              <View style={styles.headerStatItem}>
+                <Text style={styles.headerStatNumber}>{completedTrips.length}</Text>
+                <Text style={styles.headerStatLabel}>Completed</Text>
+              </View>
+              <View style={styles.headerStatDivider} />
+              <View style={styles.headerStatItem}>
+                <Text style={styles.headerStatNumber}>{vehicle ? '🚗' : '❌'}</Text>
+                <Text style={styles.headerStatLabel}>Vehicle</Text>
+              </View>
+            </View>
+          }
+        />
+      }
+      footer={<BottomNav />}
+    >
+      {loading && !refreshing ? renderLoading() : renderContent()}
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
   center: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  welcomeSection: {
-    backgroundColor: '#2563eb',
-    paddingTop: 40,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-  },
-  welcomeHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
-  avatarContainer: {
-    marginRight: 15,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 24,
-  },
-  initialsContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  initialsText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  welcomeText: {
-    flex: 1,
-  },
-  greeting: {
-    color: '#fff',
+  loadingText: {
+    marginTop: 10,
     fontSize: 16,
-    opacity: 0.9,
-  },
-  name: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  role: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.8,
-    marginTop: 2,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: -15,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    marginHorizontal: 5,
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  statLabel: {
-    fontSize: 12,
     color: '#6b7280',
-    marginTop: 4,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  headerStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerStatNumber: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerStatLabel: {
+    fontSize: 13,
+    color: '#dbeafe',
+    marginTop: 2,
+  },
+  headerStatDivider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  errorContainer: {
+    padding: 16,
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    marginVertical: 16,
+  },
+  errorText: {
+    color: '#ef4444',
+    textAlign: 'center',
+    fontSize: 15,
   },
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: 12,
-    color: '#374151',
   },
   card: {
     backgroundColor: '#fff',
-    padding: 16,
     borderRadius: 12,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
-  vehicleName: {
+  emptyText: {
+    textAlign: 'center',
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-  vehiclePlate: {
-    fontSize: 14,
     color: '#6b7280',
-    marginTop: 2,
-  },
-  vehicleStatus: {
-    fontSize: 12,
-    color: '#10b981',
-    marginTop: 4,
     fontWeight: '500',
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#9ca3af',
+    marginTop: 4,
   },
   tripCard: {
     backgroundColor: '#fff',
-    padding: 16,
     borderRadius: 12,
-    marginBottom: 8,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
   tripHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    paddingBottom: 8,
     marginBottom: 8,
   },
   tripTime: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#374151',
+    color: '#2563eb',
   },
   tripStatus: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'uppercase',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
+    textTransform: 'capitalize',
   },
   tripClient: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6b7280',
+    fontSize: 16,
+    color: '#374151',
     marginBottom: 4,
+    fontWeight: '500',
   },
   tripRoute: {
-    fontSize: 13,
-    color: '#9ca3af',
+    fontSize: 14,
+    color: '#6b7280',
   },
-  emptyCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  vehicleName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    textAlign: 'center',
   },
-  emptyText: {
+  vehiclePlate: {
     fontSize: 16,
     color: '#6b7280',
-    marginBottom: 4,
+    textAlign: 'center',
+    marginVertical: 4,
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  actionButton: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  actionIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  actionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#374151',
+  vehicleStatus: {
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
   },
 }); 

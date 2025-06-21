@@ -3,14 +3,15 @@
     "@expo/metro-runtime": "~5.0.4",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "^53.0.12",
+    "expo-haptics": "^14.1.4",
+    "expo-linear-gradient": "~14.1.5",
     "expo-location": "~18.1.5",
     "expo-router": "^5.1.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native-map": "^0.0.1",
     "react-native-maps": "1.20.1",
-    "react-native-web": "^0.20.0",
-    "expo-linear-gradient": "~14.1.5"
+    "react-native-web": "^0.20.0"
   },
   "name": "travelBizRider",
   "version": "1.0.0",
