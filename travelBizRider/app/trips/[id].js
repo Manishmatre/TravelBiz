@@ -53,14 +53,20 @@ export default function TripDetail() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Trip Details</Text>
-      <Text>Client: {trip.clientName}</Text>
-      <Text>Status: {trip.status}</Text>
-      <Text>Pickup: {trip.pickupLocation}</Text>
-      <Text>Drop: {trip.dropLocation}</Text>
-      <View style={{ marginVertical: 16 }}>
-        {trip.status === 'pending' && <Button title="Start Trip" onPress={() => handleAction('start')} disabled={actionLoading} />}
+      <View style={styles.infoCard}>
+        {trip.client?.name && <Text style={styles.label}>Client: <Text style={styles.value}>{trip.client.name}</Text></Text>}
+        {trip.status && <Text style={styles.label}>Status: <Text style={styles.value}>{trip.status}</Text></Text>}
+        {trip.pickup && <Text style={styles.label}>Pickup: <Text style={styles.value}>{trip.pickup}</Text></Text>}
+        {trip.destination && <Text style={styles.label}>Drop-off: <Text style={styles.value}>{trip.destination}</Text></Text>}
+        {trip.startDate && <Text style={styles.label}>Start Date: <Text style={styles.value}>{new Date(trip.startDate).toLocaleString()}</Text></Text>}
+        {trip.endDate && <Text style={styles.label}>End Date: <Text style={styles.value}>{new Date(trip.endDate).toLocaleString()}</Text></Text>}
+        {trip.vehicle?.name && <Text style={styles.label}>Vehicle: <Text style={styles.value}>{trip.vehicle.name} ({trip.vehicle.numberPlate})</Text></Text>}
+      </View>
+      
+      <View style={styles.actions}>
+        {(trip.status === 'Pending' || trip.status === 'Confirmed') && <Button title="Start Trip" onPress={() => handleAction('start')} disabled={actionLoading} />}
         {trip.status === 'in_progress' && <Button title="Complete Trip" onPress={() => handleAction('complete')} disabled={actionLoading} />}
-        {trip.status !== 'completed' && <Button title="Cancel Trip" color="red" onPress={() => handleAction('cancel')} disabled={actionLoading} />}
+        {trip.status !== 'Completed' && trip.status !== 'Cancelled' && <Button title="Cancel Trip" color="red" onPress={() => handleAction('cancel')} disabled={actionLoading} />}
       </View>
     </View>
   );
@@ -70,7 +76,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   center: {
     flex: 1,
@@ -78,9 +84,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
+  },
+  infoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  label: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+    fontSize: 16,
+    color: '#555',
+  },
+  value: {
+    fontWeight: 'normal',
+    color: '#333',
+  },
+  actions: {
+    marginTop: 16,
+    gap: 8,
   },
 }); 
