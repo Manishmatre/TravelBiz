@@ -23,6 +23,7 @@ import StatCard from '../components/common/StatCard';
 import { getClientById } from '../services/clientService';
 import { getBookingsForClient } from '../services/bookingService';
 import { getFilesForClient, uploadFileForClient, deleteFile as deleteClientFile } from '../services/fileService';
+import { getPaymentsForClient, createPayment, deletePayment } from '../services/paymentService';
 
 const tabLabels = [
   'General Info',
@@ -78,9 +79,12 @@ function ClientDetail() {
   
   // Payments management state
   const [payments, setPayments] = useState([]);
-  const [newPayment, setNewPayment] = useState({ date: '', amount: '', status: 'Pending', description: '' });
+  const [newPayment, setNewPayment] = useState({ paymentDate: '', amount: '', status: 'Pending', description: '' });
   const [addingPayment, setAddingPayment] = useState(false);
   const [filesLoading, setFilesLoading] = useState(true);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
+  const [activityLog, setActivityLog] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -115,6 +119,26 @@ function ClientDetail() {
         const filesData = await getFilesForClient(id, token);
         setFiles(filesData);
         
+        setPaymentsLoading(true);
+        const paymentsRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payments/client/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!paymentsRes.ok) throw new Error('Failed to fetch payments');
+        const paymentsData = await paymentsRes.json();
+        setPayments(paymentsData);
+        
+        setActivityLoading(true);
+        const activityRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/activity?entityType=Client&entityId=${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (activityRes.ok) {
+            const activityData = await activityRes.json();
+            setActivityLog(activityData);
+        } else {
+            console.error('Failed to fetch activity log');
+        }
+        setActivityLoading(false);
+
         const totalBookings = bookingsData.length;
         const completedBookings = bookingsData.filter(b => b.status === 'Completed').length;
         const upcomingBookings = bookingsData.filter(b => new Date(b.startDate) > new Date() && b.status !== 'Cancelled').length;
@@ -129,6 +153,8 @@ function ClientDetail() {
         setLoading(false);
         setBookingsLoading(false);
         setFilesLoading(false);
+        setPaymentsLoading(false);
+        setActivityLoading(false);
       }
     };
     fetchClientData();
@@ -318,14 +344,14 @@ function ClientDetail() {
   };
 
   const handleAddPayment = async () => {
-    if (!newPayment.date || !newPayment.amount) {
+    if (!newPayment.paymentDate || !newPayment.amount) {
       setNotification({ message: 'Please fill all required fields', type: 'error' });
       return;
     }
 
     setAddingPayment(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/clients/${id}/payments`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payments/client/${id}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -338,12 +364,28 @@ function ClientDetail() {
 
       const addedPayment = await response.json();
       setPayments(prev => [...prev, addedPayment]);
-      setNewPayment({ date: '', amount: '', status: 'Pending', description: '' });
+      setNewPayment({ paymentDate: '', amount: '', status: 'Pending', description: '' });
       setNotification({ message: 'Payment added successfully!', type: 'success' });
+      setPaymentModalOpen(false);
     } catch (err) {
       setNotification({ message: 'Failed to add payment: ' + err.message, type: 'error' });
     } finally {
       setAddingPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId) => {
+    if (!window.confirm('Are you sure you want to delete this payment?')) return;
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payments/${paymentId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to delete payment');
+      setPayments(prev => prev.filter(p => p._id !== paymentId));
+      setNotification({ message: 'Payment deleted successfully.', type: 'success' });
+    } catch (err) {
+      setNotification({ message: 'Failed to delete payment: ' + err.message, type: 'error' });
     }
   };
 
@@ -461,6 +503,34 @@ function ClientDetail() {
             <FaTrash size={16}/>
           </button>
         </div>
+      )
+    }
+  ];
+
+  const paymentColumns = [
+    { label: 'Date', key: 'date', render: (row) => new Date(row.date).toLocaleDateString() },
+    { label: 'Amount', key: 'amount', render: (row) => `$${(row.amount || 0).toFixed(2)}` },
+    {
+      label: 'Status',
+      key: 'status',
+      render: (row) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+          row.status === 'Completed' ? 'bg-green-100 text-green-800' :
+          row.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+          row.status === 'Failed' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+        }`}>
+          {row.status}
+        </span>
+      )
+    },
+    { label: 'Description', key: 'description' },
+    {
+      label: 'Actions',
+      key: 'actions',
+      render: (row) => (
+        <button onClick={() => handleDeletePayment(row._id)} className="text-red-600 hover:text-red-800 p-1" title="Delete Payment">
+          <FaTrash size={16}/>
+        </button>
       )
     }
   ];
@@ -637,7 +707,14 @@ function ClientDetail() {
                       name="fileType"
                       value={newFile.fileType}
                       onChange={handleFileInput}
-                      options={['Passport', 'Visa', 'Ticket', 'ID Card', 'Other']}
+                      options={[
+                        { value: '', label: 'Select type...' },
+                        { value: 'Passport', label: 'Passport' },
+                        { value: 'Visa', label: 'Visa' },
+                        { value: 'Ticket', label: 'Ticket' },
+                        { value: 'ID Card', label: 'ID Card' },
+                        { value: 'Other', label: 'Other' }
+                      ]}
                     />
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
@@ -659,15 +736,136 @@ function ClientDetail() {
             </div>
           )}
 
-          {/* Placeholder for other tabs */}
-          {activeTab !== 'overview' && activeTab !== 'bookings' && activeTab !== 'documents' && (
-            <div className="text-center py-20">
-              <h3 className="text-2xl font-semibold text-gray-700">Coming Soon</h3>
-              <p className="text-gray-500 mt-2">This feature is under development and will be available shortly.</p>
+          {activeTab === 'payments' && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-800">Payments & Invoices</h3>
+                <Button onClick={() => setPaymentModalOpen(true)} color="primary" icon={<FaPlus />}>Add Payment</Button>
+              </div>
+              {paymentsLoading ? (
+                <Loader />
+              ) : payments.length > 0 ? (
+                <Table columns={paymentColumns} data={payments} />
+              ) : (
+                <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-lg">
+                  <p className="text-gray-500">No payments found for this client.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'notes' && (
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Notes & Communication</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-2">
+                  <div className="space-y-4">
+                    {notes && notes.length > 0 ? (
+                      notes.map(note => (
+                        <Card key={note._id} className="relative p-4">
+                          <p className="text-gray-700 mb-2">{note.note}</p>
+                          <div className="text-xs text-gray-400 flex items-center justify-between">
+                            <span>Type: <span className="font-semibold">{note.type}</span></span>
+                            <span>{new Date(note.createdAt).toLocaleString()}</span>
+                          </div>
+                          <button onClick={() => handleDeleteNote(note._id)} className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors">
+                            <FaTrash />
+                          </button>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-lg">
+                        <p className="text-gray-500">No notes for this client yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Card>
+                    <h4 className="text-lg font-bold text-gray-800 mb-4">Add New Note</h4>
+                    <div className="space-y-4">
+                      <textarea
+                        name="note"
+                        value={newNote.note}
+                        onChange={handleNoteInput}
+                        placeholder="Type your note here..."
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        rows="4"
+                      ></textarea>
+                      <Dropdown
+                        label="Note Type"
+                        name="type"
+                        value={newNote.type}
+                        onChange={handleNoteInput}
+                        options={[
+                          { value: 'General', label: 'General' },
+                          { value: 'Call', label: 'Call' },
+                          { value: 'Meeting', label: 'Meeting' },
+                          { value: 'Email', label: 'Email' }
+                        ]}
+                      />
+                      <Button onClick={handleAddNote} loading={addingNote} color="primary" className="w-full">
+                        Add Note
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'activity' && (
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Activity Log</h3>
+              {activityLoading ? (
+                <Loader />
+              ) : activityLog.length > 0 ? (
+                <div className="space-y-4">
+                  {activityLog.map(activity => (
+                    <div key={activity._id} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-shrink-0">
+                        <FaHistory className="text-gray-400" />
+                      </div>
+                      <div className="flex-grow">
+                        <p className="text-sm text-gray-800">{activity.description}</p>
+                        <p className="text-xs text-gray-500">
+                          by {activity.user?.name || 'System'} on {new Date(activity.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-lg">
+                  <p className="text-gray-500">No activity recorded for this client.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      <Modal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="Add New Payment">
+        <div className="space-y-4">
+          <Input label="Date" type="date" name="paymentDate" value={newPayment.paymentDate} onChange={handlePaymentInput} required/>
+          <Input label="Amount" type="number" name="amount" value={newPayment.amount} onChange={handlePaymentInput} placeholder="0.00" required/>
+          <Dropdown 
+            label="Status"
+            name="status"
+            value={newPayment.status}
+            onChange={handlePaymentInput}
+            options={[
+              { value: 'Pending', label: 'Pending' },
+              { value: 'Completed', label: 'Completed' },
+              { value: 'Failed', label: 'Failed' }
+            ]}
+          />
+          <Input label="Description" name="description" value={newPayment.description} onChange={handlePaymentInput} placeholder="e.g., Payment for booking #123" />
+          <Button onClick={handleAddPayment} loading={addingPayment} color="primary" className="w-full">
+            Save Payment
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
