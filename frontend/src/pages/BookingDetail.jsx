@@ -1,16 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getBooking, updateBooking, deleteBooking } from '../services/bookingService';
 import { getClients } from '../services/clientService';
 import { getUsers } from '../services/userService';
 import Button from '../components/common/Button';
-import Input from '../components/common/Input';
-import Dropdown from '../components/common/Dropdown';
-import { FaCalendarAlt, FaArrowLeft, FaEdit, FaTrash, FaSave, FaTimes } from 'react-icons/fa';
+import { FaCalendarAlt, FaArrowLeft, FaEdit, FaTrash, FaSave, FaTimes, FaUser, FaCar, FaMoneyBillWave, FaMapMarkerAlt } from 'react-icons/fa';
 import Loader from '../components/common/Loader';
 import Notification from '../components/common/Notification';
 import Modal from '../components/common/Modal';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+
+const libraries = ['places'];
+
+const DetailItem = ({ icon, label, value, to }) => (
+  <div>
+    <div className="flex items-center text-sm text-gray-500">
+      {icon}
+      <span className="ml-2">{label}</span>
+    </div>
+    {to ? (
+      <Link to={to} className="mt-1 text-lg font-semibold text-blue-700 hover:underline">
+        {value}
+      </Link>
+    ) : (
+      <p className="mt-1 text-lg font-semibold text-gray-900">{value}</p>
+    )}
+  </div>
+);
 
 const BookingDetail = () => {
   const { id } = useParams();
@@ -26,6 +43,11 @@ const BookingDetail = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
   const [agents, setAgents] = useState([]);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
 
   useEffect(() => {
     fetchBooking();
@@ -106,13 +128,18 @@ const BookingDetail = () => {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
-        <Loader className="my-10" />
-      </div>
-    );
-  }
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Pending': return 'bg-yellow-100 text-yellow-800';
+      case 'Confirmed': return 'bg-green-100 text-green-800';
+      case 'Completed': return 'bg-blue-100 text-blue-800';
+      case 'Cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loadError) return <div>Error loading maps</div>;
+  if (loading || (!isLoaded && !loadError)) return <div className="p-8"><Loader /></div>;
 
   if (!booking) {
     return (
@@ -128,317 +155,105 @@ const BookingDetail = () => {
     );
   }
 
+  const hasCoordinates = booking.pickupCoordinates?.lat && booking.destinationCoordinates?.lat;
+  const mapCenter = hasCoordinates ? {
+      lat: (booking.pickupCoordinates.lat + booking.destinationCoordinates.lat) / 2,
+      lng: (booking.pickupCoordinates.lng + booking.destinationCoordinates.lng) / 2,
+  } : { lat: 25.2048, lng: 55.2708 }; // Default to Dubai
+
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
-      {/* Notification */}
-      {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type}
-          onClose={() => setNotification(null)}
-        />
-      )}
-      
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            color="secondary" 
-            onClick={() => navigate('/bookings')}
-            className="flex items-center gap-2"
-          >
-            <FaArrowLeft /> Back
-          </Button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Booking Details</h1>
-            <p className="text-gray-600">Booking #{booking._id?.slice(-8)}</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {!isEditing ? (
-            <>
-              <Button 
-                color="primary" 
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2"
-              >
-                <FaEdit /> Edit
-              </Button>
-              <Button 
-                color="danger" 
-                onClick={() => setDeleteModalOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <FaTrash /> Delete
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button 
-                color="primary" 
-                onClick={handleSave}
-                loading={saving}
-                className="flex items-center gap-2"
-              >
-                <FaSave /> Save
-              </Button>
-              <Button 
-                color="secondary" 
-                onClick={() => {
-                  setIsEditing(false);
-                  fetchBooking(); // Reset to original data
-                }}
-                className="flex items-center gap-2"
-              >
-                <FaTimes /> Cancel
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Booking Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Details */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-blue-100 rounded-full">
-                <FaCalendarAlt className="text-blue-600 text-xl" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Trip Information</h2>
-                <p className="text-gray-600">Booking details and trip information</p>
-              </div>
+    <div className="bg-gray-50 min-h-screen">
+      {notification && <Notification message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
+      <div className="p-4 md:p-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+                <Button color="secondary" onClick={() => navigate('/bookings')} className="!p-2">
+                    <FaArrowLeft />
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        Trip to {booking.destination?.name || 'Unknown'}
+                    </h1>
+                    <p className="text-gray-500 font-mono text-sm">
+                        Booking ID: {booking._id}
+                    </p>
+                </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {isEditing ? (
-                <>
-                  <Dropdown
-                    label="Client"
-                    name="client"
-                    value={booking.client?._id || booking.client || ''}
-                    onChange={handleChange}
-                    required
-                    options={[
-                      { value: '', label: 'Select a client' },
-                      ...clients.map(client => ({ value: client._id, label: client.name }))
-                    ]}
-                  />
-
-                  {user?.role === 'admin' && (
-                    <Dropdown
-                      label="Assigned Agent"
-                      name="agent"
-                      value={booking.agent?._id || booking.agent || ''}
-                      onChange={handleChange}
-                      required
-                      options={[
-                        { value: '', label: 'Select an agent' },
-                        ...agents.map(agent => ({ value: agent._id, label: agent.name }))
-                      ]}
-                    />
-                  )}
-
-                  <Input
-                    label="Start Date"
-                    name="startDate"
-                    type="date"
-                    value={booking.startDate ? new Date(booking.startDate).toISOString().split('T')[0] : ''}
-                    onChange={handleChange}
-                    required
-                  />
-
-                  <Input
-                    label="End Date"
-                    name="endDate"
-                    type="date"
-                    value={booking.endDate ? new Date(booking.endDate).toISOString().split('T')[0] : ''}
-                    onChange={handleChange}
-                    required
-                  />
-
-                  <Input
-                    label="Destination"
-                    name="destination"
-                    value={booking.destination || ''}
-                    onChange={handleChange}
-                    required
-                  />
-
-                  <Dropdown
-                    label="Status"
-                    name="status"
-                    value={booking.status || 'Pending'}
-                    onChange={handleChange}
-                    options={[
-                      { value: 'Pending', label: 'Pending' },
-                      { value: 'Confirmed', label: 'Confirmed' },
-                      { value: 'Completed', label: 'Completed' },
-                      { value: 'Cancelled', label: 'Cancelled' },
-                    ]}
-                  />
-
-                  <Input
-                    label="Price"
-                    name="price"
-                    type="number"
-                    value={booking.price || ''}
-                    onChange={handleChange}
-                  />
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                    <p className="text-gray-900 font-medium">{booking.client?.name || 'N/A'}</p>
-                    <p className="text-sm text-gray-600">{booking.client?.email || ''}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Agent</label>
-                    <p className="text-gray-900 font-medium">{booking.agent?.name || 'N/A'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                    <p className="text-gray-900">{booking.startDate ? new Date(booking.startDate).toLocaleDateString() : 'N/A'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                    <p className="text-gray-900">{booking.endDate ? new Date(booking.endDate).toLocaleDateString() : 'N/A'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Destination</label>
-                    <p className="text-gray-900 font-medium">{booking.destination || 'N/A'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                      booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      booking.status === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                      booking.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {booking.status || 'Pending'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-                    <p className="text-gray-900 font-medium">{booking.price ? `$${booking.price}` : 'N/A'}</p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notes
-              </label>
-              {isEditing ? (
-                <textarea
-                  name="notes"
-                  value={booking.notes || ''}
-                  onChange={handleChange}
-                  placeholder="Enter any additional notes..."
-                  className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                  rows="4"
-                />
-              ) : (
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                  {booking.notes || 'No notes available'}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Status Card */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Status</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status:</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                  booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                  booking.status === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                  booking.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {booking.status || 'Pending'}
+            <div className="flex items-center gap-2 mt-4 md:mt-0">
+                <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(booking.status)}`}>
+                    {booking.status}
                 </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Created:</span>
-                <span className="text-gray-900">{booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Last Updated:</span>
-                <span className="text-gray-900">{booking.updatedAt ? new Date(booking.updatedAt).toLocaleDateString() : 'N/A'}</span>
-              </div>
+                <Button color="primary" onClick={() => setIsEditing(true)}><FaEdit /> Edit</Button>
+                <Button color="danger" onClick={() => setDeleteModalOpen(true)}><FaTrash /> Delete</Button>
             </div>
-          </div>
+        </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <Button 
-                color="primary" 
-                onClick={() => navigate(`/clients/${booking.client?._id}`)}
-                className="w-full"
-                disabled={!booking.client?._id}
-              >
-                View Client
-              </Button>
-              <Button 
-                color="secondary" 
-                onClick={() => navigate('/bookings')}
-                className="w-full"
-              >
-                Back to Bookings
-              </Button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-8">
+                {/* Map */}
+                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div className="h-96">
+                        {isLoaded && (
+                             <GoogleMap
+                                mapContainerStyle={{ height: '100%', width: '100%' }}
+                                center={mapCenter}
+                                zoom={10}
+                            >
+                                {hasCoordinates && (
+                                    <>
+                                        <Marker position={booking.pickupCoordinates} />
+                                        <Marker position={booking.destinationCoordinates} />
+                                    </>
+                                )}
+                            </GoogleMap>
+                        )}
+                    </div>
+                </div>
+                {/* Other details can go here */}
             </div>
-          </div>
+            {/* Right Column */}
+            <div className="space-y-8">
+                {/* Trip Info */}
+                <div className="bg-white p-6 rounded-2xl shadow-lg">
+                     <h3 className="text-xl font-bold mb-4 text-gray-800">Trip Details</h3>
+                     <div className="space-y-4">
+                        <DetailItem icon={<FaMapMarkerAlt />} label="From" value={booking.pickup?.name} />
+                        <DetailItem icon={<FaMapMarkerAlt />} label="To" value={booking.destination?.name} />
+                        <DetailItem icon={<FaCalendarAlt />} label="Start Date" value={new Date(booking.startDate).toLocaleString()} />
+                        <DetailItem icon={<FaCalendarAlt />} label="End Date" value={booking.endDate ? new Date(booking.endDate).toLocaleString() : 'N/A'} />
+                     </div>
+                </div>
+
+                {/* Client Info */}
+                <div className="bg-white p-6 rounded-2xl shadow-lg">
+                     <h3 className="text-xl font-bold mb-4 text-gray-800">Client Details</h3>
+                     <div className="space-y-4">
+                        <DetailItem icon={<FaUser />} label="Name" value={booking.client?.name} to={`/clients/${booking.client?._id}`} />
+                        <DetailItem icon={<FaUser />} label="Email" value={booking.client?.email} />
+                     </div>
+                </div>
+                 {/* Vehicle & Payment */}
+                <div className="bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 className="text-xl font-bold mb-4 text-gray-800">Additional Info</h3>
+                     <div className="space-y-4">
+                        <DetailItem icon={<FaCar />} label="Vehicle" value={booking.vehicle?.name || 'Not Assigned'} to={`/vehicles/${booking.vehicle?._id}`} />
+                        <DetailItem icon={<FaMoneyBillWave />} label="Price" value={`$${booking.price}`} />
+                        <DetailItem icon={<FaUser />} label="Agent" value={booking.agent?.name} to={`/users/${booking.agent?._id}`} />
+                     </div>
+                </div>
+            </div>
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="Delete Booking"
-        size="md"
-      >
-        <div className="p-6">
-          <p className="text-gray-700 mb-6">
-            Are you sure you want to delete this booking? This action cannot be undone.
-          </p>
-          <div className="flex gap-3 justify-end">
-            <Button 
-              color="secondary" 
-              onClick={() => setDeleteModalOpen(false)}
-            >
-              Cancel
+       {/* Delete Confirmation Modal */}
+      <Modal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Confirm Deletion">
+        <p className="text-gray-600 mb-6">Are you sure you want to permanently delete this booking? This action cannot be undone.</p>
+        <div className="flex justify-end gap-2">
+            <Button color="secondary" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+            <Button color="danger" onClick={handleDelete} loading={deleting}>
+                {deleting ? 'Deleting...' : 'Delete Booking'}
             </Button>
-            <Button 
-              color="danger" 
-              onClick={handleDelete}
-              loading={deleting}
-            >
-              Delete Booking
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

@@ -42,7 +42,7 @@ const agencySchema = new mongoose.Schema({
   },
   
   // Relationships
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   
   // Timestamps
   createdAt: { type: Date, default: Date.now },

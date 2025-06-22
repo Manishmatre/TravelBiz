@@ -10,7 +10,7 @@ import SearchInput from '../components/common/SearchInput';
 import Loader from '../components/common/Loader';
 import Modal from '../components/common/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { FaPlus, FaSearch, FaEye, FaTrash, FaCalendarAlt, FaUsers, FaUserTie } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEye, FaTrash, FaCalendarAlt, FaUsers, FaUserTie, FaCar } from 'react-icons/fa';
 import { useBookings } from '../contexts/BookingsContext';
 import Notification from '../components/common/Notification';
 import StatCard from '../components/common/StatCard';
@@ -45,7 +45,8 @@ function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
 
   const filteredBookings = bookings.filter(b => {
     const matchesSearch =
-      b.destination?.toLowerCase().includes(search.toLowerCase()) ||
+      b.destination?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      b.pickup?.name?.toLowerCase().includes(search.toLowerCase()) ||
       (b.client?.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (b.agent?.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (b.bookingNumber || '').toLowerCase().includes(search.toLowerCase());
@@ -126,6 +127,21 @@ function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
   const confirmedBookings = bookings.filter(b => b.status === 'Confirmed').length;
   const completedBookings = bookings.filter(b => b.status === 'Completed').length;
   const cancelledBookings = bookings.filter(b => b.status === 'Cancelled').length;
+
+  function getStatusColor(status) {
+    switch (status) {
+      case 'Pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'Completed':
+        return 'bg-blue-100 text-blue-800';
+      case 'Cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  }
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
@@ -223,102 +239,66 @@ function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
             <Table
               columns={[
                 { 
-                  label: 'Booking #', 
-                  accessor: 'bookingNumber',
-                  render: (v, row) => (
-                    <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                      {v || `BK${row._id.slice(-6).toUpperCase()}`}
-                    </span>
+                  label: 'Booking Details', 
+                  key: 'details',
+                  render: (row) => (
+                    <div>
+                      <Link to={`/bookings/${row._id}`} className="font-bold text-blue-700 hover:underline">
+                        {row.destination?.name || `Trip to ${row.pickup?.name || 'Unknown'}`}
+                      </Link>
+                      <div className="text-xs text-gray-500 font-mono">
+                        {row.bookingNumber || `BK-${row._id.slice(-6).toUpperCase()}`}
+                      </div>
+                    </div>
                   )
                 },
                 { 
                   label: 'Client', 
-                  accessor: 'client', 
-                  render: c => (
-                    <div className="flex items-center gap-2">
-                      <FaUsers className="text-blue-500" />
-                      {c?._id ? (
-                        <Link 
-                          to={`/clients/${c._id}`} 
-                          className="font-medium text-blue-700 hover:text-blue-900 hover:underline transition-colors"
-                        >
-                          {c.name || '-'}
-                        </Link>
-                      ) : (
-                        <span className="font-medium text-gray-500">{c?.name || '-'}</span>
-                      )}
-                    </div>
-                  )
+                  key: 'client',
+                  render: (row) => row.client ? (
+                    <Link to={`/clients/${row.client._id}`} className="hover:underline">{row.client.name}</Link>
+                  ) : 'N/A'
                 },
                 { 
-                  label: 'Agent', 
-                  accessor: 'agent', 
-                  render: a => (
-                    <div className="flex items-center gap-2">
-                      <FaUserTie className="text-green-500" />
-                      <span className="font-medium">{a?.name || '-'}</span>
-                    </div>
-                  )
+                  label: 'Date', 
+                  key: 'startDate',
+                  render: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString() : 'N/A'
                 },
-                { 
-                  label: 'Dates', 
-                  accessor: 'startDate',
-                  render: (startDate, row) => {
-                    const start = startDate ? new Date(startDate).toLocaleDateString() : '-';
-                    const end = row.endDate ? new Date(row.endDate).toLocaleDateString() : '-';
-                    return (
-                      <div className="text-sm">
-                        <div className="font-medium">{start}</div>
-                        <div className="text-gray-500">to {end}</div>
-                      </div>
-                    );
-                  }
+                {
+                  label: 'Vehicle',
+                  key: 'vehicle',
+                  render: (row) => row.vehicle ? (
+                    <Link to={`/vehicles/${row.vehicle._id}`} className="hover:underline">{row.vehicle.name}</Link>
+                  ) : 'N/A'
                 },
-                { label: 'Destination', accessor: 'destination' },
                 { 
                   label: 'Status', 
-                  accessor: 'status',
-                  render: status => (
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                      status === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {status}
+                  key: 'status',
+                  render: (row) => (
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status)}`}>
+                      {row.status}
                     </span>
                   )
-                },
-                { 
-                  label: 'Price', 
-                  accessor: 'price',
-                  render: price => price ? (
-                    <span className="font-semibold text-green-600">
-                      ${Number(price).toLocaleString()}
-                    </span>
-                  ) : '-'
                 },
               ]}
               data={paginatedBookings}
-              actions={row => (
-                <>
-                  <Button 
-                    color="primary" 
-                    size="sm" 
-                    className="mr-2 flex items-center gap-1" 
-                    onClick={() => navigate(`/bookings/${row._id}`)}
-                  >
-                    <FaEye className="w-3 h-3" />
-                    View & Edit
+              actions={(row) => (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/bookings/${row._id}`)}>
+                    <FaEye />
                   </Button>
-                  <Button 
-                    color="danger" 
-                    size="sm" 
-                    onClick={() => { setSelectedBooking(row); setDeleteModalOpen(true); }}
+                  <Button
+                    size="sm"
+                    color="danger"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedBooking(row);
+                      setDeleteModalOpen(true);
+                    }}
                   >
-                    <FaTrash className="w-3 h-3" />
+                    <FaTrash />
                   </Button>
-                </>
+                </div>
               )}
             />
 

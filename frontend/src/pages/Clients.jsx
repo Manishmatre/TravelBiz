@@ -220,78 +220,53 @@ function Clients() {
   const columns = [
     { 
       label: 'Name', 
-      accessor: 'name',
-      render: (v, row) => (
-        <Link to={`/clients/${row._id}`} className="text-blue-700 hover:underline font-semibold">
-          {v}
-        </Link>
+      key: 'name',
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <img src={row.avatarUrl || `https://ui-avatars.com/api/?name=${row.name}&background=random`} alt={row.name} className="w-9 h-9 rounded-full object-cover" />
+          <div>
+            <Link to={`/clients/${row._id}`} className="text-blue-700 hover:underline font-semibold">
+              {row.name}
+            </Link>
+            <div className="text-sm text-gray-500">{row.email}</div>
+          </div>
+        </div>
       )
     },
     { 
       label: 'Contact', 
-      accessor: 'email',
-      render: (v, row) => (
-        <div className="space-y-1">
-          <div className="flex items-center gap-1 text-sm">
-            <FaEnvelope className="text-gray-400" />
-            <span>{v}</span>
-          </div>
-          {row.phone && (
-            <div className="flex items-center gap-1 text-sm text-gray-600">
-              <FaPhone className="text-gray-400" />
-              <span>{row.phone}</span>
-            </div>
-          )}
+      key: 'contact',
+      render: (row) => (
+        <div className="text-sm">
+          {row.phone && <div><FaPhone className="inline mr-2 text-gray-400" />{row.phone}</div>}
+          {row.nationality && <div><FaPassport className="inline mr-2 text-gray-400" />{row.nationality}</div>}
         </div>
       )
-    },
-    { 
-      label: 'Nationality', 
-      accessor: 'nationality',
-      render: (v) => (
-        <div className="flex items-center gap-2">
-          <FaPassport className="text-gray-400" />
-          <span>{v || 'Not specified'}</span>
-        </div>
-      )
-    },
-    { 
-      label: 'Passport #', 
-      accessor: 'passportNumber',
-      render: (v) => v || '-'
-    },
-    { 
-      label: 'Assigned Agent', 
-      accessor: 'assignedAgentName',
-      render: (v) => v || '-'
     },
     { 
       label: 'Status', 
-      accessor: 'status',
-      render: (v) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          (v || 'Active') === 'Active' 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {v || 'Active'}
+      key: 'status',
+      render: (row) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${row.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+          {row.status || 'Active'}
         </span>
       )
     },
-    { 
-      label: 'Bookings', 
-      accessor: 'totalBookings',
-      render: (v) => (
-        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-          {v || 0}
-        </span>
+    {
+      label: 'Bookings',
+      key: 'totalBookings',
+      render: (row) => <div className="text-center font-medium">{row.totalBookings || 0}</div>
+    },
+    {
+      label: 'Actions',
+      key: 'actions',
+      render: (row) => (
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => navigate(`/clients/${row._id}`)}><FaEye /></Button>
+          <Button size="sm" color="danger" variant="outline" onClick={() => handleDeleteClient(row._id)}><FaTrash /></Button>
+        </div>
       )
-    },
-    { 
-      label: 'Created', 
-      accessor: 'createdAt',
-      render: (v) => new Date(v).toLocaleDateString()
-    },
+    }
   ];
 
   const handlePageChange = (page) => {

@@ -10,6 +10,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow, MarkerClusterer } from '@react-google-maps/api';
 import { getAllLocations, getLocationHistory } from '../services/locationService';
 import { getVehicles } from '../services/vehicleService';
+import { getBookings } from '../services/bookingService';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import StatCard from '../components/common/StatCard';
@@ -18,7 +19,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { getAgents, getUsers } from '../services/userService';
 import { getClients } from '../services/clientService';
 import VehicleDetailsCard from '../components/VehicleDetailsCard';
-import { getBookingsByVehicle } from '../services/bookingService';
 import Draggable from 'react-draggable';
 import axios from 'axios';
 import DriverDetailsCard from '../components/DriverDetailsCard';
@@ -121,6 +121,7 @@ function LiveTracking() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
+  const mapRef = useRef(null);
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
   });
@@ -172,7 +173,7 @@ function LiveTracking() {
           getUsers({ role: 'driver' }, token),
           getClients(token),
           getUsers({ role: 'agent' }, token),
-          getBookings(token)
+          getBookings(token, null)
         ]);
         setLocations(locs);
         setVehicles(vehs);

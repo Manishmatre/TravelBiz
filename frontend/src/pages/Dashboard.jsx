@@ -72,18 +72,20 @@ function Dashboard() {
           vehicles, 
           files, 
           bookings, 
-          drivers, 
-          agents, 
+          users, 
           locations
         ] = await Promise.all([
           getClients(token),
           getVehicles(token),
           getFiles(token),
           getBookings(token),
-          getUsers({ role: 'driver' }, token),
-          getUsers({ role: 'agent' }, token),
+          getUsers(token),
           getAllLocations(token)
         ]);
+
+        // Filter users by role
+        const drivers = users.filter(u => u.role === 'driver');
+        const agents = users.filter(u => u.role === 'agent');
 
         // Calculate comprehensive stats
         const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.price) || 0), 0);

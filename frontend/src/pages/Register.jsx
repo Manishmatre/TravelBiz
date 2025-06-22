@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUserPlus, FaArrowLeft, FaShieldAlt } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUserPlus, FaArrowLeft, FaShieldAlt, FaBuilding } from 'react-icons/fa';
 import Button from '../components/common/Button';
 import Notification from '../components/common/Notification';
 
@@ -14,7 +14,7 @@ function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'agent'
+    agencyName: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -55,16 +55,16 @@ function Register() {
         name: form.name,
         email: form.email,
         password: form.password,
-        role: form.role
+        agencyName: form.agencyName
       });
       
       setNotification({ 
-        message: 'Registration successful! Please check your email to verify your account.', 
+        message: 'Registration successful! You can now log in.', 
         type: 'success' 
       });
       
       setTimeout(() => {
-      navigate('/login');
+        navigate('/login');
       }, 2000);
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.';
@@ -114,6 +114,26 @@ function Register() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Agency Name
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaBuilding className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  name="agencyName"
+                  value={form.agencyName}
+                  onChange={handleChange}
+                  className="block w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
+                  placeholder="Enter your agency's name"
+                  required
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name
@@ -214,27 +234,6 @@ function Register() {
                   )}
                 </button>
               </div>
-        </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaShieldAlt className="h-4 w-4 text-gray-400" />
-        </div>
-                <select
-                  name="role"
-                  value={form.role}
-                  onChange={handleChange}
-                  className="block w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
-                >
-            <option value="admin">Admin</option>
-            <option value="agent">Agent</option>
-            <option value="driver">Driver</option>
-          </select>
-        </div>
             </div>
 
             <div className="flex items-start text-sm">
@@ -260,10 +259,11 @@ function Register() {
             <Button
               type="submit"
               color="primary"
+              className="w-full"
               loading={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium"
+              icon={<FaUserPlus />}
             >
-              <FaUserPlus /> {loading ? 'Creating Account...' : 'Create Account'}
+              Create Account
             </Button>
           </form>
 
@@ -280,7 +280,7 @@ function Register() {
           </div>
 
           {/* Login Link */}
-        <div className="mt-4 text-center">
+          <div className="mt-4 text-center">
             <Link
               to="/login"
               className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"

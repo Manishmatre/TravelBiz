@@ -64,12 +64,28 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     console.log('Login attempt with:', { email });
     const res = await axios.post(`${API_URL}/auth/login`, { email, password });
-    console.log('Login response:', res.data);
-    setToken(res.data.token);
-    localStorage.setItem('token', res.data.token);
-    setUser(res.data.user);
-    console.log('User after login:', res.data.user);
-    return res.data.user;
+    const { token: new_token, user: new_user } = res.data;
+    
+    console.log('Login response:', { new_token, new_user });
+    
+    setToken(new_token);
+    localStorage.setItem('token', new_token);
+    setUser(new_user);
+    console.log('User after login:', new_user);
+    
+    // Fetch agency profile immediately after login
+    if (new_user && new_token) {
+      try {
+        const agencyData = await getAgencyProfile(new_token);
+        console.log('Agency data loaded on login:', agencyData);
+        setAgency(agencyData);
+      } catch (err) {
+        console.error('Error loading agency on login:', err);
+        setAgency(null);
+      }
+    }
+    
+    return new_user;
   };
 
   const logout = () => {

@@ -168,30 +168,53 @@ function Drivers() {
       ) : (
         <Table
           columns={[
-            { label: 'Name', accessor: 'nameLink', render: (value, row) => (
-              row._id ? (
-                <Link to={`/drivers/${row._id}`} className="text-blue-700 hover:underline font-semibold">{row.name || '-'}</Link>
-              ) : (
-                <span>{row.name || '-'}</span>
+            { 
+              label: 'Driver', 
+              key: 'name',
+              render: (row) => (
+                <div className="flex items-center gap-3">
+                  <img src={row.avatarUrl || `https://ui-avatars.com/api/?name=${row.name}&background=random`} alt={row.name} className="w-9 h-9 rounded-full object-cover" />
+                  <div>
+                    <Link to={`/drivers/${row._id}`} className="text-blue-700 hover:underline font-semibold">
+                      {row.name}
+                    </Link>
+                    <div className="text-sm text-gray-500">{row.email}</div>
+                  </div>
+                </div>
               )
-            ) },
-            { label: 'Email', accessor: 'email' },
-            { label: 'Phone', accessor: 'phone' },
-            { label: 'License #', accessor: 'licenseNumber' },
-            { label: 'License Expiry', accessor: 'licenseExpiry', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-            { label: 'Assigned Vehicle', accessor: 'assignedVehicle', render: v => v ? `${v.numberPlate || '-'}${v.name ? ' (' + v.name + ')' : ''}` : '-' },
-            { label: 'Status', accessor: 'status', render: v => v || '-' },
-            { label: 'Documents', accessor: 'documents', render: docs => docs && docs.length > 0 ? `${docs.length} | View` : 'None' },
-            { label: 'Joining Date', accessor: 'joiningDate', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-            { label: 'Gender', accessor: 'gender', render: v => v || '-' },
-            { label: 'City', accessor: 'addressCity', render: driver => driver && driver.address && driver.address.city ? driver.address.city : '-' },
-            { label: 'State', accessor: 'addressState', render: driver => driver && driver.address && driver.address.state ? driver.address.state : '-' },
+            },
+            { label: 'Phone', key: 'phone' },
+            { 
+              label: 'License', 
+              key: 'license',
+              render: (row) => (
+                <div>
+                  <div>{row.licenseNumber || '-'}</div>
+                  <div className="text-xs text-gray-500">
+                    Expires: {row.licenseExpiry ? new Date(row.licenseExpiry).toLocaleDateString() : 'N/A'}
+                  </div>
+                </div>
+              )
+            },
+            { 
+              label: 'Assigned Vehicle', 
+              key: 'assignedVehicle', 
+              render: (row) => row.assignedVehicle ? (
+                <span className="font-medium">{row.assignedVehicle.name} ({row.assignedVehicle.numberPlate})</span>
+              ) : (
+                <span className="text-gray-400">None</span>
+              )
+            },
+            { 
+              label: 'Status', 
+              key: 'status', 
+              render: (row) => <span className="capitalize">{row.status || 'Active'}</span> 
+            },
           ]}
           data={filteredDrivers}
           actions={driver => (
             <>
               <Button color="secondary" size="sm" className="mr-2" onClick={() => handleOpenModal(driver)}>Edit</Button>
-              <Link to={`/drivers/${driver._id}`} className="text-blue-600 hover:underline">View</Link>
             </>
           )}
         />

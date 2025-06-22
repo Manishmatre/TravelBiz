@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { addBooking } from '../services/bookingService';
 import { getClients, addClient } from '../services/clientService';
@@ -7,12 +7,15 @@ import { getVehicles } from '../services/vehicleService';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
-import { FaCalendarAlt, FaArrowLeft, FaPlus, FaUser, FaSearch, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCalendarAlt, FaArrowLeft, FaPlus, FaUser, FaSearch, FaCheckCircle, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../components/common/Loader';
 import Notification from '../components/common/Notification';
 import Modal from '../components/common/Modal';
 import Card from '../components/common/Card';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+
+const libraries = ['places'];
 
 const AddBooking = () => {
   const { token, user } = useAuth();
@@ -22,8 +25,8 @@ const AddBooking = () => {
     agent: user?.role === 'agent' ? user._id : '',
     startDate: '',
     endDate: '',
-    destination: '',
-    pickup: '',
+    destination: { name: '', coordinates: { lat: null, lng: null } },
+    pickup: { name: '', coordinates: { lat: null, lng: null } },
     status: 'Pending',
     price: '',
     notes: '',
@@ -33,6 +36,16 @@ const AddBooking = () => {
     passengers: '',
     specialRequirements: ''
   });
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
+
+  // Refs for autocomplete instances
+  const pickupAutocompleteRef = useRef(null);
+  const destinationAutocompleteRef = useRef(null);
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,8 +106,8 @@ const AddBooking = () => {
     if (!form.client) errors.client = 'Client is required';
     if (!form.startDate) errors.startDate = 'Start date is required';
     if (!form.endDate) errors.endDate = 'End date is required';
-    if (!form.destination) errors.destination = 'Destination is required';
-    if (!form.pickup) errors.pickup = 'Pickup location is required';
+    if (!form.destination.name) errors.destination = 'Destination is required';
+    if (!form.pickup.name) errors.pickup = 'Pickup location is required';
     if (!form.price || form.price <= 0) errors.price = 'Valid price is required';
     
     if (form.startDate && form.endDate) {
@@ -120,8 +133,16 @@ const AddBooking = () => {
     setLoading(true);
     setError('');
 
+    const bookingData = {
+      ...form,
+      pickup: form.pickup.name,
+      destination: form.destination.name,
+      pickupCoordinates: form.pickup.coordinates,
+      destinationCoordinates: form.destination.coordinates,
+    };
+
     try {
-      await addBooking(form, token);
+      await addBooking(bookingData, token);
       setNotification({ message: 'Booking created successfully!', type: 'success' });
       setTimeout(() => {
         navigate('/bookings', { state: { refresh: true } });
@@ -139,17 +160,28 @@ const AddBooking = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({
-      ...form,
-      [name]: value
-    });
-    
-    // Clear validation error when user starts typing
+    setForm(prev => ({ ...prev, [name]: value }));
     if (validationErrors[name]) {
-      setValidationErrors({
-        ...validationErrors,
-        [name]: ''
-      });
+      setValidationErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+  
+  const handlePlaceChanged = (autocomplete, fieldName) => {
+    const place = autocomplete.getPlace();
+    if (place && place.geometry) {
+      setForm(prev => ({
+        ...prev,
+        [fieldName]: {
+          name: place.formatted_address,
+          coordinates: {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+          }
+        }
+      }));
+       if (validationErrors[fieldName]) {
+        setValidationErrors(prev => ({...prev, [fieldName]: ''}));
+      }
     }
   };
 
@@ -172,12 +204,12 @@ const AddBooking = () => {
     }
   };
 
-  if (initialLoading) {
-    return (
-      <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
-        <Loader className="my-10" />
-      </div>
-    );
+  if (loadError) {
+    return <div>Error loading maps. Please check your API key and network connection.</div>;
+  }
+  
+  if (!isLoaded || initialLoading) {
+    return <div className="p-8"><Loader /></div>;
   }
 
   return (
@@ -309,31 +341,56 @@ const AddBooking = () => {
             </div>
           </div>
 
+          {/* Location Information */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Location Information</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="pickup" className="block text-sm font-medium text-gray-700 mb-2">Pickup Location</label>
+                <div className="relative">
+                  <FaMapMarkerAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Autocomplete
+                    onLoad={(ref) => pickupAutocompleteRef.current = ref}
+                    onPlaceChanged={() => handlePlaceChanged(pickupAutocompleteRef.current, 'pickup')}
+                  >
+                    <Input
+                      name="pickup_name_temp"
+                      id="pickup"
+                      placeholder="Enter pickup location"
+                      className="pl-10"
+                      error={validationErrors.pickup}
+                    />
+                  </Autocomplete>
+                </div>
+                {validationErrors.pickup && <p className="text-red-500 text-xs mt-1">{validationErrors.pickup}</p>}
+              </div>
+              <div>
+                <label htmlFor="destination" className="block text-sm font-medium text-gray-700 mb-2">Destination Location</label>
+                <div className="relative">
+                  <FaMapMarkerAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Autocomplete
+                    onLoad={(ref) => destinationAutocompleteRef.current = ref}
+                    onPlaceChanged={() => handlePlaceChanged(destinationAutocompleteRef.current, 'destination')}
+                  >
+                    <Input
+                      name="destination_name_temp"
+                      id="destination"
+                      placeholder="Enter destination location"
+                      className="pl-10"
+                      error={validationErrors.destination}
+                    />
+                  </Autocomplete>
+                </div>
+                {validationErrors.destination && <p className="text-red-500 text-xs mt-1">{validationErrors.destination}</p>}
+              </div>
+            </div>
+          </div>
+
           {/* Trip Details */}
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Trip Details</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <Input
-                  label="Pickup Location *"
-                  name="pickup"
-                  value={form.pickup}
-                  onChange={handleChange}
-                  required
-                  placeholder="Enter pickup location"
-                  error={validationErrors.pickup}
-                />
-
-                <Input
-                  label="Destination *"
-                  name="destination"
-                  value={form.destination}
-                  onChange={handleChange}
-                  required
-                  placeholder="Enter destination"
-                  error={validationErrors.destination}
-                />
-
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Start Date *"

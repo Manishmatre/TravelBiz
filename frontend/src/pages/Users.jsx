@@ -121,23 +121,48 @@ const Users = () => {
         ) : (
           <Table
             columns={[
-              { label: 'Name', accessor: 'name' },
-              { label: 'Email', accessor: 'email' },
-              { label: 'Role', accessor: 'role', render: v => <span className="capitalize">{v}</span> },
-              { label: 'Status', accessor: 'status', render: v => v || 'Active' },
+              { 
+                label: 'Name', 
+                key: 'name',
+                render: (row) => (
+                  <div className="flex items-center gap-3">
+                    <img src={row.avatarUrl || `https://ui-avatars.com/api/?name=${row.name}&background=random`} alt={row.name} className="w-9 h-9 rounded-full object-cover" />
+                    <div>
+                      <div className="font-semibold text-gray-800">{row.name || '-'}</div>
+                      <div className="text-sm text-gray-500">{row.email || '-'}</div>
+                    </div>
+                  </div>
+                )
+              },
+              { 
+                label: 'Role', 
+                key: 'role', 
+                render: (row) => <span className="capitalize font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">{row.role}</span> 
+              },
+              { 
+                label: 'Status', 
+                key: 'status', 
+                render: (row) => (
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    row.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {row.status || 'Active'}
+                  </span>
+                )
+              },
+               { 
+                label: 'Joined', 
+                key: 'createdAt',
+                render: (row) => new Date(row.createdAt).toLocaleDateString()
+              },
             ]}
-            data={filteredUsers.map(u => ({
-              ...u,
-              name: u.name || '-',
-              email: u.email || '-',
-              role: u.role || '-',
-              status: u.status || 'Active',
-            }))}
-            actions={user => (
+            data={filteredUsers}
+            actions={(row) => (
               <Button
                 color="danger"
+                variant="outline"
                 size="sm"
-                onClick={() => handleRemove(user._id)}
+                onClick={() => handleRemove(row._id)}
               >
                 Remove
               </Button>

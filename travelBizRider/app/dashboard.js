@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
-import { getDriverDashboard } from '../services/api';
+import { getAllDriverTrips } from '../services/api';
 import BottomNav from '../src/components/BottomNav';
 import Header from '../src/components/Header';
 import ScreenLayout from '../src/components/ScreenLayout';
@@ -10,29 +10,20 @@ import ScreenLayout from '../src/components/ScreenLayout';
 export default function Dashboard() {
   const { user, token } = useAuth();
   const router = useRouter();
-  const [dashboardData, setDashboardData] = useState({
-    todayTrips: [],
-    completedTrips: [],
-    pendingTrips: [],
-    vehicle: null,
-  });
+  const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchTrips = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const data = await getDriverDashboard(token);
-      setDashboardData({
-        todayTrips: data.todayTrips || [],
-        completedTrips: data.completedTrips || [],
-        pendingTrips: data.pendingTrips || [],
-        vehicle: data.vehicle,
-      });
+      const data = await getAllDriverTrips(token);
+      const sortedData = data.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+      setTrips(sortedData);
     } catch (err) {
-      setError(err.message || 'Failed to fetch dashboard data. Please pull down to refresh.');
+      setError(err.message || 'Failed to fetch trips. Pull down to refresh.');
     } finally {
       setLoading(false);
     }
@@ -40,14 +31,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (token) {
-      fetchDashboardData();
+      fetchTrips();
     }
-  }, [token, fetchDashboardData]);
+  }, [token, fetchTrips]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchDashboardData().finally(() => setRefreshing(false));
-  }, [fetchDashboardData]);
+    fetchTrips().finally(() => setRefreshing(false));
+  }, [fetchTrips]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -56,7 +47,8 @@ export default function Dashboard() {
     return 'Evening';
   };
 
-  const { todayTrips, completedTrips, vehicle } = dashboardData;
+  const upcomingTrips = trips.filter(t => t.status === 'Confirmed' || t.status === 'Pending');
+  const completedTripsCount = trips.filter(t => t.status === 'Completed').length;
   
   const renderLoading = () => (
     <View style={styles.center}>
@@ -80,28 +72,28 @@ export default function Dashboard() {
         ) : null}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📅 Today's Schedule</Text>
-          {todayTrips.length === 0 ? (
+          <Text style={styles.sectionTitle}>🗓️ Upcoming Trips</Text>
+          {upcomingTrips.length === 0 ? (
             <View style={styles.card}>
-              <Text style={styles.emptyText}>No trips scheduled for today</Text>
-              <Text style={styles.emptySubtext}>Check back later for updates</Text>
+              <Text style={styles.emptyText}>No upcoming trips</Text>
+              <Text style={styles.emptySubtext}>You're all clear for now!</Text>
             </View>
           ) : (
-            todayTrips.map(trip => (
+            upcomingTrips.map(trip => (
               <TouchableOpacity
                 key={trip._id}
                 style={styles.tripCard}
                 onPress={() => router.push(`/trips/${trip._id}`)}
               >
                 <View style={styles.tripHeader}>
-                  <Text style={styles.tripTime}>
-                    {new Date(trip.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                   <Text style={styles.tripDate}>
+                    {new Date(trip.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                   </Text>
-                  <Text style={styles.tripStatus}>{trip.status}</Text>
+                  <Text style={[styles.tripStatus, { backgroundColor: getStatusColor(trip.status) }]}>{trip.status}</Text>
                 </View>
                 <Text style={styles.tripClient}>👤 {trip.client?.name || 'Client'}</Text>
                 <Text style={styles.tripRoute}>
-                  📍 {trip.pickup} → {trip.destination}
+                  📍 {trip.pickup?.name} → {trip.destination}
                 </Text>
               </TouchableOpacity>
             ))
@@ -109,20 +101,13 @@ export default function Dashboard() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Assigned Vehicle</Text>
-          <View style={styles.card}>
-            {vehicle ? (
-              <>
-                <Text style={styles.vehicleName}>{vehicle.name}</Text>
-                <Text style={styles.vehiclePlate}>{vehicle.numberPlate}</Text>
-                <Text style={[styles.vehicleStatus, { color: vehicle.status === 'Active' ? '#10b981' : '#f59e0b' }]}>
-                  Status: {vehicle.status}
-                </Text>
-              </>
-            ) : (
-              <Text style={styles.emptyText}>No vehicle assigned</Text>
-            )}
-          </View>
+          <Text style={styles.sectionTitle}>Completed Trips</Text>
+           <View style={styles.card}>
+              <Text style={styles.completedTripsText}>You have completed {completedTripsCount} trips.</Text>
+              <TouchableOpacity onPress={() => router.push('/trips')}>
+                 <Text style={styles.viewHistoryText}>View History →</Text>
+              </TouchableOpacity>
+           </View>
         </View>
       </View>
     </ScrollView>
@@ -132,26 +117,25 @@ export default function Dashboard() {
     <ScreenLayout
       header={
         <Header
-          title="Dashboard"
+          title="My Trips"
           subtitle={`Good ${getGreeting()}, ${user?.name?.split(' ')[0] || 'Driver'}!`}
           rightActions={[
             { icon: '⚙️', onPress: () => router.push('/profile') },
-            { icon: '📍', onPress: () => router.push('/location') },
           ]}
           infoRow={
             <View style={styles.headerStats}>
               <View style={styles.headerStatItem}>
-                <Text style={styles.headerStatNumber}>{todayTrips.length}</Text>
-                <Text style={styles.headerStatLabel}>Today</Text>
+                <Text style={styles.headerStatNumber}>{upcomingTrips.length}</Text>
+                <Text style={styles.headerStatLabel}>Upcoming</Text>
               </View>
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
-                <Text style={styles.headerStatNumber}>{completedTrips.length}</Text>
+                <Text style={styles.headerStatNumber}>{completedTripsCount}</Text>
                 <Text style={styles.headerStatLabel}>Completed</Text>
               </View>
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
-                <Text style={styles.headerStatNumber}>{vehicle ? '🚗' : '❌'}</Text>
+                <Text style={styles.headerStatNumber}>{user?.assignedVehicle ? '✅' : '❌'}</Text>
                 <Text style={styles.headerStatLabel}>Vehicle</Text>
               </View>
             </View>
@@ -164,6 +148,14 @@ export default function Dashboard() {
     </ScreenLayout>
   );
 }
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'Pending': return '#f59e0b';
+    case 'Confirmed': return '#10b981';
+    default: return '#6b7280';
+  }
+};
 
 const styles = StyleSheet.create({
   center: {
@@ -255,58 +247,54 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderLeftWidth: 5,
+    borderLeftColor: '#2563eb',
   },
   tripHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-    paddingBottom: 8,
     marginBottom: 8,
+  },
+  tripDate: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   tripTime: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#1f2937',
   },
   tripStatus: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#10b981',
-    textTransform: 'capitalize',
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   tripClient: {
     fontSize: 16,
+    fontWeight: '500',
     color: '#374151',
     marginBottom: 4,
-    fontWeight: '500',
   },
   tripRoute: {
     fontSize: 14,
     color: '#6b7280',
   },
-  vehicleName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    textAlign: 'center',
-  },
-  vehiclePlate: {
+  completedTripsText: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#374151',
     textAlign: 'center',
-    marginVertical: 4,
   },
-  vehicleStatus: {
-    fontSize: 15,
-    fontWeight: '600',
+  viewHistoryText: {
+    fontSize: 16,
+    color: '#2563eb',
     textAlign: 'center',
-    marginTop: 4,
+    fontWeight: '600',
+    marginTop: 8,
   },
 }); 

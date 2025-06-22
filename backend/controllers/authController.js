@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const Agency = require('../models/Agency');
 
 // Generate JWT
 const generateToken = (user) => {
@@ -13,13 +14,40 @@ const generateToken = (user) => {
 // Signup
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, role, agencyId } = req.body;
+    const { name, email, password, agencyName } = req.body;
+    if (!agencyName) {
+      return res.status(400).json({ message: 'Agency name is required' });
+    }
+
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'Email already exists' });
-    const user = await User.create({ name, email, password, role });
+    
+    // 1. Create the agency first
+    const agency = await Agency.create({ name: agencyName });
+    console.log('--- AGENCY CREATED ---');
+    console.log(agency);
+
+    // 2. Create the user, linking them to the agency
+    const userPayload = {
+      name,
+      email,
+      password,
+      role: 'admin',
+      agencyId: agency._id,
+    };
+    console.log('--- USER PAYLOAD BEFORE CREATE ---');
+    console.log(userPayload);
+    
+    const user = await User.create(userPayload);
+
+    // 3. Update the agency with the user as the owner
+    agency.owner = user._id;
+    await agency.save();
+
     const token = generateToken(user);
     res.status(201).json({ token, user: { _id: user._id, name: user.name, email: user.email, role: user.role, agencyId: user.agencyId } });
   } catch (err) {
+    console.error('SIGNUP ERROR:', err);
     res.status(500).json({ message: err.message });
   }
 };

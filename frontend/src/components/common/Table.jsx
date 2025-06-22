@@ -7,7 +7,7 @@ function Table({ columns, data, actions, className = '' }) {
         <thead>
           <tr className="bg-white/60 sticky top-0 z-10 rounded-t-2xl">
             {columns.map(col => (
-              <th key={col.accessor} className="py-3 px-4 text-left font-semibold text-gray-700 whitespace-nowrap first:rounded-tl-2xl last:rounded-tr-2xl">
+              <th key={col.key} className="py-3 px-4 text-left font-semibold text-gray-700 whitespace-nowrap first:rounded-tl-2xl last:rounded-tr-2xl">
                 {col.label}
               </th>
             ))}
@@ -21,10 +21,10 @@ function Table({ columns, data, actions, className = '' }) {
             </tr>
           ) : (
             data.map((row, idx) => (
-              <tr key={row._id || idx} className="hover:bg-blue-50/60 transition-colors border-t border-blue-50">
+              <tr key={row._id || row.id || idx} className="hover:bg-blue-50/60 transition-colors border-t border-blue-50">
                 {columns.map(col => (
-                  <td key={col.accessor} className="py-2 px-4 whitespace-nowrap align-middle">
-                    {col.render ? col.render(row[col.accessor], row) : (typeof row[col.accessor] === 'object' && row[col.accessor] !== null ? JSON.stringify(row[col.accessor]) : row[col.accessor])}
+                  <td key={col.key} className="py-2 px-4 whitespace-nowrap align-middle">
+                    {col.render ? col.render(row) : row[col.key]}
                   </td>
                 ))}
                 {actions && <td className="py-2 px-4 whitespace-nowrap align-middle">{actions(row)}</td>}

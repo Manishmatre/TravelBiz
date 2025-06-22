@@ -1,13 +1,15 @@
 const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
 const User = require('../models/User');
+const Client = require('../models/Client');
 
 // Create a new booking
 exports.createBooking = async (req, res) => {
   try {
-    const { vehicle, startDate, endDate, agent, status } = req.body;
+    const { vehicle, startDate, endDate, agent, status, pickup, destination } = req.body;
     // Validate required fields
-    if (!req.body.pickup) return res.status(400).json({ message: 'Pickup location is required' });
+    if (!pickup || !pickup.name) return res.status(400).json({ message: 'Pickup location name is required' });
+    if (!destination || !destination.name) return res.status(400).json({ message: 'Destination location name is required' });
     if (!req.body.payment || !req.body.payment.mode || !req.body.payment.amountPaid) return res.status(400).json({ message: 'Payment details are required' });
     // Prevent overlapping bookings for the same vehicle
     if (vehicle && startDate) {
@@ -42,19 +44,57 @@ exports.createBooking = async (req, res) => {
 
 // Get all bookings, with optional filters
 exports.getBookings = async (req, res) => {
+  let filter = {};
   try {
-    const filter = {};
     if (req.query.client) filter.client = req.query.client;
     if (req.query.agent) filter.agent = req.query.agent;
     if (req.query.status) filter.status = req.query.status;
 
-    const bookings = await Booking.find(filter)
-      .populate('client', 'name email')
-      .populate('vehicle', 'name numberPlate')
-      .populate('driver', 'name');
-    res.json(bookings);
+    // Fetch raw bookings and manually populate to avoid populate issues with schema drift
+    const rawBookings = await Booking.find(filter).lean();
+
+    const bookings = await Promise.all(rawBookings.map(async (booking) => {
+      try {
+        // Gracefully handle potentially missing linked documents
+        const client = booking.client ? await Client.findById(booking.client).select('name email').lean() : null;
+        const vehicle = booking.vehicle ? await Vehicle.findById(booking.vehicle).select('name numberPlate').lean() : null;
+        const agent = booking.agent ? await User.findById(booking.agent).select('name email').lean() : null;
+  
+        // Ensure pickup and destination are in the object format for consistency
+        const normalizedBooking = { ...booking };
+        if (typeof booking.pickup === 'string') {
+          normalizedBooking.pickup = { name: booking.pickup };
+        }
+        if (typeof booking.destination === 'string') {
+          normalizedBooking.destination = { name: booking.destination };
+        }
+  
+        return {
+          ...normalizedBooking,
+          client,
+          vehicle,
+          agent,
+        };
+      } catch (e) {
+        console.error(`Skipping booking due to error: ${booking._id}`, e);
+        return null; // Return null for bookings that cause an error
+      }
+    }));
+      
+    res.json(bookings.filter(b => b !== null)); // Filter out nulls before sending
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    // Enhanced error logging
+    console.error("Error in getBookings controller:", {
+      message: err.message,
+      stack: err.stack,
+      query: req.query,
+      filter: filter,
+    });
+    res.status(500).json({ 
+      message: 'An internal server error occurred while fetching bookings.',
+      error: err.message,
+      filterUsed: filter,
+    });
   }
 };
 
@@ -75,6 +115,7 @@ exports.getBookingById = async (req, res) => {
 // Update booking
 exports.updateBooking = async (req, res) => {
   try {
+    const { vehicle, status } = req.body;
     const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     // If booking is completed or cancelled, update vehicle and driver status

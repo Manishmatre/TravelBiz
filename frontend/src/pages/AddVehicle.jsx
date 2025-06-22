@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { addVehicle, getVehicle, updateVehicle } from '../services/vehicleService';
+import { addVehicle, getVehicleById, updateVehicle } from '../services/vehicleService';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
@@ -40,7 +40,7 @@ const AddVehicle = () => {
       if (isEditMode) {
         setInitialLoading(true);
         try {
-          const vehicleData = await getVehicle(id, token);
+          const vehicleData = await getVehicleById(id, token);
           setForm({
             name: vehicleData.name || '',
             numberPlate: vehicleData.numberPlate || '',

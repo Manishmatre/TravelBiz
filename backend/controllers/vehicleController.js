@@ -197,7 +197,8 @@ exports.deleteVehicleFuelLog = async (req, res) => {
 
 // --- Assignments ---
 exports.getVehicleAssignments = async (req, res) => {
-  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId }).populate('assignments.driver', 'name email');
+  const vehicle = await Vehicle.findOne({ _id: req.params.id, agencyId: req.user.agencyId })
+    .populate({ path: 'assignments.driver', select: 'name email' });
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
   res.json(vehicle.assignments || []);
 };
