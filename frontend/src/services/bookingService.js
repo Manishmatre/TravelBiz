@@ -50,4 +50,12 @@ export const updateBookingStatus = async (id, status, token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
+};
+
+export const getBookingsForClient = async (clientId, token) => {
+  const res = await axios.get(`${API_URL}/bookings`, {
+    params: { client: clientId },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
 }; 

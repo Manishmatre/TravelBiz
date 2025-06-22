@@ -47,13 +47,18 @@ exports.updateAgencyProfile = async (req, res) => {
     Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
 
     // Handle file upload for logo
-    if (req.files && req.files.logo) {
-      updates.logo = req.files.logo[0].path;
+    if (req.file) {
+      // The frontend will prepend the base URL. We just need the path.
+      updates.logo = `/uploads/${req.file.filename}`;
     }
-    // Handle file upload for cover image
+    
+    // This part for coverImage seems to expect req.files, which might be from a different setup.
+    // Let's comment it out for now to avoid confusion unless it's being used elsewhere.
+    /*
     if (req.files && req.files.coverImage) {
       updates.coverImage = req.files.coverImage[0].path;
     }
+    */
 
     const agency = await Agency.findByIdAndUpdate(
       req.user.agencyId,

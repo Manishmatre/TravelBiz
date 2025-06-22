@@ -117,6 +117,7 @@ function App() {
             />
             <Route path="/clients" element={<ProtectedRoute><Layout><Clients /></Layout></ProtectedRoute>} />
             <Route path="/clients/add" element={<ProtectedRoute><Layout><AddClient /></Layout></ProtectedRoute>} />
+            <Route path="/clients/edit/:id" element={<ProtectedRoute><Layout><AddClient /></Layout></ProtectedRoute>} />
             <Route path="/clients/:id" element={<ProtectedRoute><Layout><ClientDetail /></Layout></ProtectedRoute>} />
             <Route path="/clients/vip" element={<ProtectedRoute><Layout><VipClients /></Layout></ProtectedRoute>} />
             <Route path="/clients/analytics" element={<ProtectedRoute><Layout><ClientAnalytics /></Layout></ProtectedRoute>} />

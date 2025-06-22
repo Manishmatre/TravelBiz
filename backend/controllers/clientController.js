@@ -5,15 +5,24 @@ const Activity = require('../models/Activity');
 // Create a new client
 exports.createClient = async (req, res) => {
   try {
-    const { name, email, passportNumber, nationality, assignedAgent } = req.body;
-    const client = await Client.create({
-      name,
-      email,
-      passportNumber,
-      nationality,
-      assignedAgent: assignedAgent || req.user._id,
-      agencyId: req.user.agencyId,
-    });
+    // Take all fields from the request body
+    const clientData = { ...req.body };
+
+    // Set agencyId from the authenticated user
+    clientData.agencyId = req.user.agencyId;
+
+    // If an agent isn't assigned, assign the current user
+    if (!clientData.assignedAgent) {
+      clientData.assignedAgent = req.user._id;
+    }
+
+    // Handle file upload if an avatar is present
+    if (req.file) {
+      clientData.avatarUrl = `/uploads/${req.file.filename}`;
+    }
+
+    const client = await Client.create(clientData);
+    
     // Log activity
     const activity = await Activity.create({
       actionType: 'create',
@@ -26,6 +35,7 @@ exports.createClient = async (req, res) => {
       details: { email: client.email }
     });
     req.app.get('io').emit('activity', activity);
+    
     res.status(201).json(client);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -52,7 +62,7 @@ exports.getClientById = async (req, res) => {
     const client = await Client.findOne({ _id: req.params.id, agencyId: req.user.agencyId }).populate('assignedAgent', 'name email role');
     if (!client) return res.status(404).json({ message: 'Client not found' });
     // Agent can only access their own clients
-    if (req.user.role === 'agent' && String(client.assignedAgent._id) !== String(req.user._id)) {
+    if (req.user.role === 'agent' && String(client.assignedAgent?._id) !== String(req.user._id)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.json(client);
@@ -66,12 +76,22 @@ exports.updateClient = async (req, res) => {
   try {
     const client = await Client.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
     if (!client) return res.status(404).json({ message: 'Client not found' });
+    
     // Agent can only update their own clients
     if (req.user.role === 'agent' && String(client.assignedAgent) !== String(req.user._id)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
-    Object.assign(client, req.body);
+    
+    const updateData = { ...req.body };
+
+    // Handle file upload if an avatar is present
+    if (req.file) {
+      updateData.avatarUrl = `/uploads/${req.file.filename}`;
+    }
+
+    Object.assign(client, updateData);
     const updatedClient = await client.save();
+    
     // Log activity
     const activity = await Activity.create({
       actionType: 'update',
@@ -84,6 +104,7 @@ exports.updateClient = async (req, res) => {
       details: req.body
     });
     req.app.get('io').emit('activity', activity);
+    
     res.json(updatedClient);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -95,11 +116,14 @@ exports.deleteClient = async (req, res) => {
   try {
     const client = await Client.findOne({ _id: req.params.id, agencyId: req.user.agencyId });
     if (!client) return res.status(404).json({ message: 'Client not found' });
+    
     // Agent can only delete their own clients
     if (req.user.role === 'agent' && String(client.assignedAgent) !== String(req.user._id)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
+    
     const deletedClient = await client.deleteOne();
+    
     // Log activity
     const activity = await Activity.create({
       actionType: 'delete',
@@ -112,6 +136,7 @@ exports.deleteClient = async (req, res) => {
       details: { email: deletedClient.email }
     });
     req.app.get('io').emit('activity', activity);
+    
     res.json({ message: 'Client deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });

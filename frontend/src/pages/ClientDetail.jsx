@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Tab from '../components/common/Tab';
 import Loader from '../components/common/Loader';
 import Table from '../components/common/Table';
@@ -12,6 +12,16 @@ import Modal from '../components/common/Modal';
 import { getBookings, addBooking } from '../services/bookingService';
 import { getUsers } from '../services/userService';
 import Notification from '../components/common/Notification';
+import Card from '../components/common/Card';
+import {
+  FaUser, FaEnvelope, FaPhone, FaPassport, FaGlobe, FaBirthdayCake, FaMapMarkerAlt,
+  FaUserShield, FaPhoneAlt, FaEdit, FaSave, FaTimes, FaPlus, FaUpload, FaTrash, FaFilePdf,
+  FaFileImage, FaFileWord, FaFileExcel, FaFileAlt, FaPlaneDeparture, FaMoneyBillWave,
+  FaStickyNote, FaHistory, FaCar, FaRegCalendarAlt, FaDollarSign, FaCheckCircle
+} from 'react-icons/fa';
+import StatCard from '../components/common/StatCard';
+import { getClientById } from '../services/clientService';
+import { getBookingsForClient } from '../services/bookingService';
 
 const tabLabels = [
   'General Info',
@@ -27,16 +37,23 @@ const tabLabels = [
 function ClientDetail() {
   const { id } = useParams();
   const { token, user } = useAuth ? useAuth() : { token: localStorage.getItem('token') };
+  const navigate = useNavigate();
   const [client, setClient] = useState(null);
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    completedBookings: 0,
+    upcomingBookings: 0,
+    totalSpent: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState('overview');
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
-  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState('');
   const [newBooking, setNewBooking] = useState({ startDate: '', endDate: '', destination: '', status: 'Pending', price: '', notes: '' });
   const [addingBooking, setAddingBooking] = useState(false);
@@ -64,36 +81,50 @@ function ClientDetail() {
   const [addingPayment, setAddingPayment] = useState(false);
 
   useEffect(() => {
-    const fetchClient = async () => {
+    const fetchClientData = async () => {
+      if (!id || !token) return;
       setLoading(true);
+      setBookingsLoading(true);
       setError('');
       try {
-        // Assuming getClients can fetch by ID if passed an ID
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/clients/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error('Failed to fetch client');
-        const data = await res.json();
-        setClient(data);
+        const clientData = await getClientById(id, token);
+        setClient(clientData);
         setEditForm({
-          name: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          passportNumber: data.passportNumber || '',
-          nationality: data.nationality || '',
-          dateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : '',
-          address: data.address || '',
-          emergencyContact: data.emergencyContact || '',
-          emergencyPhone: data.emergencyPhone || '',
-          status: data.status || 'Active'
+          name: clientData.name || '',
+          email: clientData.email || '',
+          phone: clientData.phone || '',
+          passportNumber: clientData.passportNumber || '',
+          nationality: clientData.nationality || '',
+          dateOfBirth: clientData.dateOfBirth ? clientData.dateOfBirth.split('T')[0] : '',
+          address: clientData.address || '',
+          emergencyContact: clientData.emergencyContact || '',
+          emergencyPhone: clientData.emergencyPhone || '',
+          status: clientData.status || 'Active',
+          gender: clientData.gender || '',
+          occupation: clientData.occupation || '',
+          company: clientData.company || '',
+          preferredLanguage: clientData.preferredLanguage || 'English',
         });
+        
+        const bookingsData = await getBookingsForClient(id, token);
+        setBookings(bookingsData);
+        
+        const totalBookings = bookingsData.length;
+        const completedBookings = bookingsData.filter(b => b.status === 'Completed').length;
+        const upcomingBookings = bookingsData.filter(b => new Date(b.startDate) > new Date() && b.status !== 'Cancelled').length;
+        const totalSpent = bookingsData.reduce((acc, b) => b.status !== 'Cancelled' ? acc + (b.price || 0) : acc, 0);
+        setStats({ totalBookings, completedBookings, upcomingBookings, totalSpent });
+
       } catch (err) {
-        setError(err.message || 'Failed to fetch client');
+        const errorMessage = err.response?.data?.message || 'Failed to load client data.';
+        setError(errorMessage);
+        setNotification({ message: errorMessage, type: 'error' });
       } finally {
         setLoading(false);
+        setBookingsLoading(false);
       }
     };
-    if (id) fetchClient();
+    fetchClientData();
   }, [id, token]);
 
   // Fetch agents for edit mode
@@ -110,17 +141,6 @@ function ClientDetail() {
     };
     fetchAgents();
   }, [user, token]);
-
-  // Fetch bookings for this client
-  useEffect(() => {
-    if (!id || !token) return;
-    setBookingsLoading(true);
-    setBookingsError('');
-    getBookings(id, token)
-      .then(setBookings)
-      .catch(e => setBookingsError(e.response?.data?.message || 'Failed to load bookings'))
-      .finally(() => setBookingsLoading(false));
-  }, [id, token]);
 
   const handleBookingInput = e => {
     const { name, value } = e.target;
@@ -145,8 +165,8 @@ function ClientDetail() {
 
   const handleEditToggle = () => {
     if (isEditing) {
-      // Cancel editing - reset form to original values
-      setEditForm({
+       // Reset form on cancel
+       setEditForm({
         name: client.name || '',
         email: client.email || '',
         phone: client.phone || '',
@@ -156,41 +176,35 @@ function ClientDetail() {
         address: client.address || '',
         emergencyContact: client.emergencyContact || '',
         emergencyPhone: client.emergencyPhone || '',
-        status: client.status || 'Active'
+        status: client.status || 'Active',
+        gender: client.gender || '',
+        occupation: client.occupation || '',
+        company: client.company || '',
+        preferredLanguage: client.preferredLanguage || 'English',
       });
     }
-    setIsEditing(!isEditing);
+    setIsEditing(prev => !prev);
+  };
+
+  const handleInputChange = (e) => {
+    setEditForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSave = async () => {
+    if (!editForm) return;
     setSaving(true);
     try {
-      await updateClient(id, editForm, token);
-      // Refresh client data
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/clients/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const updatedClient = await res.json();
-        setClient(updatedClient);
-      }
+      const updatedClient = await updateClient(id, editForm, token);
+      setClient(updatedClient);
       setIsEditing(false);
-      setNotification({ message: 'Client updated successfully!', type: 'success' });
+      setNotification({ message: 'Client details updated successfully!', type: 'success' });
     } catch (err) {
-      setNotification({ 
-        message: 'Failed to update client: ' + (err.response?.data?.message || err.message), 
-        type: 'error' 
-      });
+      const errorMessage = err.response?.data?.message || 'Failed to update client.';
+      setError(errorMessage);
+      setNotification({ message: errorMessage, type: 'error' });
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleEditFormChange = (e) => {
-    setEditForm({
-      ...editForm,
-      [e.target.name]: e.target.value
-    });
   };
 
   // File management functions
@@ -348,31 +362,81 @@ function ClientDetail() {
   if (error) return <div className="text-red-500 p-6">{error}</div>;
   if (!client) return null;
 
-  // Mock data for demonstration
-  const mockBookings = [
-    { _id: 'b1', date: '2024-06-01', destination: 'Paris', status: 'Confirmed' },
-    { _id: 'b2', date: '2024-07-15', destination: 'London', status: 'Pending' },
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: <FaUser /> },
+    { id: 'bookings', label: 'Bookings', icon: <FaPlaneDeparture /> },
+    { id: 'documents', label: 'Documents', icon: <FaFileAlt /> },
+    { id: 'payments', label: 'Payments', icon: <FaMoneyBillWave /> },
+    { id: 'notes', label: 'Notes', icon: <FaStickyNote /> },
+    { id: 'activity', label: 'Activity', icon: <FaHistory /> },
   ];
-  const mockPayments = [
-    { _id: 'p1', date: '2024-05-20', amount: 1200, status: 'Paid' },
-    { _id: 'p2', date: '2024-06-10', amount: 800, status: 'Unpaid' },
-  ];
-  const mockNotes = [
-    { _id: 'n1', date: '2024-05-10', author: 'Agent John', note: 'Client prefers window seat.' },
-    { _id: 'n2', date: '2024-06-02', author: 'Agent Jane', note: 'Requested vegetarian meal.' },
-  ];
-  const mockDocuments = [
-    { _id: 'd1', type: 'Passport', uploaded: '2024-05-01' },
-    { _id: 'd2', type: 'Visa', uploaded: '2024-05-05' },
-  ];
-  const mockActivity = [
-    { _id: 'a1', date: '2024-05-01', action: 'Created client', user: 'Admin' },
-    { _id: 'a2', date: '2024-05-10', action: 'Added booking', user: 'Agent John' },
+
+  const bookingColumns = [
+    {
+      label: 'Destination',
+      key: 'destination',
+      render: (row) => (
+        <div>
+          <p className="font-semibold text-gray-800">{row.destination}</p>
+          <p className="text-xs text-gray-500">Booking ID: {row._id.slice(-6)}</p>
+        </div>
+      )
+    },
+    {
+      label: 'Dates',
+      key: 'dates',
+      render: (row) => (
+        <div>
+          <p>{new Date(row.startDate).toLocaleDateString()}</p>
+          <p className="text-xs text-gray-500">to {new Date(row.endDate).toLocaleDateString()}</p>
+        </div>
+      )
+    },
+    {
+      label: 'Vehicle',
+      key: 'vehicle',
+      render: (row) => row.vehicle ? (
+        <div className="flex items-center gap-2">
+           <img src={row.vehicle.imageUrls[0] || `https://ui-avatars.com/api/?name=${row.vehicle.make}&background=random`} alt={row.vehicle.make} className="w-10 h-10 rounded-md object-cover" />
+          <div>
+            <p className="font-semibold">{row.vehicle.make} {row.vehicle.model}</p>
+            <p className="text-xs text-gray-500">{row.vehicle.licensePlate}</p>
+          </div>
+        </div>
+      ) : <span className="text-gray-500">Not Assigned</span>
+    },
+    {
+      label: 'Status',
+      key: 'status',
+      render: (row) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+          row.status === 'Completed' ? 'bg-green-100 text-green-800' :
+          row.status === 'Confirmed' ? 'bg-blue-100 text-blue-800' :
+          row.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+          row.status === 'Cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+        }`}>
+          {row.status}
+        </span>
+      )
+    },
+    {
+      label: 'Price',
+      key: 'price',
+      render: (row) => <span className="font-medium text-gray-800">${(row.price || 0).toFixed(2)}</span>
+    },
+    {
+      label: 'Actions',
+      key: 'actions',
+      render: (row) => (
+        <Button size="sm" onClick={() => navigate(`/bookings/${row._id}`)}>
+          View
+        </Button>
+      )
+    }
   ];
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
-      {/* Notification */}
+    <div className="bg-gradient-to-br from-gray-50 via-white to-gray-100 min-h-screen p-4 md:p-8">
       {notification && (
         <Notification
           message={notification.message}
@@ -380,815 +444,166 @@ function ClientDetail() {
           onClose={() => setNotification(null)}
         />
       )}
-      
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Client Details</h1>
-          <div className="flex gap-2">
+
+      {/* Header */}
+      <Card className="mb-8 p-6 shadow-lg">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img 
+              src={client.avatarUrl || `https://ui-avatars.com/api/?name=${client.name}&background=0D8ABC&color=fff&size=64`} 
+              alt={client.name}
+              className="w-16 h-16 rounded-full border-4 border-white shadow-md"
+            />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">{client.name}</h1>
+              <p className="text-gray-500 flex items-center gap-2 mt-1">
+                <FaEnvelope /> {client.email}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4 md:mt-0">
             {isEditing ? (
               <>
-                <Button 
-                  color="primary" 
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2"
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button 
-                  color="secondary" 
-                  onClick={handleEditToggle}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
+                <Button color="secondary" onClick={handleEditToggle} className="flex items-center gap-2"><FaTimes /> Cancel</Button>
+                <Button color="primary" onClick={handleSave} loading={saving} className="flex items-center gap-2"><FaSave /> Save</Button>
               </>
             ) : (
-              <Button 
-                color="primary" 
-                onClick={handleEditToggle}
-                className="flex items-center gap-2"
-              >
-                Edit Client
-              </Button>
+              <Button color="primary" onClick={handleEditToggle} className="flex items-center gap-2"><FaEdit /> Edit Client</Button>
             )}
-          <Link to="/clients">
-            <Button color="secondary">Back to Clients</Button>
-          </Link>
+            <Button color="success" onClick={() => navigate(`/bookings/add?clientId=${id}`)} className="flex items-center gap-2"><FaPlus /> New Booking</Button>
           </div>
         </div>
-        <Tab
-          tabs={tabLabels.map(label => ({ label }))}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          className="mb-6"
-        />
-        {/* Tab Content */}
-        {activeTab === 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            {isEditing ? (
-              // Edit Form
-              <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                  {/* Avatar */}
-                  <div className="flex-shrink-0">
-                    <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center text-4xl font-bold text-blue-600">
-                      {editForm.name?.[0] || '?'}
-                    </div>
-                  </div>
-                  {/* Edit Form Fields */}
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Full Name"
-                      name="name"
-                      value={editForm.name}
-                      onChange={handleEditFormChange}
-                      required
-                      placeholder="Enter full name"
-                    />
-                    <Input
-                      label="Email Address"
-                      name="email"
-                      type="email"
-                      value={editForm.email}
-                      onChange={handleEditFormChange}
-                      required
-                      placeholder="Enter email address"
-                    />
-                    <Input
-                      label="Phone Number"
-                      name="phone"
-                      value={editForm.phone}
-                      onChange={handleEditFormChange}
-                      placeholder="Enter phone number"
-                    />
-                    <Input
-                      label="Date of Birth"
-                      name="dateOfBirth"
-                      type="date"
-                      value={editForm.dateOfBirth}
-                      onChange={handleEditFormChange}
-                    />
-                    <Input
-                      label="Passport Number"
-                      name="passportNumber"
-                      value={editForm.passportNumber}
-                      onChange={handleEditFormChange}
-                      placeholder="Enter passport number"
-                    />
-                    <Input
-                      label="Nationality"
-                      name="nationality"
-                      value={editForm.nationality}
-                      onChange={handleEditFormChange}
-                      placeholder="Enter nationality"
-                    />
-                    <Dropdown
-                      label="Status"
-                      name="status"
-                      value={editForm.status}
-                      onChange={handleEditFormChange}
-                      options={[
-                        { value: 'Active', label: 'Active' },
-                        { value: 'Inactive', label: 'Inactive' },
-                      ]}
-                    />
-                    <Input
-                      label="Address"
-                      name="address"
-                      value={editForm.address}
-                      onChange={handleEditFormChange}
-                      placeholder="Enter address"
-                    />
-                    <Input
-                      label="Emergency Contact"
-                      name="emergencyContact"
-                      value={editForm.emergencyContact}
-                      onChange={handleEditFormChange}
-                      placeholder="Enter emergency contact name"
-                    />
-                    <Input
-                      label="Emergency Phone"
-                      name="emergencyPhone"
-                      value={editForm.emergencyPhone}
-                      onChange={handleEditFormChange}
-                      placeholder="Enter emergency phone"
-                    />
-                  </div>
-                </div>
-              </form>
-            ) : (
-              // Read-only Info
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* Avatar */}
-              <div className="flex-shrink-0">
-                <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center text-4xl font-bold text-blue-600">
-                  {client.name?.[0] || '?'}
-                </div>
-              </div>
-              {/* Info */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><span className="font-semibold">Name:</span> {client.name}</div>
-                <div><span className="font-semibold">Email:</span> {client.email}</div>
-                <div><span className="font-semibold">Phone:</span> {client.phone || '-'}</div>
-                <div><span className="font-semibold">Passport #:</span> {client.passportNumber}</div>
-                <div><span className="font-semibold">Nationality:</span> {client.nationality}</div>
-                <div><span className="font-semibold">Status:</span> {client.status || 'Active'}</div>
-                <div><span className="font-semibold">Assigned Agent:</span> {client.assignedAgent?.name || '-'}</div>
-                <div><span className="font-semibold">Notes:</span> {client.notes || '-'}</div>
-                <div><span className="font-semibold">Emergency Contact:</span> {client.emergencyContact ? `${client.emergencyContact.name} (${client.emergencyContact.relation}) - ${client.emergencyContact.phone}` : '-'}</div>
-                <div><span className="font-semibold">Created At:</span> {client.createdAt ? new Date(client.createdAt).toLocaleString() : '-'}</div>
-              </div>
-            </div>
-            )}
-          </div>
-        )}
-        {activeTab === 1 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Files</h2>
-              {isEditing && (
-                <Button color="primary" size="sm" onClick={() => setDocumentModalOpen(true)}>
-                  Upload File
-                </Button>
-              )}
-            </div>
-            
-            {isEditing ? (
-              // Editable Files Interface
-              <div className="space-y-4">
-                {/* Upload Form */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Upload New File</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input
-                      label="File Title"
-                      name="title"
-                      value={newFile.title}
-                      onChange={handleFileInput}
-                      placeholder="Enter file title"
-                    />
-                    <Dropdown
-                      label="File Type"
-                      name="fileType"
-                      value={newFile.fileType}
-                      onChange={handleFileInput}
-                      options={[
-                        { value: '', label: 'Select type' },
-                        { value: 'Passport', label: 'Passport' },
-                        { value: 'Visa', label: 'Visa' },
-                        { value: 'ID Card', label: 'ID Card' },
-                        { value: 'Contract', label: 'Contract' },
-                        { value: 'Other', label: 'Other' },
-                      ]}
-                    />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        File
-                      </label>
-                      <input
-                        type="file"
-                        name="file"
-                        onChange={handleFileInput}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    color="primary" 
-                    onClick={handleUploadFile} 
-                    loading={uploadingFile}
-                    className="mt-3"
-                    disabled={!newFile.title || !newFile.fileType || !newFile.file}
-                  >
-                    Upload File
-                  </Button>
-                </div>
+      </Card>
 
-                {/* Files List */}
-                <div>
-                  <h3 className="font-semibold mb-3">Uploaded Files</h3>
-                  {(client.files && client.files.length > 0) ? (
-                    <div className="space-y-2">
-                      {client.files.map(file => (
-                        <div key={file._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <div className="font-medium">{file.title}</div>
-                            <div className="text-sm text-gray-600">{file.fileType} • {file.createdAt ? new Date(file.createdAt).toLocaleString() : '-'}</div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button color="secondary" size="sm" onClick={() => window.open(file.fileUrl, '_blank')}>
-                              View
-                            </Button>
-                            <Button color="danger" size="sm" onClick={() => handleDeleteFile(file._id)}>
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 text-center py-8">No files uploaded yet.</div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              // Read-only Files
-              (client.files && client.files.length > 0) ? (
-              <Table
-                columns={[
-                  { label: 'Title', accessor: 'title' },
-                  { label: 'Type', accessor: 'fileType' },
-                  { label: 'Uploaded', accessor: 'createdAt', render: v => v ? new Date(v).toLocaleString() : '-' },
-                    { 
-                      label: 'Actions', 
-                      accessor: 'actions',
-                      render: (_, file) => (
-                        <Button color="secondary" size="sm" onClick={() => window.open(file.fileUrl, '_blank')}>
-                          View
-                        </Button>
-                      )
-                    }
-                ]}
-                data={client.files}
-              />
-            ) : (
-              <div className="text-gray-500">No files found for this client.</div>
-              )
-            )}
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard icon={<FaRegCalendarAlt className="text-blue-500" />} title="Total Bookings" value={stats.totalBookings} />
+        <StatCard icon={<FaCheckCircle className="text-green-500" />} title="Completed Trips" value={stats.completedBookings} />
+        <StatCard icon={<FaPlaneDeparture className="text-purple-500" />} title="Upcoming Trips" value={stats.upcomingBookings} />
+        <StatCard icon={<FaDollarSign className="text-yellow-500" />} title="Total Spent" value={`$${stats.totalSpent.toFixed(2)}`} />
+      </div>
 
-            {/* File Upload Modal */}
-            <Modal open={documentModalOpen} onClose={() => setDocumentModalOpen(false)}>
-              <div className="p-4">
-                <h3 className="font-bold mb-4">Upload File</h3>
-                <div className="space-y-4">
-                  <Input
-                    label="File Title"
-                    name="title"
-                    value={newFile.title}
-                    onChange={handleFileInput}
-                    placeholder="Enter file title"
-                  />
-                  <Dropdown
-                    label="File Type"
-                    name="fileType"
-                    value={newFile.fileType}
-                    onChange={handleFileInput}
-                    options={[
-                      { value: '', label: 'Select type' },
-                      { value: 'Passport', label: 'Passport' },
-                      { value: 'Visa', label: 'Visa' },
-                      { value: 'ID Card', label: 'ID Card' },
-                      { value: 'Contract', label: 'Contract' },
-                      { value: 'Other', label: 'Other' },
-                    ]}
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      File
-                    </label>
-                    <input
-                      type="file"
-                      name="file"
-                      onChange={handleFileInput}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                  <Button 
-                    color="primary" 
-                    className="w-full" 
-                    onClick={handleUploadFile} 
-                    loading={uploadingFile}
-                    disabled={!newFile.title || !newFile.fileType || !newFile.file}
-                  >
-                    Upload
-                  </Button>
-                </div>
-              </div>
-            </Modal>
-          </div>
-        )}
-        {activeTab === 2 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            {/* Assigned Vehicle */}
-            <h2 className="text-lg font-bold mb-4">Assigned Vehicle</h2>
-            {client.assignedVehicle ? (
-              <div>
-                <div><span className="font-semibold">Vehicle Name:</span> {client.assignedVehicle.name}</div>
-                <div><span className="font-semibold">Number Plate:</span> {client.assignedVehicle.numberPlate}</div>
-                <div><span className="font-semibold">Type:</span> {client.assignedVehicle.vehicleType}</div>
-                <div><span className="font-semibold">Status:</span> {client.assignedVehicle.status}</div>
-                <Link to={`/vehicles/${client.assignedVehicle._id}`} className="text-blue-600 underline mt-2 inline-block">View Vehicle Details</Link>
-              </div>
-            ) : (
-              <div className="text-gray-500">No vehicle assigned to this client.</div>
-            )}
-          </div>
-        )}
-        {activeTab === 3 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Trips / Bookings</h2>
-              {isEditing && (
-                <Button color="primary" size="sm" onClick={() => setBookingModalOpen(true)}>
-                  Add Booking
-                </Button>
-              )}
-            </div>
-            {bookingsLoading ? (
-              <Loader className="my-6" />
-            ) : bookingsError ? (
-              <div className="text-red-500">{bookingsError}</div>
-            ) : (
-              <Table
-                columns={[
-                  { label: 'Start Date', accessor: 'startDate', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-                  { label: 'End Date', accessor: 'endDate', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-                  { label: 'Destination', accessor: 'destination' },
-                  { label: 'Status', accessor: 'status' },
-                  { label: 'Price', accessor: 'price' },
-                ]}
-                data={bookings}
-              />
-            )}
-            <Modal open={bookingModalOpen} onClose={() => setBookingModalOpen(false)}>
-              <div className="p-4">
-                <h3 className="font-bold mb-2">Add Booking</h3>
-                <Input label="Start Date" name="startDate" type="date" value={newBooking.startDate} onChange={handleBookingInput} />
-                <Input label="End Date" name="endDate" type="date" value={newBooking.endDate} onChange={handleBookingInput} />
-                <Input label="Destination" name="destination" value={newBooking.destination} onChange={handleBookingInput} />
-                <Input label="Status" name="status" value={newBooking.status} onChange={handleBookingInput} />
-                <Input label="Price" name="price" type="number" value={newBooking.price} onChange={handleBookingInput} />
-                <Input label="Notes" name="notes" value={newBooking.notes} onChange={handleBookingInput} />
-                <Button color="primary" className="mt-2 w-full" onClick={handleAddBooking} loading={addingBooking}>Save</Button>
-              </div>
-            </Modal>
-          </div>
-        )}
-        {activeTab === 4 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Payments & Invoices</h2>
-              {isEditing && (
-                <Button color="primary" size="sm" onClick={() => setPaymentModalOpen(true)}>
-                  Add Payment
-                </Button>
-              )}
-            </div>
-            
-            {isEditing ? (
-              // Editable Payments Interface
-              <div className="space-y-4">
-                {/* Add Payment Form */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Add New Payment</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Payment Date"
-                      name="date"
-                      type="date"
-                      value={newPayment.date}
-                      onChange={handlePaymentInput}
-                    />
-                    <Input
-                      label="Amount"
-                      name="amount"
-                      type="number"
-                      value={newPayment.amount}
-                      onChange={handlePaymentInput}
-                      placeholder="Enter amount"
-                    />
-                    <Dropdown
-                      label="Status"
-                      name="status"
-                      value={newPayment.status}
-                      onChange={handlePaymentInput}
-                      options={[
-                        { value: 'Pending', label: 'Pending' },
-                        { value: 'Paid', label: 'Paid' },
-                        { value: 'Overdue', label: 'Overdue' },
-                        { value: 'Cancelled', label: 'Cancelled' },
-                      ]}
-                    />
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        name="description"
-                        value={newPayment.description}
-                        onChange={handlePaymentInput}
-                        placeholder="Enter payment description..."
-                        className="w-full p-3 border border-gray-300 rounded-md resize-none"
-                        rows="2"
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    color="primary" 
-                    onClick={handleAddPayment} 
-                    loading={addingPayment}
-                    className="mt-3"
-                    disabled={!newPayment.date || !newPayment.amount}
-                  >
-                    Add Payment
-                  </Button>
-                </div>
+      {/* Tabs */}
+      <div className="bg-white rounded-2xl shadow-lg">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
 
-                {/* Payments List */}
-                <div>
-                  <h3 className="font-semibold mb-3">Payment History</h3>
-                  {(client.payments && client.payments.length > 0) ? (
-                    <div className="space-y-3">
-                      {client.payments.map(payment => (
-                        <div key={payment._id} className="p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  payment.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                                  payment.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                  payment.status === 'Overdue' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {payment.status}
-                                </span>
-                                <span className="font-semibold">${payment.amount}</span>
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                {payment.date ? new Date(payment.date).toLocaleDateString() : '-'}
-                                {payment.description && ` • ${payment.description}`}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 text-center py-8">No payments recorded yet.</div>
-                  )}
-                </div>
+        <div className="p-6">
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Personal Information */}
+              <div className="md:col-span-2 space-y-6">
+                <Card>
+                  <h3 className="font-bold text-lg mb-4 text-gray-800">Personal Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <InfoField icon={<FaUser />} label="Full Name" value={client.name} editingValue={editForm?.name} name="name" onChange={handleInputChange} isEditing={isEditing} />
+                    <InfoField icon={<FaEnvelope />} label="Email Address" value={client.email} editingValue={editForm?.email} name="email" onChange={handleInputChange} isEditing={isEditing} type="email" />
+                    <InfoField icon={<FaPhone />} label="Phone Number" value={client.phone} editingValue={editForm?.phone} name="phone" onChange={handleInputChange} isEditing={isEditing} />
+                    <InfoField icon={<FaBirthdayCake />} label="Date of Birth" value={client.dateOfBirth ? new Date(client.dateOfBirth).toLocaleDateString() : 'N/A'} editingValue={editForm?.dateOfBirth} name="dateOfBirth" onChange={handleInputChange} isEditing={isEditing} type="date" />
+                    <InfoField icon={<FaGlobe />} label="Nationality" value={client.nationality} editingValue={editForm?.nationality} name="nationality" onChange={handleInputChange} isEditing={isEditing} />
+                    <InfoField icon={<FaPassport />} label="Passport Number" value={client.passportNumber} editingValue={editForm?.passportNumber} name="passportNumber" onChange={handleInputChange} isEditing={isEditing} />
+                    <InfoField icon={<FaUser />} label="Gender" value={client.gender} editingValue={editForm?.gender} name="gender" onChange={handleInputChange} isEditing={isEditing} />
+                    <InfoField icon={<FaMapMarkerAlt />} label="Address" value={client.address} editingValue={editForm?.address} name="address" onChange={handleInputChange} isEditing={isEditing} fullWidth />
+                  </div>
+                </Card>
+
+                <Card>
+                  <h3 className="font-bold text-lg mb-4 text-gray-800">Emergency Contact</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <InfoField icon={<FaUserShield />} label="Contact Name" value={client.emergencyContact} editingValue={editForm?.emergencyContact} name="emergencyContact" onChange={handleInputChange} isEditing={isEditing} />
+                    <InfoField icon={<FaPhoneAlt />} label="Contact Phone" value={client.emergencyPhone} editingValue={editForm?.emergencyPhone} name="emergencyPhone" onChange={handleInputChange} isEditing={isEditing} />
+                  </div>
+                </Card>
               </div>
-            ) : (
-              // Read-only Payments
-              (client.payments && client.payments.length > 0) ? (
-                <div className="space-y-3">
-                  {client.payments.map(payment => (
-                    <div key={payment._id} className="p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          payment.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                          payment.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                          payment.status === 'Overdue' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {payment.status}
-                        </span>
-                        <span className="font-semibold">${payment.amount}</span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {payment.date ? new Date(payment.date).toLocaleDateString() : '-'}
-                        {payment.description && ` • ${payment.description}`}
+
+              {/* Status and Agent */}
+              <div className="space-y-6">
+                <Card>
+                  <h3 className="font-bold text-lg mb-4 text-gray-800">Status</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 text-sm font-semibold rounded-full ${client.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {client.status}
+                    </span>
+                  </div>
+                </Card>
+                <Card>
+                  <h3 className="font-bold text-lg mb-4 text-gray-800">Assigned Agent</h3>
+                  {client.assignedAgent ? (
+                    <div className="flex items-center gap-3">
+                      <img src={`https://ui-avatars.com/api/?name=${client.assignedAgent.name}&background=random`} alt={client.assignedAgent.name} className="w-10 h-10 rounded-full" />
+                      <div>
+                        <p className="font-semibold text-gray-900">{client.assignedAgent.name}</p>
+                        <p className="text-sm text-gray-500">{client.assignedAgent.email}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <p className="text-gray-500">No agent assigned.</p>
+                  )}
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'bookings' && (
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Client Bookings</h3>
+              {bookingsLoading ? (
+                <Loader />
+              ) : bookings.length > 0 ? (
+                <Table columns={bookingColumns} data={bookings} />
               ) : (
-                <div className="text-gray-500">No payments found for this client.</div>
-              )
-            )}
-
-            {/* Payment Modal */}
-            <Modal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}>
-              <div className="p-4">
-                <h3 className="font-bold mb-4">Add Payment</h3>
-                <div className="space-y-4">
-                  <Input 
-                    label="Payment Date" 
-                    name="date" 
-                    type="date" 
-                    value={newPayment.date}
-                    onChange={handlePaymentInput}
-                  />
-                  <Input 
-                    label="Amount" 
-                    name="amount" 
-                    type="number" 
-                    value={newPayment.amount}
-                    onChange={handlePaymentInput}
-                  />
-                  <Dropdown
-                    label="Status"
-                    name="status"
-                    value={newPayment.status}
-                    onChange={handlePaymentInput}
-                    options={[
-                      { value: 'Pending', label: 'Pending' },
-                      { value: 'Paid', label: 'Paid' },
-                      { value: 'Overdue', label: 'Overdue' },
-                      { value: 'Cancelled', label: 'Cancelled' },
-                    ]}
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      name="description"
-                      value={newPayment.description}
-                      onChange={handlePaymentInput}
-                      placeholder="Enter payment description..."
-                      className="w-full p-3 border border-gray-300 rounded-md resize-none"
-                      rows="3"
-                    />
-                  </div>
-                  <Button 
-                    color="primary" 
-                    className="w-full" 
-                    onClick={handleAddPayment} 
-                    loading={addingPayment}
-                    disabled={!newPayment.date || !newPayment.amount}
-                  >
-                    Add Payment
-                  </Button>
+                <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-lg">
+                  <p className="text-gray-500">This client has no bookings yet.</p>
+                  <Button onClick={() => navigate(`/bookings/add?clientId=${id}`)} className="mt-4">Create First Booking</Button>
                 </div>
-              </div>
-            </Modal>
-          </div>
-        )}
-        {activeTab === 5 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Notes & Communication</h2>
-              {isEditing && (
-                <Button color="primary" size="sm" onClick={() => setNoteModalOpen(true)}>
-                  Add Note
-                </Button>
               )}
             </div>
-            
-            {isEditing ? (
-              // Editable Notes Interface
-              <div className="space-y-4">
-                {/* Add Note Form */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Add New Note</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Dropdown
-                      label="Note Type"
-                      name="type"
-                      value={newNote.type}
-                      onChange={handleNoteInput}
-                      options={[
-                        { value: 'General', label: 'General' },
-                        { value: 'Important', label: 'Important' },
-                        { value: 'Follow-up', label: 'Follow-up' },
-                        { value: 'Issue', label: 'Issue' },
-                        { value: 'Reminder', label: 'Reminder' },
-                      ]}
-                    />
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Note Content
-                      </label>
-                      <textarea
-                        name="note"
-                        value={newNote.note}
-                        onChange={handleNoteInput}
-                        placeholder="Enter your note here..."
-                        className="w-full p-3 border border-gray-300 rounded-md resize-none"
-                        rows="3"
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    color="primary" 
-                    onClick={handleAddNote} 
-                    loading={addingNote}
-                    className="mt-3"
-                    disabled={!newNote.note.trim()}
-                  >
-                    Add Note
-                  </Button>
-                </div>
+          )}
 
-                {/* Notes List */}
-                <div>
-                  <h3 className="font-semibold mb-3">Client Notes</h3>
-                  {(client.notes && client.notes.length > 0) ? (
-                    <div className="space-y-3">
-                      {client.notes.map(note => (
-                        <div key={note._id} className="p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  note.type === 'Important' ? 'bg-red-100 text-red-800' :
-                                  note.type === 'Follow-up' ? 'bg-yellow-100 text-yellow-800' :
-                                  note.type === 'Issue' ? 'bg-orange-100 text-orange-800' :
-                                  note.type === 'Reminder' ? 'bg-blue-100 text-blue-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {note.type}
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                  {note.createdAt ? new Date(note.createdAt).toLocaleString() : '-'}
-                                </span>
-                              </div>
-                              <p className="text-gray-900">{note.note}</p>
-                              {note.author && (
-                                <p className="text-sm text-gray-600 mt-1">- {note.author}</p>
-                              )}
-                            </div>
-                            <Button 
-                              color="danger" 
-                              size="sm" 
-                              onClick={() => handleDeleteNote(note._id)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 text-center py-8">No notes added yet.</div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              // Read-only Notes
-              (client.notes && client.notes.length > 0) ? (
-                <div className="space-y-3">
-                  {client.notes.map(note => (
-                    <div key={note._id} className="p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          note.type === 'Important' ? 'bg-red-100 text-red-800' :
-                          note.type === 'Follow-up' ? 'bg-yellow-100 text-yellow-800' :
-                          note.type === 'Issue' ? 'bg-orange-100 text-orange-800' :
-                          note.type === 'Reminder' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {note.type}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {note.createdAt ? new Date(note.createdAt).toLocaleString() : '-'}
-                        </span>
-                      </div>
-                      <p className="text-gray-900">{note.note}</p>
-                      {note.author && (
-                        <p className="text-sm text-gray-600 mt-1">- {note.author}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-gray-500">No notes found for this client.</div>
-              )
-            )}
-
-            {/* Note Modal */}
-            <Modal open={noteModalOpen} onClose={() => setNoteModalOpen(false)}>
-              <div className="p-4">
-                <h3 className="font-bold mb-4">Add Note</h3>
-                <div className="space-y-4">
-                  <Dropdown
-                    label="Note Type"
-                    name="type"
-                    value={newNote.type}
-                    onChange={handleNoteInput}
-                    options={[
-                      { value: 'General', label: 'General' },
-                      { value: 'Important', label: 'Important' },
-                      { value: 'Follow-up', label: 'Follow-up' },
-                      { value: 'Issue', label: 'Issue' },
-                      { value: 'Reminder', label: 'Reminder' },
-                    ]}
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Note Content
-                    </label>
-                    <textarea
-                      name="note"
-                      value={newNote.note}
-                      onChange={handleNoteInput}
-                      placeholder="Enter your note here..."
-                      className="w-full p-3 border border-gray-300 rounded-md resize-none"
-                      rows="4"
-                    />
-                  </div>
-                  <Button 
-                    color="primary" 
-                    className="w-full" 
-                    onClick={handleAddNote} 
-                    loading={addingNote}
-                    disabled={!newNote.note.trim()}
-                  >
-                    Add Note
-                  </Button>
-                </div>
-              </div>
-            </Modal>
-            <Table
-              columns={[
-                { label: 'Date', accessor: 'date' },
-                { label: 'Author', accessor: 'author' },
-                { label: 'Note', accessor: 'note' },
-              ]}
-              data={mockNotes}
-            />
-            <Modal open={noteModalOpen} onClose={() => setNoteModalOpen(false)}>
-              <div className="p-4">
-                <h3 className="font-bold mb-2">Add Note</h3>
-                <Input label="Date" name="date" type="date" />
-                <Input label="Author" name="author" />
-                <Input label="Note" name="note" />
-                <Button color="primary" className="mt-2 w-full" onClick={() => setNoteModalOpen(false)}>Save</Button>
-              </div>
-            </Modal>
-          </div>
-        )}
-        {activeTab === 6 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Documents</h2>
-              <Button color="primary" size="sm" onClick={() => setDocumentModalOpen(true)}>Upload Document</Button>
+          {/* Placeholder for other tabs */}
+          {activeTab !== 'overview' && activeTab !== 'bookings' && (
+            <div className="text-center py-20">
+              <h3 className="text-2xl font-semibold text-gray-700">Coming Soon</h3>
+              <p className="text-gray-500 mt-2">This feature is under development and will be available shortly.</p>
             </div>
-            <Table
-              columns={[
-                { label: 'Type', accessor: 'type' },
-                { label: 'Uploaded', accessor: 'uploaded' },
-              ]}
-              data={mockDocuments}
-            />
-            <Modal open={documentModalOpen} onClose={() => setDocumentModalOpen(false)}>
-              <div className="p-4">
-                <h3 className="font-bold mb-2">Upload Document</h3>
-                <Input label="Type" name="type" />
-                <Input label="File" name="file" type="file" />
-                <Button color="primary" className="mt-2 w-full" onClick={handleUploadFile} loading={uploadingFile}>Upload</Button>
-              </div>
-            </Modal>
-          </div>
-        )}
-        {activeTab === 7 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <h2 className="text-lg font-bold mb-4">Activity Log</h2>
-            <Table
-              columns={[
-                { label: 'Date', accessor: 'date' },
-                { label: 'Action', accessor: 'action' },
-                { label: 'User', accessor: 'user' },
-              ]}
-              data={mockActivity}
-            />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+const InfoField = ({ icon, label, value, isEditing, editingValue, name, onChange, type = 'text', fullWidth = false }) => (
+  <div className={fullWidth ? 'md:col-span-2' : ''}>
+    <label className="text-xs font-semibold text-gray-500 flex items-center gap-2 mb-1">{icon} {label}</label>
+    {isEditing ? (
+      <Input
+        type={type}
+        name={name}
+        value={editingValue || ''}
+        onChange={onChange}
+        className="w-full text-sm p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+      />
+    ) : (
+      <p className="text-gray-800 font-medium break-words pt-2">{value || 'N/A'}</p>
+    )}
+  </div>
+);
 
 export default ClientDetail; 

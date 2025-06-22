@@ -30,6 +30,9 @@ function AgencyProfile() {
   const [error, setError] = useState('');
   const [formData, setFormData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   const populateFormData = (data) => {
     setFormData({
@@ -83,6 +86,18 @@ function AgencyProfile() {
     if (token) fetchData();
   }, [token]);
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setNotification({ message: 'File size must be less than 5MB.', type: 'error' });
+        return;
+      }
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     // Handle nested businessHours object
@@ -115,28 +130,38 @@ function AgencyProfile() {
   const handleSave = async () => {
     setSaving(true);
     
-    // Re-nest address object for the API call
-    const payload = {
-      ...formData,
-      address: {
-        street: formData.street,
-        city: formData.city,
-        state: formData.state,
-        country: formData.country,
-        postalCode: formData.postalCode,
+    const data = new FormData();
+
+    // Append all form fields
+    for (const key in formData) {
+      if (Object.hasOwnProperty.call(formData, key)) {
+        const value = formData[key];
+        // Handle nested objects and arrays
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          for (const nestedKey in value) {
+            if (Object.hasOwnProperty.call(value, nestedKey)) {
+              data.append(`${key}[${nestedKey}]`, value[nestedKey]);
+            }
+          }
+        } else if (Array.isArray(value)) {
+          value.forEach(item => data.append(`${key}[]`, item));
+        } else if (value !== undefined && value !== null) {
+          data.append(key, value);
+        }
       }
-    };
-    // Remove flat address properties from top-level payload
-    delete payload.street;
-    delete payload.city;
-    delete payload.state;
-    delete payload.country;
-    delete payload.postalCode;
+    }
+    
+    if (logoFile) {
+      data.append('logo', logoFile, logoFile.name);
+    }
 
     try {
-      const updatedAgency = await updateAgencyProfile(payload, token);
+      const updatedAgency = await updateAgencyProfile(data, token);
       setAgency(updatedAgency);
+      populateFormData(updatedAgency);
       setEditing(false);
+      setLogoFile(null);
+      setLogoPreview(null);
       setNotification({ message: 'Agency profile updated successfully!', type: 'success' });
     } catch (err) {
       setNotification({ 
@@ -153,6 +178,8 @@ function AgencyProfile() {
       populateFormData(agency);
     }
     setEditing(false);
+    setLogoFile(null);
+    setLogoPreview(null);
   };
 
   const tabs = [
@@ -308,14 +335,36 @@ function AgencyProfile() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="flex items-start space-x-6">
-                <div className="flex-shrink-0">
-                  <div className="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-                    {agency.logo ? (
-                      <img src={agency.logo} alt="Agency Logo" className="w-full h-full object-cover rounded-lg" />
+                <div className="flex-shrink-0 relative">
+                   <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/png, image/jpeg, image/gif"
+                    disabled={!editing}
+                  />
+                  <div className="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                    {logoPreview || (agency && agency.logo) ? (
+                      <img 
+                        src={logoPreview ? logoPreview : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${agency.logo}`} 
+                        alt="Agency Logo" 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
                       <FaBuilding className="text-4xl text-gray-400" />
                     )}
                   </div>
+                  {editing && (
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                        className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-110"
+                        aria-label="Upload new logo"
+                    >
+                        <FaUpload size={14}/>
+                    </button>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">

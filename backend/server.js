@@ -16,7 +16,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use('/api/uploads', express.static('backend/uploads'));
+app.use('/uploads', express.static('uploads'));
 
 // Import routes
 const authRoutes = require('./routes/auth');

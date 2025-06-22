@@ -261,9 +261,13 @@ function Clients() {
       label: 'Actions',
       key: 'actions',
       render: (row) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => navigate(`/clients/${row._id}`)}><FaEye /></Button>
-          <Button size="sm" color="danger" variant="outline" onClick={() => handleDeleteClient(row._id)}><FaTrash /></Button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(`/clients/edit/${row._id}`)} className="text-blue-600 hover:text-blue-800 p-1" title="Edit Client">
+            <FaEdit size={16}/>
+          </button>
+          <button onClick={() => handleDeleteClient(row._id)} className="text-red-600 hover:text-red-800 p-1" title="Delete Client">
+            <FaTrash size={16}/>
+          </button>
         </div>
       )
     }

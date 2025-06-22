@@ -16,6 +16,13 @@ export const getClient = async (id, token) => {
   return res.data;
 };
 
+export const getClientById = async (id, token) => {
+  const res = await axios.get(`${API_URL}/clients/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
 export const addClient = async (client, token) => {
   if (client.avatar) {
     const formData = new FormData();
