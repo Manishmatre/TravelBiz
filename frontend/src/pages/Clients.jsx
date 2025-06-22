@@ -12,6 +12,7 @@ import { getUsers } from '../services/userService';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Notification from '../components/common/Notification';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import PageHeading from '../components/common/PageHeading';
 
 function Clients() {
   const { token, user } = useAuth();
@@ -310,30 +311,28 @@ function Clients() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Client Management</h1>
-          <p className="text-gray-600 mt-1">Manage all your clients and passengers</p>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            color="secondary" 
-            onClick={handleRefresh}
-            className="flex items-center gap-2"
-            disabled={loading}
-          >
-            <FaSyncAlt className="w-4 h-4" />
-            Refresh
-          </Button>
-          <Button 
-            color="primary" 
-            onClick={() => navigate('/clients/add')}
-            className="flex items-center gap-2"
-          >
-            <FaPlus /> Add Client
-          </Button>
-        </div>
-      </div>
+      <PageHeading
+        icon={<FaUsers />}
+        title="Client Management"
+        subtitle="Manage all your clients and passengers"
+      >
+        <Button 
+          color="secondary" 
+          onClick={handleRefresh}
+          className="flex items-center gap-2"
+          disabled={loading}
+        >
+          <FaSyncAlt className="w-4 h-4" />
+          Refresh
+        </Button>
+        <Button 
+          color="primary" 
+          onClick={() => navigate('/clients/add')}
+          className="flex items-center gap-2"
+        >
+          <FaPlus /> Add Client
+        </Button>
+      </PageHeading>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -344,137 +343,52 @@ function Clients() {
         <StatCard icon={<FaUsers />} label="New This Month" value={newClientsThisMonth} accentColor="yellow" />
       </div>
 
-      {/* Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Nationality Distribution */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold mb-4">Clients by Nationality</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={nationalityData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {nationalityData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={nationalityColors[index % nationalityColors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Clients by Month */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold mb-4">New Clients by Month</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={clientsByMonth} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters and Search */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <SearchInput
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search clients..."
-              className="w-64"
-            />
-            <Button
-              color="secondary"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="flex items-center gap-2"
-            >
-              <FaFilter />
-              {showAdvancedFilters ? 'Hide' : 'Show'} Filters
+      {/* Modern Filter Bar */}
+      <div className="flex flex-wrap items-center justify-between bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
+        <SearchInput
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search clients..."
+          className="w-96"
+        />
+        <div className="flex gap-4 items-center">
+          <Dropdown
+            value={filterAgent}
+            onChange={e => setFilterAgent(e.target.value)}
+            options={[
+              { value: '', label: 'All Agents' },
+              ...agents.map(agent => ({ value: agent._id, label: agent.name }))
+            ]}
+            className="w-48"
+          />
+          <Dropdown
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            options={[
+              { value: '', label: 'All Status' },
+              { value: 'Active', label: 'Active' },
+              { value: 'Inactive', label: 'Inactive' }
+            ]}
+            className="w-40"
+          />
+          <Dropdown
+            value={filterNationality}
+            onChange={e => setFilterNationality(e.target.value)}
+            options={[
+              { value: '', label: 'All Nationalities' },
+              ...[...new Set(clients.map(c => c.nationality).filter(Boolean))].map(nat => ({ value: nat, label: nat }))
+            ]}
+            className="w-48"
+          />
+          <Button color="secondary" onClick={exportToCSV} className="flex items-center gap-2">
+            <FaDownload /> Export CSV
+          </Button>
+          {selectedClients.length > 0 && (
+            <Button color="danger" onClick={handleBulkDelete} className="flex items-center gap-2">
+              <FaTrash /> Delete Selected ({selectedClients.length})
             </Button>
-          </div>
-          
-          <div className="flex gap-2">
-            {selectedClients.length > 0 && (
-              <Button
-                color="danger"
-                onClick={handleBulkDelete}
-                className="flex items-center gap-2"
-              >
-                <FaTrash />
-                Delete Selected ({selectedClients.length})
-              </Button>
-            )}
-            <Button
-              color="secondary"
-              onClick={exportToCSV}
-              className="flex items-center gap-2"
-            >
-              <FaDownload />
-              Export CSV
-            </Button>
-          </div>
+          )}
         </div>
-
-        {/* Advanced Filters */}
-        {showAdvancedFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-            <Dropdown
-              value={filterAgent}
-              onChange={e => setFilterAgent(e.target.value)}
-              options={[
-                { value: '', label: 'All Agents' },
-                ...agents.map(agent => ({ value: agent._id, label: agent.name }))
-              ]}
-              className="w-full"
-            />
-            <Dropdown
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              options={[
-                { value: '', label: 'All Status' },
-                { value: 'Active', label: 'Active' },
-                { value: 'Inactive', label: 'Inactive' }
-              ]}
-              className="w-full"
-            />
-            <Dropdown
-              value={filterNationality}
-              onChange={e => setFilterNationality(e.target.value)}
-              options={[
-                { value: '', label: 'All Nationalities' },
-                ...uniqueNationalities.map(nat => ({ value: nat, label: nat }))
-              ]}
-              className="w-full"
-            />
-            <Dropdown
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
-              options={[
-                { value: 'name', label: 'Sort by Name' },
-                { value: 'email', label: 'Sort by Email' },
-                { value: 'createdAt', label: 'Sort by Date' },
-                { value: 'totalBookings', label: 'Sort by Bookings' }
-              ]}
-              className="w-full"
-            />
-          </div>
-        )}
       </div>
 
       {/* Table */}

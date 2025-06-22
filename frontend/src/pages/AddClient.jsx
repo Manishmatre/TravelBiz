@@ -4,11 +4,12 @@ import { addClient, getClient, updateClient } from '../services/clientService';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
-import { FaUsers, FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaUsers, FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaCheckCircle, FaExclamationTriangle, FaUser, FaEnvelope, FaPhone, FaPassport, FaBuilding, FaUserTie, FaLanguage, FaUserShield, FaExclamationCircle } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getUsers } from '../services/userService';
 import Loader from '../components/common/Loader';
 import Card from '../components/common/Card';
+import PageHeading from '../components/common/PageHeading';
 
 const AddClient = () => {
   const { token, user } = useAuth();
@@ -209,23 +210,11 @@ const AddClient = () => {
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            {isEditMode ? 'Edit Client' : 'Add New Client'}
-          </h1>
-          <p className="text-gray-600 mt-1">
-            {isEditMode ? 'Update client information and preferences' : 'Create a new client profile with comprehensive details'}
-          </p>
-        </div>
-        <Button 
-          color="secondary" 
-          onClick={() => navigate('/clients')}
-          className="flex items-center gap-2"
-        >
-          <FaArrowLeft /> Back to Clients
-        </Button>
-      </div>
+      <PageHeading
+        icon={<FaUser />}
+        title={isEditMode ? 'Edit Client' : 'Add New Client'}
+        subtitle="Add a new client or edit existing client details"
+      />
 
       {/* Success Message */}
       {success && (
@@ -248,42 +237,25 @@ const AddClient = () => {
       )}
 
       {/* Form Card */}
-      <Card className="p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-blue-100 rounded-full">
-            <FaUsers className="text-blue-600 text-xl" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {isEditMode ? 'Update Client Information' : 'Client Information'}
-            </h2>
-            <p className="text-gray-600">
-              {isEditMode 
-                ? 'Modify the client details below' 
-                : 'Fill in the client details below to add them to your system'
-              }
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-8">
+      <Card className="p-6 relative">
+        <form onSubmit={handleSubmit} className="space-y-12 pb-24">
           {/* Personal Information */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Personal Information</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2 flex items-center gap-2"><FaUser className="text-blue-400" /> Personal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <Input
-                  label="Full Name *"
+                  label={<span className="flex items-center gap-2">Full Name <span className="text-red-500">*</span></span>}
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   required
                   placeholder="Enter full name"
                   error={validationErrors.name}
+                  icon={<FaUser />}
                 />
-
                 <Input
-                  label="Email Address *"
+                  label={<span className="flex items-center gap-2">Email Address <span className="text-red-500">*</span></span>}
                   name="email"
                   type="email"
                   value={form.email}
@@ -291,8 +263,8 @@ const AddClient = () => {
                   required
                   placeholder="Enter email address"
                   error={validationErrors.email}
+                  icon={<FaEnvelope />}
                 />
-
                 <Input
                   label="Phone Number"
                   name="phone"
@@ -300,8 +272,8 @@ const AddClient = () => {
                   onChange={handleChange}
                   placeholder="Enter phone number"
                   error={validationErrors.phone}
+                  icon={<FaPhone />}
                 />
-
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Date of Birth"
@@ -311,7 +283,6 @@ const AddClient = () => {
                     onChange={handleChange}
                     error={validationErrors.dateOfBirth}
                   />
-
                   <Dropdown
                     label="Gender"
                     name="gender"
@@ -326,10 +297,38 @@ const AddClient = () => {
                   />
                 </div>
               </div>
+              <div className="space-y-4">
+                <Input
+                  label="Address"
+                  name="address"
+                  value={form.address}
+                  onChange={handleChange}
+                  placeholder="Enter address"
+                />
+                <Input
+                  label="Emergency Contact Name"
+                  name="emergencyContact"
+                  value={form.emergencyContact}
+                  onChange={handleChange}
+                  placeholder="Enter emergency contact name"
+                />
+                <Input
+                  label="Emergency Contact Phone"
+                  name="emergencyPhone"
+                  value={form.emergencyPhone}
+                  onChange={handleChange}
+                  placeholder="Enter emergency phone number"
+                  error={validationErrors.emergencyPhone}
+                  icon={<FaPhone />}
+                />
+              </div>
             </div>
+          </div>
 
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Travel Documents</h3>
+          {/* Travel Documents & Status */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2 flex items-center gap-2"><FaPassport className="text-blue-400" /> Travel & Status</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <Input
                   label="Passport Number"
@@ -337,8 +336,8 @@ const AddClient = () => {
                   value={form.passportNumber}
                   onChange={handleChange}
                   placeholder="Enter passport number"
+                  icon={<FaPassport />}
                 />
-
                 <Dropdown
                   label="Nationality"
                   name="nationality"
@@ -348,8 +347,8 @@ const AddClient = () => {
                     { value: '', label: 'Select Nationality' },
                     ...nationalities.map(nat => ({ value: nat, label: nat }))
                   ]}
+                  searchable
                 />
-
                 <Dropdown
                   label="Status"
                   name="status"
@@ -362,13 +361,41 @@ const AddClient = () => {
                   ]}
                 />
               </div>
+              <div className="space-y-4">
+                <Dropdown
+                  label="Preferred Language"
+                  name="preferredLanguage"
+                  value={form.preferredLanguage}
+                  onChange={handleChange}
+                  options={[
+                    { value: '', label: 'Select Language' },
+                    ...languages.map(lang => ({ value: lang, label: lang }))
+                  ]}
+                  searchable
+                  icon={<FaLanguage />}
+                />
+                <Input
+                  label="Dietary Restrictions"
+                  name="dietaryRestrictions"
+                  value={form.dietaryRestrictions}
+                  onChange={handleChange}
+                  placeholder="Enter dietary restrictions"
+                />
+                <Input
+                  label="Special Requirements"
+                  name="specialRequirements"
+                  value={form.specialRequirements}
+                  onChange={handleChange}
+                  placeholder="Enter any special requirements"
+                />
+              </div>
             </div>
           </div>
 
           {/* Professional Information */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Professional Information</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2 flex items-center gap-2"><FaUserTie className="text-blue-400" /> Professional Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <Input
                   label="Occupation"
@@ -376,16 +403,16 @@ const AddClient = () => {
                   value={form.occupation}
                   onChange={handleChange}
                   placeholder="Enter occupation"
+                  icon={<FaUserTie />}
                 />
-
                 <Input
                   label="Company"
                   name="company"
                   value={form.company}
                   onChange={handleChange}
                   placeholder="Enter company name"
+                  icon={<FaBuilding />}
                 />
-
                 {user?.role === 'admin' && (
                   <Dropdown
                     label="Assigned Agent"
@@ -396,94 +423,29 @@ const AddClient = () => {
                       { value: '', label: 'Select Agent' },
                       ...agents.map(agent => ({ value: agent._id, label: agent.name }))
                     ]}
+                    icon={<FaUserShield />}
+                    searchable
                   />
                 )}
               </div>
             </div>
-
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Preferences</h3>
-              <div className="space-y-4">
-                <Dropdown
-                  label="Preferred Language"
-                  name="preferredLanguage"
-                  value={form.preferredLanguage}
-                  onChange={handleChange}
-                  options={languages.map(lang => ({ value: lang, label: lang }))}
-                />
-
-                <Input
-                  label="Dietary Restrictions"
-                  name="dietaryRestrictions"
-                  value={form.dietaryRestrictions}
-                  onChange={handleChange}
-                  placeholder="e.g., Vegetarian, Gluten-free, etc."
-                />
-
-                <Input
-                  label="Special Requirements"
-                  name="specialRequirements"
-                  value={form.specialRequirements}
-                  onChange={handleChange}
-                  placeholder="Any special needs or requirements"
-                />
-              </div>
-            </div>
           </div>
 
-          {/* Address and Emergency Contact */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Address</h3>
-              <div className="space-y-4">
-                <Input
-                  label="Address"
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  placeholder="Enter full address"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Emergency Contact</h3>
-              <div className="space-y-4">
-                <Input
-                  label="Emergency Contact Name"
-                  name="emergencyContact"
-                  value={form.emergencyContact}
-                  onChange={handleChange}
-                  placeholder="Emergency contact person name"
-                />
-
-                <Input
-                  label="Emergency Contact Phone"
-                  name="emergencyPhone"
-                  value={form.emergencyPhone}
-                  onChange={handleChange}
-                  placeholder="Emergency contact phone number"
-                  error={validationErrors.emergencyPhone}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-4 pt-6 border-t border-gray-200">
-            <Button 
+          {/* Sticky Save/Cancel Bar */}
+          <div className="fixed left-0 right-0 bottom-0 z-30 bg-white/90 border-t border-gray-200 shadow-lg flex justify-end gap-4 px-8 py-4">
+            <Button
               type="button"
-              color="secondary" 
+              color="secondary"
               onClick={() => navigate('/clients')}
-              className="flex-1"
+              className="flex items-center gap-2"
             >
-              Cancel
+              <FaArrowLeft /> Cancel
             </Button>
-            <Button 
+            <Button
               type="submit"
-              color="primary" 
+              color="primary"
               loading={loading}
-              className="flex-1 flex items-center justify-center gap-2"
+              className="flex items-center gap-2"
             >
               <FaSave /> {isEditMode ? 'Update Client' : 'Add Client'}
             </Button>

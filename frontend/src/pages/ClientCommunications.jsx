@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FaEnvelope, FaPhone, FaSms, FaWhatsapp, FaSearch, FaFilter, FaCalendarAlt, FaUser, FaEye, FaReply } from 'react-icons/fa';
+import { FaEnvelope, FaPhone, FaSms, FaWhatsapp, FaSearch, FaFilter, FaCalendarAlt, FaUser, FaEye, FaReply, FaDownload } from 'react-icons/fa';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Table from '../components/common/Table';
+import PageHeading from '../components/common/PageHeading';
+import StatCard from '../components/common/StatCard';
+import SearchInput from '../components/common/SearchInput';
+import Dropdown from '../components/common/Dropdown';
 
 function ClientCommunications() {
   const [communications, setCommunications] = useState([]);
@@ -176,152 +180,86 @@ function ClientCommunications() {
     )}
   ];
 
+  // Stats
+  const totalComms = communications.length;
+  const emailComms = communications.filter(c => c.type === 'email').length;
+  const smsComms = communications.filter(c => c.type === 'sms').length;
+  const phoneComms = communications.filter(c => c.type === 'phone').length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <FaEnvelope className="text-blue-600" />
-            Client Communications
-          </h1>
-          <p className="text-gray-600 mt-2">Track all communication history with your clients</p>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6">
+        <PageHeading
+          icon={<FaEnvelope />}
+          title="Client Communications"
+          subtitle="Track all communication history with your clients"
+          iconColor="text-blue-600"
+        >
+          <Button>
+            <FaEnvelope className="mr-2" />
+            New Communication
+          </Button>
+        </PageHeading>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard icon={<FaEnvelope />} label="Total Communications" value={totalComms} accentColor="blue" />
+          <StatCard icon={<FaEnvelope />} label="Emails" value={emailComms} accentColor="yellow" />
+          <StatCard icon={<FaSms />} label="SMS" value={smsComms} accentColor="purple" />
+          <StatCard icon={<FaPhone />} label="Phone Calls" value={phoneComms} accentColor="green" />
         </div>
-        <Button>
-          <FaEnvelope className="mr-2" />
-          New Communication
-        </Button>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Communications</p>
-                <p className="text-2xl font-bold text-gray-900">{communications.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaEnvelope className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Sent Today</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {communications.filter(c => 
-                    new Date(c.date).toDateString() === new Date().toDateString() && 
-                    c.status === 'sent'
-                  ).length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FaEnvelope className="text-green-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {communications.filter(c => c.status === 'pending').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <FaEnvelope className="text-yellow-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">High Priority</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {communications.filter(c => c.priority === 'high').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <FaEnvelope className="text-red-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search communications..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FaFilter className="text-gray-400" />
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Types</option>
-                  <option value="email">Email</option>
-                  <option value="phone">Phone</option>
-                  <option value="sms">SMS</option>
-                  <option value="whatsapp">WhatsApp</option>
-                </select>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="sent">Sent</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline">
-                <FaCalendarAlt className="mr-2" />
-                Export
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Communications Table */}
-      <Card>
-        <div className="p-6">
-          <Table
-            data={filteredCommunications}
-            columns={columns}
-            loading={loading}
-            emptyMessage="No communications found"
+        {/* Modern Filter Bar */}
+        <div className="flex flex-wrap items-center justify-between bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
+          <SearchInput
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search communications..."
+            className="w-96"
           />
+          <div className="flex gap-4 items-center">
+            <Dropdown
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Types' },
+                { value: 'email', label: 'Email' },
+                { value: 'sms', label: 'SMS' },
+                { value: 'phone', label: 'Phone' },
+                { value: 'whatsapp', label: 'WhatsApp' }
+              ]}
+              className="w-40"
+            />
+            <Dropdown
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'sent', label: 'Sent' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'completed', label: 'Completed' },
+                { value: 'failed', label: 'Failed' }
+              ]}
+              className="w-40"
+            />
+            <Button variant="outline">
+              <FaDownload className="mr-2" />
+              Export
+            </Button>
+          </div>
         </div>
-      </Card>
+
+        <Card>
+          <div className="p-6">
+            <Table
+              data={filteredCommunications}
+              columns={columns}
+              loading={loading}
+              emptyMessage="No communications found"
+            />
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1,66 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { FaStar, FaSearch, FaFilter, FaUserTie, FaPhone, FaEnvelope } from 'react-icons/fa';
+import { FaStar, FaSearch, FaFilter, FaUserTie, FaPhone, FaEnvelope, FaDollarSign, FaCalendarAlt, FaDownload } from 'react-icons/fa';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Table from '../components/common/Table';
+import PageHeading from '../components/common/PageHeading';
+import { getClients } from '../services/clientService';
+import { useAuth } from '../contexts/AuthContext';
+import StatCard from '../components/common/StatCard';
+import SearchInput from '../components/common/SearchInput';
+import Dropdown from '../components/common/Dropdown';
 
 function VipClients() {
-  const [vipClients, setVipClients] = useState([]);
+  const { token } = useAuth();
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Mock data for VIP clients
   useEffect(() => {
-    const mockVipClients = [
-      {
-        id: 1,
-        name: 'John Smith',
-        email: 'john.smith@email.com',
-        phone: '+1 (555) 123-4567',
-        status: 'active',
-        totalBookings: 45,
-        totalSpent: 12500,
-        lastBooking: '2024-01-15',
-        vipLevel: 'platinum'
-      },
-      {
-        id: 2,
-        name: 'Sarah Johnson',
-        email: 'sarah.j@email.com',
-        phone: '+1 (555) 987-6543',
-        status: 'active',
-        totalBookings: 32,
-        totalSpent: 8900,
-        lastBooking: '2024-01-10',
-        vipLevel: 'gold'
-      },
-      {
-        id: 3,
-        name: 'Michael Brown',
-        email: 'michael.b@email.com',
-        phone: '+1 (555) 456-7890',
-        status: 'inactive',
-        totalBookings: 28,
-        totalSpent: 7200,
-        lastBooking: '2023-12-20',
-        vipLevel: 'silver'
-      }
-    ];
-    
-    setTimeout(() => {
-      setVipClients(mockVipClients);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    if (!token) return;
+    setLoading(true);
+    getClients(token)
+      .then(data => setClients(data.filter(c => c.vipLevel)))
+      .finally(() => setLoading(false));
+  }, [token]);
 
-  const filteredClients = vipClients.filter(client => {
-    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.email.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredClients = clients.filter(client => {
+    const matchesSearch = client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         client.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || client.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+
+  // Stats
+  const totalVIP = clients.length;
+  const activeVIP = clients.filter(c => c.status === 'active').length;
+  const totalRevenue = clients.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
+  const avgBookings = clients.length ? Math.round(clients.reduce((sum, c) => sum + (c.totalBookings || 0), 0) / clients.length) : 0;
 
   const columns = [
     { key: 'name', label: 'Name', render: (client) => (
@@ -113,133 +90,65 @@ function VipClients() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <FaStar className="text-yellow-500" />
-            VIP Clients
-          </h1>
-          <p className="text-gray-600 mt-2">Manage your most valuable clients with special attention and services</p>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6">
+        <PageHeading
+          icon={<FaStar />}
+          title="VIP Clients"
+          subtitle="Manage your most valuable clients with special attention and services"
+          iconColor="text-yellow-500"
+        >
+          <Button>
+            <FaStar className="mr-2" />
+            Add VIP Client
+          </Button>
+        </PageHeading>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard icon={<FaStar />} label="Total VIP Clients" value={totalVIP} accentColor="yellow" />
+          <StatCard icon={<FaUserTie />} label="Active VIP" value={activeVIP} accentColor="green" />
+          <StatCard icon={<FaDollarSign />} label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} accentColor="blue" />
+          <StatCard icon={<FaCalendarAlt />} label="Avg. Bookings" value={avgBookings} accentColor="purple" />
         </div>
-        <Button>
-          <FaStar className="mr-2" />
-          Add VIP Client
-        </Button>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total VIP Clients</p>
-                <p className="text-2xl font-bold text-gray-900">{vipClients.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <FaStar className="text-yellow-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active VIP</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {vipClients.filter(c => c.status === 'active').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FaUserTie className="text-green-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${vipClients.reduce((sum, c) => sum + c.totalSpent, 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <span className="text-blue-600 font-bold">$</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg. Bookings</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {Math.round(vipClients.reduce((sum, c) => sum + c.totalBookings, 0) / vipClients.length || 0)}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <span className="text-purple-600 font-bold">#</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search VIP clients..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FaFilter className="text-gray-400" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline">Export</Button>
-              <Button variant="outline">Import</Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* VIP Clients Table */}
-      <Card>
-        <div className="p-6">
-          <Table
-            data={filteredClients}
-            columns={columns}
-            loading={loading}
-            emptyMessage="No VIP clients found"
+        {/* Modern Filter Bar */}
+        <div className="flex flex-wrap items-center justify-between bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
+          <SearchInput
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search VIP clients..."
+            className="w-96"
           />
+          <div className="flex gap-4 items-center">
+            <Dropdown
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' }
+              ]}
+              className="w-40"
+            />
+            <Button variant="outline">
+              <FaDownload className="mr-2" />
+              Export
+            </Button>
+          </div>
         </div>
-      </Card>
+
+        <Card>
+          <div className="p-6">
+            <Table
+              data={filteredClients}
+              columns={columns}
+              loading={loading}
+              emptyMessage="No VIP clients found"
+            />
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

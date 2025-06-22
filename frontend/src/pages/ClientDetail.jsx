@@ -24,6 +24,7 @@ import { getClientById } from '../services/clientService';
 import { getBookingsForClient } from '../services/bookingService';
 import { getFilesForClient, uploadFileForClient, deleteFile as deleteClientFile } from '../services/fileService';
 import { getPaymentsForClient, createPayment, deletePayment } from '../services/paymentService';
+import PageHeading from '../components/common/PageHeading';
 
 const tabLabels = [
   'General Info',
@@ -551,32 +552,21 @@ function ClientDetail() {
 
       {/* Header */}
       <Card className="mb-8 p-6 shadow-lg">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img 
-              src={client.avatarUrl || `https://ui-avatars.com/api/?name=${client.name}&background=0D8ABC&color=fff&size=64`} 
-              alt={client.name}
-              className="w-16 h-16 rounded-full border-4 border-white shadow-md"
-            />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">{client.name}</h1>
-              <p className="text-gray-500 flex items-center gap-2 mt-1">
-                <FaEnvelope /> {client.email}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4 md:mt-0">
-            {isEditing ? (
-              <>
-                <Button color="secondary" onClick={handleEditToggle} className="flex items-center gap-2"><FaTimes /> Cancel</Button>
-                <Button color="primary" onClick={handleSave} loading={saving} className="flex items-center gap-2"><FaSave /> Save</Button>
-              </>
-            ) : (
-              <Button color="primary" onClick={handleEditToggle} className="flex items-center gap-2"><FaEdit /> Edit Client</Button>
-            )}
-            <Button color="success" onClick={() => navigate(`/bookings/add?clientId=${id}`)} className="flex items-center gap-2"><FaPlus /> New Booking</Button>
-          </div>
-        </div>
+        <PageHeading
+          icon={<FaUser />}
+          title={client.name}
+          subtitle={client.email}
+        >
+          {isEditing ? (
+            <>
+              <Button color="secondary" onClick={handleEditToggle} className="flex items-center gap-2"><FaTimes /> Cancel</Button>
+              <Button color="primary" onClick={handleSave} loading={saving} className="flex items-center gap-2"><FaSave /> Save</Button>
+            </>
+          ) : (
+            <Button color="primary" onClick={handleEditToggle} className="flex items-center gap-2"><FaEdit /> Edit Client</Button>
+          )}
+          <Button color="success" onClick={() => navigate(`/bookings/add?clientId=${id}`)} className="flex items-center gap-2"><FaPlus /> New Booking</Button>
+        </PageHeading>
       </Card>
 
       {/* Stat Cards */}
