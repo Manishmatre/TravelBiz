@@ -1,5 +1,8 @@
 const Agency = require('../models/Agency');
 const User = require('../models/User');
+const Booking = require('../models/Booking');
+const Client = require('../models/Client');
+const Vehicle = require('../models/Vehicle');
 
 // Get agency profile (for admins/agents of the agency)
 exports.getAgencyProfile = async (req, res) => {
@@ -22,47 +25,36 @@ exports.getAgencyProfile = async (req, res) => {
 // Update agency profile (admin only)
 exports.updateAgencyProfile = async (req, res) => {
   try {
-    // Only allow admins to update the agency profile
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Only admins can update agency profile' });
     }
 
-    const updates = {};
     const {
-      name, description,
-      address, phone, email, website,
-      socialMedia, primaryColor, secondaryColor,
-      businessHours
+      name, description, address, phone, email, website,
+      socialMedia, primaryColor, secondaryColor, businessHours,
+      licenseNumber, taxId, establishedDate, emergencyContact,
+      coverImage, services, certifications
     } = req.body;
 
-    // Basic info
-    if (name) updates.name = name;
-    if (description) updates.description = description;
+    const updates = {
+      name, description, address, phone, email, website,
+      socialMedia, primaryColor, secondaryColor, businessHours,
+      licenseNumber, taxId, establishedDate, emergencyContact,
+      coverImage, services, certifications
+    };
+    
+    // Filter out undefined values to prevent overwriting existing data
+    Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
 
-    // Contact info
-    if (address) updates.address = address;
-    if (phone) updates.phone = phone;
-    if (email) updates.email = email;
-    if (website) updates.website = website;
-
-    // Social media
-    if (socialMedia) updates.socialMedia = socialMedia;
-
-    // Branding
-    if (primaryColor) updates.primaryColor = primaryColor;
-    if (secondaryColor) updates.secondaryColor = secondaryColor;
-    if (req.file) {
-      // Handle file upload (you'll need to implement this based on your file storage solution)
-      // For example, if using Cloudinary:
-      // const result = await cloudinary.uploader.upload(req.file.path);
-      // updates.logo = result.secure_url;
-      updates.logo = req.file.path; // Temporary, update with actual file URL
+    // Handle file upload for logo
+    if (req.files && req.files.logo) {
+      updates.logo = req.files.logo[0].path;
+    }
+    // Handle file upload for cover image
+    if (req.files && req.files.coverImage) {
+      updates.coverImage = req.files.coverImage[0].path;
     }
 
-    // Business hours
-    if (businessHours) updates.businessHours = businessHours;
-
-    // Update the agency
     const agency = await Agency.findByIdAndUpdate(
       req.user.agencyId,
       { $set: updates, updatedAt: Date.now() },
@@ -73,30 +65,29 @@ exports.updateAgencyProfile = async (req, res) => {
       return res.status(404).json({ message: 'Agency not found' });
     }
 
-    res.json({ message: 'Agency profile updated successfully', agency });
+    res.json(agency);
   } catch (error) {
     console.error('Error updating agency profile:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', details: error.message });
   }
 };
 
-// Get agency stats (for dashboard)
+// Get agency stats
 exports.getAgencyStats = async (req, res) => {
   try {
-    const stats = {
-      totalClients: 0,
-      totalVehicles: 0,
-      totalBookings: 0,
-      activeBookings: 0,
-    };
+    const agencyId = req.user.agencyId;
+    
+    const totalClients = await Client.countDocuments({ agencyId: agencyId });
+    const totalVehicles = await Vehicle.countDocuments({ agencyId: agencyId });
+    const totalBookings = await Booking.countDocuments({ agencyId: agencyId });
+    const completedBookings = await Booking.countDocuments({ agencyId: agencyId, status: 'Completed' });
 
-    // You can add more stats queries here based on your models
-    // For example:
-    // stats.totalClients = await Client.countDocuments({ agencyId: req.user.agencyId });
-    // stats.totalVehicles = await Vehicle.countDocuments({ agencyId: req.user.agencyId });
-    // etc.
-
-    res.json(stats);
+    res.json({
+      totalClients,
+      totalVehicles,
+      totalBookings,
+      completedBookings,
+    });
   } catch (error) {
     console.error('Error fetching agency stats:', error);
     res.status(500).json({ message: 'Server error' });

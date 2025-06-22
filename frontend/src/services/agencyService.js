@@ -38,9 +38,14 @@ export const updateAgencyProfile = async (formData, token) => {
 
 // Get agency statistics
 export const getAgencyStats = async (token) => {
-  const res = await axios.get(
-    `${API_URL}/agencies/stats`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  return res.data;
+  try {
+    const response = await axios.get(
+      `${API_URL}/agencies/stats`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching agency stats:', error);
+    throw error;
+  }
 };

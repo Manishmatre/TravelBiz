@@ -41,6 +41,31 @@ const agencySchema = new mongoose.Schema({
     sunday: { type: String, default: 'Closed' }
   },
   
+  // Legal and Business Identifiers
+  licenseNumber: { type: String, default: '' },
+  taxId: { type: String, default: '' },
+  establishedDate: { type: Date },
+
+  // Additional contact details
+  emergencyContact: {
+    name: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    email: { type: String, default: '' }
+  },
+
+  // Branding
+  coverImage: { type: String, default: '' },
+
+  // Operations
+  services: [{ type: String }], // List of services offered
+  
+  // Verifications
+  certifications: [{
+    name: { type: String },
+    issuingBody: { type: String },
+    issueDate: { type: Date }
+  }],
+  
   // Relationships
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   

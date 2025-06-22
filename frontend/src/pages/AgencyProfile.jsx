@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getAgencyProfile, updateAgencyProfile } from '../services/agencyService';
+import { getAgencyProfile, updateAgencyProfile, getAgencyStats } from '../services/agencyService';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Card from '../components/common/Card';
@@ -17,68 +17,89 @@ import Notification from '../components/common/Notification';
 function AgencyProfile() {
   const { token, user } = useAuth();
   const [agency, setAgency] = useState(null);
+  const [stats, setStats] = useState({
+    totalClients: 0,
+    totalVehicles: 0,
+    totalBookings: 0,
+    completedBookings: 0
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [notification, setNotification] = useState(null);
   const [error, setError] = useState('');
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
+  const populateFormData = (data) => {
+    setFormData({
+      name: data.name || '',
+      description: data.description || '',
+      street: data.address?.street || '',
+      city: data.address?.city || '',
+      state: data.address?.state || '',
+      country: data.address?.country || '',
+      postalCode: data.address?.postalCode || '',
+      phone: data.phone || '',
+      email: data.email || '',
+      website: data.website || '',
+      socialMedia: data.socialMedia || { facebook: '', twitter: '', instagram: '', linkedin: '' },
+      licenseNumber: data.licenseNumber || '',
+      taxId: data.taxId || '',
+      establishedDate: data.establishedDate ? new Date(data.establishedDate).toISOString().split('T')[0] : '',
+      businessHours: data.businessHours || { monday: '9:00 AM - 6:00 PM', tuesday: '9:00 AM - 6:00 PM', wednesday: '9:00 AM - 6:00 PM', thursday: '9:00 AM - 6:00 PM', friday: '9:00 AM - 6:00 PM', saturday: 'Closed', sunday: 'Closed' },
+      emergencyContact: data.emergencyContact?.phone || '',
+      logo: data.logo || '',
+      coverImage: data.coverImage || '',
+      services: data.services || [],
+      certifications: data.certifications || [],
+    });
+  };
+
   useEffect(() => {
-    const fetchAgency = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError('');
       try {
-        const data = await getAgencyProfile(token);
-        setAgency(data);
-        setFormData({
-          name: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          address: data.address || '',
-          city: data.city || '',
-          state: data.state || '',
-          country: data.country || '',
-          postalCode: data.postalCode || '',
-          website: data.website || '',
-          description: data.description || '',
-          licenseNumber: data.licenseNumber || '',
-          taxId: data.taxId || '',
-          establishedDate: data.establishedDate ? new Date(data.establishedDate).toISOString().split('T')[0] : '',
-          businessHours: data.businessHours || '',
-          emergencyContact: data.emergencyContact || '',
-          logo: data.logo || '',
-          coverImage: data.coverImage || '',
-          socialMedia: data.socialMedia || {
-            facebook: '',
-            twitter: '',
-            instagram: '',
-            linkedin: ''
-          },
-          services: data.services || [],
-          certifications: data.certifications || [],
-          teamMembers: data.teamMembers || []
-        });
+        const [agencyData, statsData] = await Promise.all([
+          getAgencyProfile(token),
+          getAgencyStats(token)
+        ]);
+        
+        setAgency(agencyData);
+        setStats(statsData);
+        populateFormData(agencyData);
+
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load agency profile');
+        setError(err.response?.data?.message || 'Failed to load agency data');
         setNotification({ 
-          message: 'Failed to load agency profile: ' + (err.response?.data?.message || err.message), 
+          message: 'Failed to load agency data: ' + (err.response?.data?.message || err.message), 
           type: 'error' 
         });
       } finally {
         setLoading(false);
       }
     };
-    if (token) fetchAgency();
+    if (token) fetchData();
   }, [token]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    // Handle nested businessHours object
+    if (Object.keys(formData.businessHours).includes(name)) {
+      setFormData(prev => ({
+        ...prev,
+        businessHours: {
+          ...prev.businessHours,
+          [name]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSocialMediaChange = (platform, value) => {
@@ -93,8 +114,27 @@ function AgencyProfile() {
 
   const handleSave = async () => {
     setSaving(true);
+    
+    // Re-nest address object for the API call
+    const payload = {
+      ...formData,
+      address: {
+        street: formData.street,
+        city: formData.city,
+        state: formData.state,
+        country: formData.country,
+        postalCode: formData.postalCode,
+      }
+    };
+    // Remove flat address properties from top-level payload
+    delete payload.street;
+    delete payload.city;
+    delete payload.state;
+    delete payload.country;
+    delete payload.postalCode;
+
     try {
-      const updatedAgency = await updateAgencyProfile(formData, token);
+      const updatedAgency = await updateAgencyProfile(payload, token);
       setAgency(updatedAgency);
       setEditing(false);
       setNotification({ message: 'Agency profile updated successfully!', type: 'success' });
@@ -109,34 +149,9 @@ function AgencyProfile() {
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: agency.name || '',
-      email: agency.email || '',
-      phone: agency.phone || '',
-      address: agency.address || '',
-      city: agency.city || '',
-      state: agency.state || '',
-      country: agency.country || '',
-      postalCode: agency.postalCode || '',
-      website: agency.website || '',
-      description: agency.description || '',
-      licenseNumber: agency.licenseNumber || '',
-      taxId: agency.taxId || '',
-      establishedDate: agency.establishedDate ? new Date(agency.establishedDate).toISOString().split('T')[0] : '',
-      businessHours: agency.businessHours || '',
-      emergencyContact: agency.emergencyContact || '',
-      logo: agency.logo || '',
-      coverImage: agency.coverImage || '',
-      socialMedia: agency.socialMedia || {
-        facebook: '',
-        twitter: '',
-        instagram: '',
-        linkedin: ''
-      },
-      services: agency.services || [],
-      certifications: agency.certifications || [],
-      teamMembers: agency.teamMembers || []
-    });
+    if (agency) {
+      populateFormData(agency);
+    }
     setEditing(false);
   };
 
@@ -150,7 +165,7 @@ function AgencyProfile() {
     { id: 'documents', label: 'Documents', icon: <FaFileAlt /> }
   ];
 
-  if (loading) {
+  if (loading || !formData) {
     return (
       <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen flex items-center justify-center">
         <Loader />
@@ -233,7 +248,7 @@ function AgencyProfile() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm">Total Bookings</p>
-              <p className="text-2xl font-bold">1,234</p>
+              <p className="text-2xl font-bold">{stats.totalBookings}</p>
             </div>
             <FaCalendarAlt className="text-3xl text-blue-200" />
           </div>
@@ -242,27 +257,27 @@ function AgencyProfile() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm">Active Clients</p>
-              <p className="text-2xl font-bold">567</p>
+              <p className="text-2xl font-bold">{stats.totalClients}</p>
             </div>
             <FaUsers className="text-3xl text-green-200" />
-    </div>
+          </div>
         </Card>
         <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm">Fleet Size</p>
-              <p className="text-2xl font-bold">89</p>
+              <p className="text-purple-100 text-sm">Total Vehicles</p>
+              <p className="text-2xl font-bold">{stats.totalVehicles}</p>
             </div>
             <FaCar className="text-3xl text-purple-200" />
           </div>
         </Card>
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+        <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm">Revenue</p>
-              <p className="text-2xl font-bold">$45.2K</p>
+              <p className="text-yellow-100 text-sm">Completed Trips</p>
+              <p className="text-2xl font-bold">{stats.completedBookings}</p>
             </div>
-            <FaMoneyBillWave className="text-3xl text-orange-200" />
+            <FaCheck className="text-3xl text-yellow-200" />
           </div>
         </Card>
       </div>
@@ -330,18 +345,26 @@ function AgencyProfile() {
                       agency.description || 'No description available'
                     )}
                   </p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    <h4 className="text-sm font-semibold text-gray-800">Account Owner</h4>
+                    <p className="text-gray-900">{agency?.owner?.name}</p>
+                    <p className="text-gray-700 mt-1">{agency?.owner?.email}</p>
+                    <p className="text-xs text-gray-500 mt-1">The owner's email is used for login and cannot be changed here.</p>
+                  </div>
+
+                  <div className="flex items-center space-x-4 text-sm text-gray-500 mt-4">
                     <div className="flex items-center space-x-1">
                       <FaMapMarkerAlt />
-                      <span>{agency.city}, {agency.state}</span>
+                      <span>{agency?.address?.city && agency?.address?.state ? `${agency.address.city}, ${agency.address.state}` : 'Location not set'}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <FaCalendarAlt />
-                      <span>Est. {agency.establishedDate ? new Date(agency.establishedDate).getFullYear() : 'N/A'}</span>
+                      <span>Est. {agency?.establishedDate ? new Date(agency.establishedDate).getFullYear() : 'N/A'}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <FaShieldAlt />
-                      <span>License: {agency.licenseNumber || 'N/A'}</span>
+                      <span>License: {agency?.licenseNumber || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -384,16 +407,16 @@ function AgencyProfile() {
                 <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Public Contact Email</label>
                     {editing ? (
                       <Input
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        placeholder="agency@example.com"
+                        placeholder="contact@youragency.com"
                       />
                     ) : (
-                      <p className="text-gray-900">{agency.email}</p>
+                      <p className="text-gray-900">{agency.email || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
@@ -419,7 +442,7 @@ function AgencyProfile() {
                         placeholder="Emergency contact number"
                       />
                     ) : (
-                      <p className="text-gray-900">{agency.emergencyContact || 'Not specified'}</p>
+                      <p className="text-gray-900">{agency?.emergencyContact?.phone || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
@@ -448,20 +471,22 @@ function AgencyProfile() {
               <div>
                 <h3 className="text-lg font-semibold mb-4">Address</h3>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
-                    {editing ? (
-                      <Input
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        placeholder="123 Main Street"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{agency.address}</p>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Street */}
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                      {editing ? (
+                        <Input
+                          name="street"
+                          value={formData.street}
+                          onChange={handleInputChange}
+                          placeholder="123 Main St"
+                        />
+                      ) : (
+                        <p className="text-gray-900">{agency?.address?.street || 'Not set'}</p>
+                      )}
+                    </div>
+                    {/* City */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                       {editing ? (
@@ -469,40 +494,27 @@ function AgencyProfile() {
                           name="city"
                           value={formData.city}
                           onChange={handleInputChange}
-                          placeholder="City"
+                          placeholder="New York"
                         />
                       ) : (
-                        <p className="text-gray-900">{agency.city}</p>
+                        <p className="text-gray-900">{agency?.address?.city || 'Not set'}</p>
                       )}
                     </div>
+                    {/* State */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">State / Province</label>
                       {editing ? (
                         <Input
                           name="state"
                           value={formData.state}
                           onChange={handleInputChange}
-                          placeholder="State"
+                          placeholder="NY"
                         />
                       ) : (
-                        <p className="text-gray-900">{agency.state}</p>
+                        <p className="text-gray-900">{agency?.address?.state || 'Not set'}</p>
                       )}
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                      {editing ? (
-                        <Input
-                          name="country"
-                          value={formData.country}
-                          onChange={handleInputChange}
-                          placeholder="Country"
-                        />
-                      ) : (
-                        <p className="text-gray-900">{agency.country}</p>
-                      )}
-                    </div>
+                    {/* Postal Code */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
                       {editing ? (
@@ -510,10 +522,24 @@ function AgencyProfile() {
                           name="postalCode"
                           value={formData.postalCode}
                           onChange={handleInputChange}
-                          placeholder="12345"
+                          placeholder="10001"
                         />
                       ) : (
-                        <p className="text-gray-900">{agency.postalCode}</p>
+                        <p className="text-gray-900">{agency?.address?.postalCode || 'Not set'}</p>
+                      )}
+                    </div>
+                    {/* Country */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                      {editing ? (
+                        <Input
+                          name="country"
+                          value={formData.country}
+                          onChange={handleInputChange}
+                          placeholder="United States"
+                        />
+                      ) : (
+                        <p className="text-gray-900">{agency?.address?.country || 'Not set'}</p>
                       )}
                     </div>
                   </div>
@@ -571,16 +597,26 @@ function AgencyProfile() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Business Hours</label>
                 {editing ? (
-                  <textarea
-                    name="businessHours"
-                    value={formData.businessHours}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Monday-Friday: 9 AM - 6 PM, Saturday: 10 AM - 4 PM"
-                    className="w-full p-2 border border-gray-300 rounded-lg resize-none"
-                    rows={3}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    {Object.keys(formData.businessHours).map(day => (
+                      <div key={day}>
+                        <label htmlFor={day} className="capitalize block text-xs font-medium text-gray-600">{day}</label>
+                        <Input
+                          id={day}
+                          name={day}
+                          value={formData.businessHours[day]}
+                          onChange={handleInputChange}
+                          placeholder="e.g., 9:00 AM - 5:00 PM"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-gray-900">{agency.businessHours || 'Not specified'}</p>
+                  <ul className="list-disc list-inside text-gray-900 space-y-1">
+                    {Object.entries(agency?.businessHours || {}).map(([day, hours]) => (
+                      <li key={day}><span className="capitalize font-medium">{day}:</span> {hours}</li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
