@@ -173,7 +173,7 @@ function LiveTracking() {
           getUsers({ role: 'driver' }, token),
           getClients(token),
           getUsers({ role: 'agent' }, token),
-          getBookings(token, null)
+          getBookings(null, token)
         ]);
         setLocations(locs);
         setVehicles(vehs);
