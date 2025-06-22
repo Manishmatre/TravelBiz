@@ -261,7 +261,31 @@ const BookingDetail = () => {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
+          {/* Left column for details */}
+          <div className="lg:col-span-1 space-y-8">
+            <Card>
+              <ClientDetailsCard client={booking.client} />
+            </Card>
+            
+            <Card>
+              <VehicleCard vehicle={booking.vehicle} />
+            </Card>
+            
+            {driverDetails ? (
+              <Card>
+                <DriverDetailsCard driver={driverDetails} />
+              </Card>
+            ) : (
+              <Card>
+                <div className="p-4 text-center text-gray-500">
+                  No driver assigned yet.
+                </div>
+              </Card>
+            )}
+
+          </div>
+
+          {/* Right column for map and trip details */}
           <div className="lg:col-span-2 space-y-8">
             {/* Map Card */}
             <Card className="p-0 overflow-hidden">
@@ -291,12 +315,7 @@ const BookingDetail = () => {
                 )}
               </div>
             </Card>
-          </div>
-          {/* Right Column */}
-          <div className="space-y-8">
-            {/* Client Card */}
-            {booking.client && <ClientDetailsCard client={booking.client} />}
-            
+
             {/* Trip Details Card */}
             <Card className="p-6">
               <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaCalendarAlt className="text-blue-500" /> Trip Details</h3>
@@ -309,12 +328,6 @@ const BookingDetail = () => {
                 <DetailItem icon={<FaUser />} label="Agent" value={booking.agent?.name} to={booking.agent?._id ? `/users/${booking.agent._id}` : undefined} />
               </div>
             </Card>
-
-            {/* Vehicle Card */}
-            {booking.vehicle && <VehicleCard vehicle={booking.vehicle} />}
-
-            {/* Driver Card */}
-            {driverDetails && <DriverDetailsCard driver={driverDetails} />}
             
             {/* Edit Form */}
             {isEditing && (

@@ -49,7 +49,9 @@ function Vehicles() {
     if (token) fetchVehicles();
   }, [token]);
 
-  const filteredVehicles = vehicles.filter(vehicle => {
+  const filteredVehicles = vehicles
+    .filter(Boolean)
+    .filter(vehicle => {
     const matchesSearch = search ? (
       vehicle.name?.toLowerCase().includes(search.toLowerCase()) ||
       vehicle.numberPlate?.toLowerCase().includes(search.toLowerCase()) ||
@@ -248,89 +250,17 @@ function Vehicles() {
     const now = new Date();
     const daysUntilExpiry = (expiry - now) / (1000 * 60 * 60 * 24);
     
-    if (daysUntilExpiry < 0) return { status: 'expired', color: 'text-red-600' };
-    if (daysUntilExpiry <= 7) return { status: 'critical', color: 'text-red-500' };
-    if (daysUntilExpiry <= 30) return { status: 'warning', color: 'text-yellow-600' };
-    return { status: 'valid', color: 'text-green-600' };
+    if (daysUntilExpiry < 0) return { status: 'expired', color: 'text-red-500' };
+    if (daysUntilExpiry <= 30) return { status: 'expiring', color: 'text-yellow-500' };
+    return { status: 'valid', color: 'text-green-500' };
   };
-
-  const columns = [
-    { 
-      label: 'Vehicle', 
-      accessor: 'name',
-      render: (name, row) => (
-        <Link to={`/vehicles/${row._id}`} className="text-blue-700 hover:underline font-semibold">
-          <div className="flex items-center gap-2">
-            <FaCar className="text-gray-400" />
-            <div>
-              <div>{name || 'Unnamed Vehicle'}</div>
-              <div className="text-xs text-gray-500">{row.numberPlate || 'N/A'}</div>
-            </div>
-          </div>
-        </Link>
-      )
-    },
-    { 
-      label: 'Type & Model', 
-      accessor: 'vehicleType',
-      render: (v, row) => (
-        <div>
-          <div className="font-medium">{typeof v === 'string' ? v : (v?.name || 'N/A')}</div>
-          {(row && typeof row.model === 'string') ? <div className="text-sm text-gray-500">{row.model}</div> : null}
-        </div>
-      )
-    },
-    { 
-      label: 'Driver', 
-      accessor: 'driverName',
-      render: (v) => (
-        <div className="flex items-center gap-2">
-          <FaUser className="text-gray-400" />
-          <span>{typeof v === 'string' ? v : (v?.name || 'Unassigned')}</span>
-        </div>
-      )
-    },
-    { 
-      label: 'Status', 
-      accessor: 'status',
-      render: (v) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(v)}`}>
-          {typeof v === 'string' ? v.replace('-', ' ').toUpperCase() : 'Unknown'}
-        </span>
-      )
-    },
-    { 
-      label: 'Documents', 
-      accessor: 'insuranceExpiry',
-      render: (v, row) => {
-        const insuranceStatus = getExpiryStatus(v);
-        const pucStatus = getExpiryStatus(row && row.pucExpiry);
-        return (
-          <div className="space-y-1">
-            <div className={`flex items-center gap-1 text-xs ${insuranceStatus.color}`}>
-              {insuranceStatus.status === 'expired' ? <FaExclamationTriangle /> : <FaCheckCircle />}
-              <span>Insurance: {typeof v === 'string' || typeof v === 'number' ? (v ? new Date(v).toLocaleDateString() : 'N/A') : 'N/A'}</span>
-            </div>
-            <div className={`flex items-center gap-1 text-xs ${pucStatus.color}`}>
-              {pucStatus.status === 'expired' ? <FaExclamationTriangle /> : <FaCheckCircle />}
-              <span>PUC: {(row && (typeof row.pucExpiry === 'string' || typeof row.pucExpiry === 'number')) ? new Date(row.pucExpiry).toLocaleDateString() : 'N/A'}</span>
-            </div>
-          </div>
-        );
-      }
-    },
-    { 
-      label: 'Created', 
-      accessor: 'createdAt',
-      render: (v) => (typeof v === 'string' || typeof v === 'number') && !isNaN(new Date(v)) ? new Date(v).toLocaleDateString() : 'N/A'
-    },
-  ];
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   const isAllSelected = paginatedVehicles.length > 0 && paginatedVehicles.every(v => selectedVehicles.includes(v._id));
+
   const handleSelectAll = () => {
     if (isAllSelected) {
       setSelectedVehicles(selectedVehicles.filter(id => !paginatedVehicles.some(v => v._id === id)));
@@ -341,17 +271,81 @@ function Vehicles() {
       ]);
     }
   };
+
   const handleSelectOne = (id) => {
     setSelectedVehicles(selectedVehicles.includes(id)
       ? selectedVehicles.filter(vid => vid !== id)
       : [...selectedVehicles, id]);
   };
 
+  const columns = [
+    {
+      label: 'Vehicle',
+      key: 'vehicle',
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <img src={row.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'V')}&background=dbeafe&color=1e40af`} alt={row.name} className="w-12 h-10 rounded-md object-cover" />
+          <div>
+            <Link to={`/vehicles/${row._id}`} className="font-semibold text-blue-800 hover:underline">
+              {row.name}
+            </Link>
+            <div className="text-xs text-gray-500 font-mono">{row.numberPlate}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      label: 'Type',
+      key: 'vehicleType',
+      render: (row) => <div className="text-sm">{row.vehicleType || 'N/A'}</div>
+    },
+    {
+      label: 'Assigned Driver',
+      key: 'assignedDriver',
+      render: (row) => (
+        <div className="text-sm">
+          {row.assignedDriver ? (
+             <Link to={`/drivers/${row.assignedDriver._id}`} className="text-blue-700 hover:underline">
+              {row.assignedDriver.name}
+            </Link>
+          ) : (
+            <span className="text-gray-400">Unassigned</span>
+          )}
+        </div>
+      )
+    },
+    {
+      label: 'Status',
+      key: 'status',
+      render: (row) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${getStatusColor(row.status)}`}>
+          {row.status || 'Unknown'}
+        </span>
+      )
+    },
+    {
+      label: 'Documents',
+      key: 'documents',
+      render: (row) => (
+        <div className="text-xs space-y-1">
+          <div className="flex items-center gap-2">
+            <FaFileAlt className={getExpiryStatus(row.insuranceExpiry).color} />
+            <span>Insurance: {row.insuranceExpiry ? new Date(row.insuranceExpiry).toLocaleDateString() : 'N/A'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FaGasPump className={getExpiryStatus(row.pucExpiry).color} />
+             <span>PUC: {row.pucExpiry ? new Date(row.pucExpiry).toLocaleDateString() : 'N/A'}</span>
+          </div>
+        </div>
+      )
+    }
+  ];
+
   const columnsWithCheckbox = [
     {
       label: <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} />,
       accessor: '_checkbox',
-      render: (val, row) => (
+      render: (row) => (
         <input
           type="checkbox"
           checked={selectedVehicles.includes(row._id)}

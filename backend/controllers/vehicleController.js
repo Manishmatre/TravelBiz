@@ -49,7 +49,9 @@ exports.getVehicles = async (req, res) => {
     let filter = { agencyId: req.user.agencyId };
     if (status) filter.status = status;
     if (vehicleType) filter.vehicleType = vehicleType;
-    const vehicles = await Vehicle.find(filter).populate('assignedClient', 'name email');
+    const vehicles = await Vehicle.find(filter)
+      .populate('assignedClient', 'name email')
+      .populate('assignedDriver', 'name email _id');
     res.json(vehicles);
   } catch (err) {
     res.status(500).json({ message: err.message });

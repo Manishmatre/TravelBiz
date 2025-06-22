@@ -110,11 +110,15 @@ exports.getBookings = async (req, res) => {
 exports.getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('client', 'name email')
-      .populate('vehicle', 'name numberPlate')
-      .populate('agent', 'name email')
-      .populate('driver', 'name email');
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+      .populate({ path: 'client', select: 'name email phone avatarUrl' })
+      .populate({ path: 'vehicle', select: 'name numberPlate vehicleType status photoUrl' })
+      .populate({ path: 'agent', select: 'name email' })
+      .populate({ path: 'driver', select: 'name email phone status licenseNumber avatarUrl' })
+      .lean(); // Use .lean() for faster, plain object results
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });

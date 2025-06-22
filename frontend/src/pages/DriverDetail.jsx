@@ -40,8 +40,8 @@ function DriverDetail() {
   const [assignLoading, setAssignLoading] = useState(true);
   const [assignError, setAssignError] = useState('');
   const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [editAssignment, setEditAssignment] = useState(null);
-  const [assignForm, setAssignForm] = useState({ vehicleId: '', status: 'Assigned', assignedAt: '' });
+  const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [selectedVehicle, setSelectedVehicle] = useState('');
   const [assignSaving, setAssignSaving] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [activity, setActivity] = useState([]);
@@ -82,16 +82,32 @@ function DriverDetail() {
     getVehicles(token)
       .then(vehiclesRes => {
         setVehicles(vehiclesRes);
-        // Flatten all assignments for this driver
-        const allAssign = vehiclesRes.flatMap(vehicle =>
-          (vehicle.assignments || []).filter(a => (a.driver?._id || a.driver) === driver._id).map(a => ({
-            ...a,
-            vehicleName: vehicle.name,
-            vehicleId: vehicle._id,
-            numberPlate: vehicle.numberPlate,
-          }))
-        );
-        setAssignments(allAssign);
+        
+        const currentAssignment = [];
+        const unassigned = [];
+
+        vehiclesRes.forEach(vehicle => {
+          const assignmentForDriver = (vehicle.assignments || []).find(
+            a => (a.driver?._id || a.driver) === driver._id && a.status === 'Assigned'
+          );
+
+          if (assignmentForDriver) {
+            currentAssignment.push({
+              ...assignmentForDriver,
+              vehicleName: vehicle.name,
+              vehicleId: vehicle._id,
+              numberPlate: vehicle.numberPlate,
+            });
+          } else {
+            const isAssignedToAnyone = (vehicle.assignments || []).some(a => a.status === 'Assigned');
+            if (!isAssignedToAnyone) {
+              unassigned.push(vehicle);
+            }
+          }
+        });
+
+        setAssignments(currentAssignment);
+        setAvailableVehicles(unassigned);
       })
       .catch(e => setAssignError(e.response?.data?.message || 'Failed to load assignments'))
       .finally(() => setAssignLoading(false));
@@ -207,66 +223,58 @@ function DriverDetail() {
     }
   };
 
-  const handleOpenAssignModal = (record = null) => {
-    setEditAssignment(record);
-    setAssignForm(record ? {
-      vehicleId: record.vehicleId,
-      status: record.status || 'Assigned',
-      assignedAt: record.assignedAt ? record.assignedAt.slice(0, 10) : '',
-    } : { vehicleId: '', status: 'Assigned', assignedAt: '' });
+  const handleOpenAssignModal = () => {
+    setSelectedVehicle(assignments[0]?.vehicleId || '');
     setAssignModalOpen(true);
   };
+
   const handleCloseAssignModal = () => {
     setAssignModalOpen(false);
-    setEditAssignment(null);
-    setAssignForm({ vehicleId: '', status: 'Assigned', assignedAt: '' });
+    setSelectedVehicle('');
   };
-  const handleAssignChange = e => {
-    const { name, value } = e.target;
-    setAssignForm(f => ({ ...f, [name]: value }));
-  };
-  const handleAssignSubmit = async e => {
+
+  const handleAssignSubmit = async (e) => {
     e.preventDefault();
     setAssignSaving(true);
+    setAssignError('');
+
+    const currentAssignment = assignments[0];
+    const newVehicleId = selectedVehicle;
+
     try {
-      if (!assignForm.vehicleId) throw new Error('Please select a vehicle');
-      const payload = {
-        driver: driver._id,
-        status: assignForm.status,
-        assignedAt: assignForm.assignedAt,
-      };
-      if (editAssignment) {
-        await updateVehicleAssignment(assignForm.vehicleId, editAssignment._id, payload, token);
-      } else {
-        await addVehicleAssignment(assignForm.vehicleId, payload, token);
+      if (currentAssignment && currentAssignment.vehicleId !== newVehicleId) {
+        await updateVehicleAssignment(
+          currentAssignment.vehicleId, 
+          currentAssignment._id, 
+          { status: 'Unassigned' }, 
+          token
+        );
       }
-      // Refresh assignments
+
+      if (newVehicleId) {
+         await addVehicleAssignment(newVehicleId, { driver: driver._id, status: 'Assigned' }, token);
+      }
+      
       const vehiclesRes = await getVehicles(token);
       setVehicles(vehiclesRes);
-      const allAssign = vehiclesRes.flatMap(vehicle =>
-        (vehicle.assignments || []).filter(a => (a.driver?._id || a.driver) === driver._id).map(a => ({
-          ...a,
-          vehicleName: vehicle.name,
-          vehicleId: vehicle._id,
-          numberPlate: vehicle.numberPlate,
-        }))
-      );
-      setAssignments(allAssign);
+      const currentAssignmentArr = [];
+      const unassigned = [];
+      vehiclesRes.forEach(vehicle => {
+        const assignmentForDriver = (vehicle.assignments || []).find(a => (a.driver?._id || a.driver) === driver._id && a.status === 'Assigned');
+        if (assignmentForDriver) {
+          currentAssignmentArr.push({ ...assignmentForDriver, vehicleName: vehicle.name, vehicleId: vehicle._id, numberPlate: vehicle.numberPlate });
+        } else {
+           const isAssignedToAnyone = (vehicle.assignments || []).some(a => a.status === 'Assigned');
+           if (!isAssignedToAnyone) unassigned.push(vehicle);
+        }
+      });
+      setAssignments(currentAssignmentArr);
+      setAvailableVehicles(unassigned);
+      
       handleCloseAssignModal();
+
     } catch (err) {
-      setAssignError(err.response?.data?.message || err.message || 'Failed to save assignment');
-    } finally {
-      setAssignSaving(false);
-    }
-  };
-  const handleDeleteAssignment = async record => {
-    if (!window.confirm('Delete this assignment?')) return;
-    setAssignSaving(true);
-    try {
-      await deleteVehicleAssignment(record.vehicleId, record._id, token);
-      setAssignments(assignments.filter(a => a._id !== record._id));
-    } catch (err) {
-      setAssignError(err.response?.data?.message || 'Failed to delete assignment');
+      setAssignError(err.response?.data?.message || 'Failed to update assignment.');
     } finally {
       setAssignSaving(false);
     }
@@ -415,53 +423,43 @@ function DriverDetail() {
               )}
               {activeTab === 2 && (
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-xl font-bold">Assignments</div>
-                    <Button color="primary" size="sm" onClick={() => handleOpenAssignModal()}>Add Assignment</Button>
-                  </div>
-                  {assignLoading ? <Loader /> : assignError ? <div className="text-red-500">{assignError}</div> : (
-                    <Table
-                      columns={[
-                        { label: 'Vehicle', accessor: 'vehicleName' },
-                        { label: 'Number Plate', accessor: 'numberPlate' },
-                        { label: 'Status', accessor: 'status' },
-                        { label: 'Assignment Date', accessor: 'assignedAt', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-                      ]}
-                      data={assignments}
-                      actions={record => (
-                        <>
-                          <Button color="secondary" size="sm" className="mr-2" onClick={() => handleOpenAssignModal(record)}>Edit</Button>
-                          <Button color="danger" size="sm" onClick={() => handleDeleteAssignment(record)}>Delete</Button>
-                        </>
+                  <div className="text-xl font-bold mb-4">Vehicle Assignment</div>
+                  {assignLoading ? <Loader /> : assignError ? <div className="text-red-500 mb-4">{assignError}</div> : (
+                    <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
+                      {assignments.length > 0 ? (
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-800 mb-2">Currently Assigned Vehicle</h3>
+                          <p><strong>Vehicle:</strong> {assignments[0].vehicleName}</p>
+                          <p><strong>Number Plate:</strong> {assignments[0].numberPlate}</p>
+                          <p><strong>Assigned On:</strong> {new Date(assignments[0].assignedAt).toLocaleDateString()}</p>
+                        </div>
+                      ) : (
+                        <p className="text-gray-600">This driver is not currently assigned to any vehicle.</p>
                       )}
-                    />
+                      <Button color="primary" size="sm" onClick={handleOpenAssignModal} className="mt-4">
+                        {assignments.length > 0 ? 'Change Assignment' : 'Assign Vehicle'}
+                      </Button>
+                    </div>
                   )}
-                  <Modal open={assignModalOpen} onClose={handleCloseAssignModal} title={editAssignment ? 'Edit Assignment' : 'Add Assignment'}>
-                    <form onSubmit={handleAssignSubmit} className="space-y-2">
+
+                  <Modal open={assignModalOpen} onClose={handleCloseAssignModal} title="Assign Vehicle">
+                    <form onSubmit={handleAssignSubmit}>
                       <Dropdown
-                        label="Vehicle"
-                        name="vehicleId"
-                        value={assignForm.vehicleId}
-                        onChange={handleAssignChange}
-                        options={[{ value: '', label: 'Select vehicle' }, ...vehicles.map(v => ({ value: v._id, label: v.name }))]}
-                        className="w-full"
+                        label="Select a Vehicle"
+                        value={selectedVehicle}
+                        onChange={(e) => setSelectedVehicle(e.target.value)}
+                        options={[
+                          { value: '', label: 'Unassign' },
+                          ...availableVehicles.map(v => ({ value: v._id, label: `${v.name} (${v.numberPlate})` }))
+                        ]}
                         required
                       />
-                      <Input label="Assignment Date" name="assignedAt" type="date" value={assignForm.assignedAt} onChange={handleAssignChange} />
-                      <Dropdown
-                        label="Status"
-                        name="status"
-                        value={assignForm.status}
-                        onChange={handleAssignChange}
-                        options={[
-                          { value: 'Assigned', label: 'Assigned' },
-                          { value: 'Unassigned', label: 'Unassigned' },
-                        ]}
-                        className="w-full"
-                      />
-                      <div className="flex justify-end gap-2 mt-4">
+                      {assignError && <p className="text-red-500 text-sm mt-2">{assignError}</p>}
+                      <div className="flex justify-end gap-2 mt-6">
                         <Button type="button" color="secondary" onClick={handleCloseAssignModal}>Cancel</Button>
-                        <Button type="submit" color="primary" disabled={assignSaving}>{assignSaving ? 'Saving...' : (editAssignment ? 'Update' : 'Add')}</Button>
+                        <Button type="submit" color="primary" disabled={assignSaving}>
+                          {assignSaving ? 'Saving...' : 'Update Assignment'}
+                        </Button>
                       </div>
                     </form>
                   </Modal>

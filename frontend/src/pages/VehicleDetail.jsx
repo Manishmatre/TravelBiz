@@ -28,6 +28,7 @@ import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
 import Button from '../components/common/Button';
+import { FaUserCircle } from 'react-icons/fa';
 
 const tabLabels = [
   'General Info',
@@ -53,10 +54,6 @@ function VehicleDetail() {
   const [assignments, setAssignments] = useState([]);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState('');
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [editAssignment, setEditAssignment] = useState(null);
-  const [assignForm, setAssignForm] = useState({ driver: '', status: 'Assigned', assignedAt: '' });
-  const [assignSaving, setAssignSaving] = useState(false);
   const [drivers, setDrivers] = useState([]);
 
   // Maintenance state
@@ -158,56 +155,6 @@ function VehicleDetail() {
       .catch(e => setDocsError(e.response?.data?.message || 'Failed to load documents'))
       .finally(() => setDocsLoading(false));
   }, [id, token]);
-
-  // Assignment handlers
-  const handleOpenAssignModal = (record = null) => {
-    setEditAssignment(record);
-    setAssignForm(record ? {
-      driver: record.driver?._id || record.driver || '',
-      status: record.status || 'Assigned',
-      assignedAt: record.assignedAt ? record.assignedAt.slice(0, 10) : '',
-    } : { driver: '', status: 'Assigned', assignedAt: '' });
-    setAssignModalOpen(true);
-  };
-  const handleCloseAssignModal = () => {
-    setAssignModalOpen(false);
-    setEditAssignment(null);
-    setAssignForm({ driver: '', status: 'Assigned', assignedAt: '' });
-  };
-  const handleAssignChange = e => {
-    const { name, value } = e.target;
-    setAssignForm(f => ({ ...f, [name]: value }));
-  };
-  const handleAssignSubmit = async e => {
-    e.preventDefault();
-    setAssignSaving(true);
-    try {
-      if (editAssignment) {
-        await updateVehicleAssignment(id, editAssignment._id, assignForm, token);
-      } else {
-        await addVehicleAssignment(id, assignForm, token);
-      }
-      const updated = await getVehicleAssignments(id, token);
-      setAssignments(updated);
-      handleCloseAssignModal();
-    } catch (err) {
-      setAssignError(err.response?.data?.message || err.message || 'Failed to save assignment');
-    } finally {
-      setAssignSaving(false);
-    }
-  };
-  const handleDeleteAssignment = async record => {
-    if (!window.confirm('Delete this assignment?')) return;
-    setAssignSaving(true);
-    try {
-      await deleteVehicleAssignment(id, record._id, token);
-      setAssignments(assignments.filter(a => a._id !== record._id));
-    } catch (err) {
-      setAssignError(err.response?.data?.message || 'Failed to delete assignment');
-    } finally {
-      setAssignSaving(false);
-    }
-  };
 
   // Maintenance handlers
   const handleOpenMaintModal = (record = null) => {
@@ -396,56 +343,35 @@ function VehicleDetail() {
               {activeTab === 1 && (
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="text-xl font-bold">Current Assignments</div>
-                    <Button color="primary" size="sm" onClick={() => handleOpenAssignModal()}>Add Assignment</Button>
+                    <div className="text-xl font-bold">Current Assignment</div>
                   </div>
                   {assignLoading ? <Loader /> : assignError ? <div className="text-red-500">{assignError}</div> : (
-                    <Table
-                      columns={[
-                        { label: 'Driver', accessor: 'driver', render: v => v && v.name ? v.name : '-' },
-                        { label: 'Status', accessor: 'status' },
-                        { label: 'Assignment Date', accessor: 'assignedAt', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-                      ]}
-                      data={assignments}
-                      actions={record => (
-                        <>
-                          <Button color="secondary" size="sm" className="mr-2" onClick={() => handleOpenAssignModal(record)}>Edit</Button>
-                          <Button color="danger" size="sm" onClick={() => handleDeleteAssignment(record)}>Delete</Button>
-                        </>
-                      )}
-                    />
-                  )}
-                  <Modal open={assignModalOpen} onClose={handleCloseAssignModal} title={editAssignment ? 'Edit Assignment' : 'Add Assignment'}>
-                    <form onSubmit={handleAssignSubmit} className="space-y-2">
-                      <Dropdown
-                        label="Driver"
-                        name="driver"
-                        value={assignForm.driver}
-                        onChange={handleAssignChange}
-                        options={[
-                          { value: '', label: 'Select a Driver' },
-                          ...drivers.map(d => ({ value: d._id, label: d.name }))
-                        ]}
-                        required
-                      />
-                      <Dropdown
-                        label="Status"
-                        name="status"
-                        value={assignForm.status}
-                        onChange={e => setAssignForm(f => ({ ...f, status: e.target.value }))}
-                        options={[
-                          { value: 'Assigned', label: 'Assigned' },
-                          { value: 'Unassigned', label: 'Unassigned' },
-                        ]}
-                        className="w-full"
-                      />
-                      <Input label="Assignment Date" name="assignedAt" type="date" value={assignForm.assignedAt} onChange={handleAssignChange} />
-                      <div className="flex justify-end gap-2 mt-4">
-                        <Button type="button" color="secondary" onClick={handleCloseAssignModal}>Cancel</Button>
-                        <Button type="submit" color="primary" disabled={assignSaving}>{assignSaving ? 'Saving...' : (editAssignment ? 'Update' : 'Add')}</Button>
+                    assignments.length > 0 && assignments[0].driver ? (
+                      <div className="bg-white rounded-xl shadow-md p-6 max-w-md">
+                        <div className="flex items-center gap-4">
+                          {assignments[0].driver.avatarUrl ? (
+                            <img src={assignments[0].driver.avatarUrl} alt={assignments[0].driver.name} className="w-20 h-20 rounded-full object-cover border-2 border-blue-200" />
+                          ) : (
+                            <FaUserCircle className="w-20 h-20 text-gray-300" />
+                          )}
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-800">{assignments[0].driver.name}</h3>
+                            <p className="text-gray-500">{assignments[0].driver.email}</p>
+                          </div>
+                        </div>
+                        <div className="mt-6 border-t pt-4 space-y-2 text-sm">
+                          <p><strong>Phone:</strong> {assignments[0].driver.phone || 'N/A'}</p>
+                          <p><strong>Status:</strong> <span className="font-semibold capitalize">{assignments[0].status || 'N/A'}</span></p>
+                          <p><strong>Assignment Date:</strong> {new Date(assignments[0].assignedAt).toLocaleDateString()}</p>
+                          <p><strong>License No:</strong> {assignments[0].driver.licenseNumber || 'N/A'}</p>
+                        </div>
                       </div>
-                    </form>
-                  </Modal>
+                    ) : (
+                      <div className="text-center py-10 px-6 bg-gray-50 rounded-lg">
+                        <p className="text-gray-500">This vehicle is not currently assigned to any driver.</p>
+                      </div>
+                    )
+                  )}
                 </div>
               )}
               {activeTab === 2 && (<VehicleDocumentsTab vehicleId={vehicle._id} token={token} />)}

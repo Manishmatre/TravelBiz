@@ -71,11 +71,10 @@ const clientMenuLinks = [
 const vehicleMenuLinks = [
   { to: '/vehicles', label: 'All Vehicles', icon: <FaCar />, description: 'View and manage all vehicles' },
   { to: '/vehicles/add', label: 'Add Vehicle', icon: <FaPlus />, description: 'Add a new vehicle to the fleet' },
-  { to: '/vehicles/assignments', label: 'Assignments', icon: <FaRoute />, description: 'Vehicle-driver assignments' },
+  // { to: '/vehicles/assignments', label: 'Assignments', icon: <FaRoute />, description: 'Vehicle-driver assignments' },
   // { to: '/vehicles/documents', label: 'Documents', icon: <FaFileContract />, description: 'Manage vehicle documentation' },
   // { to: '/vehicles/maintenance', label: 'Maintenance', icon: <FaTools />, description: 'Track vehicle maintenance' },
   // { to: '/vehicles/fuel', label: 'Fuel Logs', icon: <FaGasPump />, description: 'Monitor fuel consumption' },
-  // { to: '/vehicles/analytics', label: 'Analytics', icon: <FaChartBar />, description: 'Vehicle performance analytics' },
 ];
 
 // Booking Management Links

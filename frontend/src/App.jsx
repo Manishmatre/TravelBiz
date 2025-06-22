@@ -24,7 +24,7 @@ import VehicleDashboard from './pages/VehicleDashboard';
 import VehicleMaintenance from './pages/VehicleMaintenance';
 import VehicleFuel from './pages/VehicleFuel';
 import VehicleDocuments from './pages/VehicleDocuments';
-import VehicleAssignments from './pages/VehicleAssignments';
+import VehicleAnalytics from './pages/VehicleAnalytics';
 import VehicleDetail from './pages/VehicleDetail';
 import Drivers from './pages/Drivers';
 import DriverDashboard from './pages/DriverDashboard';
@@ -42,7 +42,6 @@ import ImportClients from './pages/ImportClients';
 import ExportClients from './pages/ExportClients';
 import ClientCommunications from './pages/ClientCommunications';
 import ClientDocuments from './pages/ClientDocuments';
-import VehicleAnalytics from './pages/VehicleAnalytics';
 import PendingBookings from './pages/PendingBookings';
 import ConfirmedBookings from './pages/ConfirmedBookings';
 import CompletedBookings from './pages/CompletedBookings';
@@ -145,9 +144,12 @@ function App() {
               <Route path="/vehicles/maintenance" element={<ProtectedRoute><Layout><VehicleMaintenance /></Layout></ProtectedRoute>} />
               <Route path="/vehicles/fuel" element={<ProtectedRoute><Layout><VehicleFuel /></Layout></ProtectedRoute>} />
               <Route path="/vehicles/documents" element={<ProtectedRoute><Layout><VehicleDocuments /></Layout></ProtectedRoute>} />
-              <Route path="/vehicles/assignments" element={<ProtectedRoute><Layout><VehicleAssignments /></Layout></ProtectedRoute>} />
               <Route path="/vehicles/analytics" element={<ProtectedRoute><Layout><VehicleAnalytics /></Layout></ProtectedRoute>} />
               <Route path="/vehicles/:id" element={<ProtectedRoute><Layout><VehicleDetail /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/:id/maintenance" element={<ProtectedRoute><Layout><VehicleMaintenance /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/:id/fuel" element={<ProtectedRoute><Layout><VehicleFuel /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/fleet-usage" element={<ProtectedRoute><Layout><FleetUsage /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/live-tracking" element={<ProtectedRoute><Layout><LiveTracking /></Layout></ProtectedRoute>} />
               <Route path="/drivers" element={<ProtectedRoute><Layout><Drivers /></Layout></ProtectedRoute>} />
               <Route path="/drivers/add" element={<ProtectedRoute><Layout><AddUser /></Layout></ProtectedRoute>} />
               <Route path="/drivers/dashboard" element={<ProtectedRoute><Layout><DriverDashboard /></Layout></ProtectedRoute>} />
