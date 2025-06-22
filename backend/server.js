@@ -44,6 +44,9 @@ app.use('/api/users', userRoutes);
 const bookingRoutes = require('./routes/booking');
 app.use('/api/bookings', bookingRoutes);
 
+const paymentRoutes = require('./routes/payment');
+app.use('/api/payments', paymentRoutes);
+
 // TODO: Import routes and middlewares here
 
 // Connect to MongoDB

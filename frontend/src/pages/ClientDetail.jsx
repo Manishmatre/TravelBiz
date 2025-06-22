@@ -17,11 +17,12 @@ import {
   FaUser, FaEnvelope, FaPhone, FaPassport, FaGlobe, FaBirthdayCake, FaMapMarkerAlt,
   FaUserShield, FaPhoneAlt, FaEdit, FaSave, FaTimes, FaPlus, FaUpload, FaTrash, FaFilePdf,
   FaFileImage, FaFileWord, FaFileExcel, FaFileAlt, FaPlaneDeparture, FaMoneyBillWave,
-  FaStickyNote, FaHistory, FaCar, FaRegCalendarAlt, FaDollarSign, FaCheckCircle
+  FaStickyNote, FaHistory, FaCar, FaRegCalendarAlt, FaDollarSign, FaCheckCircle, FaEye
 } from 'react-icons/fa';
 import StatCard from '../components/common/StatCard';
 import { getClientById } from '../services/clientService';
 import { getBookingsForClient } from '../services/bookingService';
+import { getFilesForClient, uploadFileForClient, deleteFile as deleteClientFile } from '../services/fileService';
 
 const tabLabels = [
   'General Info',
@@ -67,7 +68,7 @@ function ClientDetail() {
   
   // Files management state
   const [files, setFiles] = useState([]);
-  const [newFile, setNewFile] = useState({ title: '', fileType: '', file: null });
+  const [newFile, setNewFile] = useState({ title: '', fileType: 'Passport', file: null });
   const [uploadingFile, setUploadingFile] = useState(false);
   
   // Notes management state
@@ -79,12 +80,14 @@ function ClientDetail() {
   const [payments, setPayments] = useState([]);
   const [newPayment, setNewPayment] = useState({ date: '', amount: '', status: 'Pending', description: '' });
   const [addingPayment, setAddingPayment] = useState(false);
+  const [filesLoading, setFilesLoading] = useState(true);
 
   useEffect(() => {
     const fetchClientData = async () => {
       if (!id || !token) return;
       setLoading(true);
       setBookingsLoading(true);
+      setFilesLoading(true);
       setError('');
       try {
         const clientData = await getClientById(id, token);
@@ -109,6 +112,9 @@ function ClientDetail() {
         const bookingsData = await getBookingsForClient(id, token);
         setBookings(bookingsData);
         
+        const filesData = await getFilesForClient(id, token);
+        setFiles(filesData);
+        
         const totalBookings = bookingsData.length;
         const completedBookings = bookingsData.filter(b => b.status === 'Completed').length;
         const upcomingBookings = bookingsData.filter(b => new Date(b.startDate) > new Date() && b.status !== 'Cancelled').length;
@@ -122,6 +128,7 @@ function ClientDetail() {
       } finally {
         setLoading(false);
         setBookingsLoading(false);
+        setFilesLoading(false);
       }
     };
     fetchClientData();
@@ -209,62 +216,44 @@ function ClientDetail() {
 
   // File management functions
   const handleFileInput = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value, files: inputFiles } = e.target;
     if (name === 'file') {
-      setNewFile(prev => ({ ...prev, file: files[0] }));
+      setNewFile(prev => ({ ...prev, file: inputFiles[0] }));
     } else {
       setNewFile(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleUploadFile = async () => {
+  const handleUploadFile = async (e) => {
+    e.preventDefault();
     if (!newFile.title || !newFile.fileType || !newFile.file) {
-      setNotification({ message: 'Please fill all file fields', type: 'error' });
+      setNotification({ message: 'Please provide a title, type, and select a file.', type: 'error' });
       return;
     }
 
     setUploadingFile(true);
     try {
-      const formData = new FormData();
-      formData.append('title', newFile.title);
-      formData.append('fileType', newFile.fileType);
-      formData.append('clientId', id);
-      formData.append('file', newFile.file);
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Failed to upload file');
-
-      const uploadedFile = await response.json();
-      setFiles(prev => [...prev, uploadedFile]);
-      setNewFile({ title: '', fileType: '', file: null });
+      const uploadedFile = await uploadFileForClient(id, newFile.title, newFile.fileType, newFile.file, token);
+      setFiles(prev => [uploadedFile, ...prev]);
+      setNewFile({ title: '', fileType: 'Passport', file: null });
+      document.getElementById('file-input').value = null; // Clear file input
       setNotification({ message: 'File uploaded successfully!', type: 'success' });
     } catch (err) {
-      setNotification({ message: 'Failed to upload file: ' + err.message, type: 'error' });
+      setNotification({ message: err.response?.data?.message || 'Failed to upload file.', type: 'error' });
     } finally {
       setUploadingFile(false);
     }
   };
 
   const handleDeleteFile = async (fileId) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) return;
+    if (!window.confirm('Are you sure you want to delete this file? This action cannot be undone.')) return;
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/${fileId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) throw new Error('Failed to delete file');
-
+      await deleteClientFile(fileId, token);
       setFiles(prev => prev.filter(f => f._id !== fileId));
-      setNotification({ message: 'File deleted successfully!', type: 'success' });
+      setNotification({ message: 'File deleted successfully.', type: 'success' });
     } catch (err) {
-      setNotification({ message: 'Failed to delete file: ' + err.message, type: 'error' });
+      setNotification({ message: err.response?.data?.message || 'Failed to delete file.', type: 'error' });
     }
   };
 
@@ -435,6 +424,47 @@ function ClientDetail() {
     }
   ];
 
+  const fileColumns = [
+    {
+      label: 'File Name',
+      key: 'title',
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <FileIcon mimeType={row.mimeType} />
+          <div>
+            <p className="font-semibold text-gray-800">{row.title}</p>
+            <p className="text-xs text-gray-500">{row.originalName}</p>
+          </div>
+        </div>
+      )
+    },
+    { label: 'Type', key: 'fileType' },
+    { 
+      label: 'Date Uploaded', 
+      key: 'createdAt',
+      render: (row) => new Date(row.createdAt).toLocaleDateString()
+    },
+    { 
+      label: 'Size', 
+      key: 'size',
+      render: (row) => `${(row.size / 1024).toFixed(2)} KB`
+    },
+    {
+      label: 'Actions',
+      key: 'actions',
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <a href={row.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 p-1" title="View/Download">
+            <FaEye size={16}/>
+          </a>
+          <button onClick={() => handleDeleteFile(row._id)} className="text-red-600 hover:text-red-800 p-1" title="Delete File">
+            <FaTrash size={16}/>
+          </button>
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="bg-gradient-to-br from-gray-50 via-white to-gray-100 min-h-screen p-4 md:p-8">
       {notification && (
@@ -576,8 +606,61 @@ function ClientDetail() {
             </div>
           )}
 
+          {activeTab === 'documents' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Client Documents</h3>
+                {filesLoading ? (
+                  <Loader />
+                ) : files.length > 0 ? (
+                  <Table columns={fileColumns} data={files} />
+                ) : (
+                  <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-lg">
+                    <p className="text-gray-500">This client has no documents yet.</p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Card>
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Upload New Document</h3>
+                  <form onSubmit={handleUploadFile} className="space-y-4">
+                    <Input
+                      label="Document Title"
+                      name="title"
+                      value={newFile.title}
+                      onChange={handleFileInput}
+                      placeholder="e.g., Passport Scan"
+                      required
+                    />
+                    <Dropdown
+                      label="Document Type"
+                      name="fileType"
+                      value={newFile.fileType}
+                      onChange={handleFileInput}
+                      options={['Passport', 'Visa', 'Ticket', 'ID Card', 'Other']}
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+                      <input
+                        id="file-input"
+                        type="file"
+                        name="file"
+                        onChange={handleFileInput}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" color="primary" loading={uploadingFile} className="w-full flex justify-center items-center gap-2">
+                      <FaUpload /> Upload File
+                    </Button>
+                  </form>
+                </Card>
+              </div>
+            </div>
+          )}
+
           {/* Placeholder for other tabs */}
-          {activeTab !== 'overview' && activeTab !== 'bookings' && (
+          {activeTab !== 'overview' && activeTab !== 'bookings' && activeTab !== 'documents' && (
             <div className="text-center py-20">
               <h3 className="text-2xl font-semibold text-gray-700">Coming Soon</h3>
               <p className="text-gray-500 mt-2">This feature is under development and will be available shortly.</p>
@@ -588,6 +671,14 @@ function ClientDetail() {
     </div>
   );
 }
+
+const FileIcon = ({ mimeType }) => {
+  if (mimeType.includes('pdf')) return <FaFilePdf className="text-red-500 text-2xl" />;
+  if (mimeType.includes('image')) return <FaFileImage className="text-blue-500 text-2xl" />;
+  if (mimeType.includes('word')) return <FaFileWord className="text-blue-700 text-2xl" />;
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return <FaFileExcel className="text-green-700 text-2xl" />;
+  return <FaFileAlt className="text-gray-500 text-2xl" />;
+};
 
 const InfoField = ({ icon, label, value, isEditing, editingValue, name, onChange, type = 'text', fullWidth = false }) => (
   <div className={fullWidth ? 'md:col-span-2' : ''}>
