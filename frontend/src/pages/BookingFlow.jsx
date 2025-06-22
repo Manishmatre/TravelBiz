@@ -95,6 +95,8 @@ function BookingFlow() {
     try {
       const booking = await addBooking({
         ...bookingDetails,
+        pickup: { name: bookingDetails.pickup },
+        destination: { name: bookingDetails.destination },
         client: selectedClient._id,
         vehicle: selectedVehicle?._id,
         agent: bookingDetails.agent || user.id,
@@ -332,9 +334,6 @@ function StepClient({ clients, filteredClients, clientSearch, setClientSearch, s
                     <div>
                       <div className="font-semibold text-gray-900">{c.name}</div>
                       <div className="text-sm text-gray-600">{c.email}</div>
-                      {c.passportNumber && (
-                        <div className="text-xs text-gray-500">Passport: {c.passportNumber}</div>
-                      )}
                     </div>
                     {selectedClient?._id === c._id && (
                       <div className="text-blue-600">
@@ -699,7 +698,7 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {agentOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+                <option key={option.value || option.label} value={option.value}>{option.label}</option>
               ))}
             </select>
             {detailsErrors.agent && (
@@ -1194,10 +1193,18 @@ function StepReview({ selectedClient, selectedVehicle, agents, bookingDetails, p
                 <span className="text-gray-600">Time:</span>
                 <span className="font-medium">{bookingDetails.startTime}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Agent:</span>
-                <span className="font-medium">{agents.find(a => a._id === bookingDetails.agent)?.name || '-'}</span>
-              </div>
+              {bookingDetails.bags && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Bags:</span>
+                  <span className="font-medium">{bookingDetails.bags}</span>
+                </div>
+              )}
+              {bookingDetails.notes && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Notes:</span>
+                  <span className="font-medium">{bookingDetails.notes}</span>
+                </div>
+              )}
             </div>
           </div>
 

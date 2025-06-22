@@ -83,6 +83,21 @@ function Vehicles() {
   const totalPages = Math.ceil(sortedVehicles.length / vehiclesPerPage);
   const paginatedVehicles = sortedVehicles.slice((currentPage - 1) * vehiclesPerPage, currentPage * vehiclesPerPage);
 
+  // Before rendering the Table, normalize paginatedVehicles to ensure _id, name, and numberPlate are always defined and _id is always a non-empty string
+  const safePaginatedVehicles = paginatedVehicles.map((v, idx) => {
+    let safeId = v._id || v.id || `vehicle-${idx}-${Math.random().toString(36).slice(2)}`;
+    if (!safeId || typeof safeId !== 'string') safeId = `vehicle-${idx}-${Math.random().toString(36).slice(2)}`;
+    return {
+      ...v,
+      _id: safeId,
+      name: v.name || 'Unknown',
+      numberPlate: v.numberPlate || 'N/A',
+    };
+  });
+
+  // Ensure selectedVehicles only contains valid, non-empty string ids
+  const safeSelectedVehicles = selectedVehicles.filter(id => typeof id === 'string' && id.length > 0);
+
   // Vehicle statistics
   const totalVehicles = vehicles.length;
   const availableVehicles = vehicles.filter(v => v.status === 'available').length;
@@ -259,12 +274,12 @@ function Vehicles() {
       label: 'Vehicle', 
       accessor: 'name',
       render: (v, row) => (
-        <Link to={`/vehicles/${row._id}`} className="text-blue-700 hover:underline font-semibold">
+        <Link to={`/vehicles/${(row && row._id) ? row._id : 'unknown'}`} className="text-blue-700 hover:underline font-semibold">
           <div className="flex items-center gap-2">
             <FaCar className="text-gray-400" />
             <div>
-              <div>{v}</div>
-              <div className="text-xs text-gray-500">{row.numberPlate}</div>
+              <div>{typeof v === 'string' ? v : (v?.name || 'Unknown')}</div>
+              <div className="text-xs text-gray-500">{row && typeof row.numberPlate === 'string' ? row.numberPlate : 'N/A'}</div>
             </div>
           </div>
         </Link>
@@ -275,8 +290,8 @@ function Vehicles() {
       accessor: 'vehicleType',
       render: (v, row) => (
         <div>
-          <div className="font-medium">{v}</div>
-          {row.model && <div className="text-sm text-gray-500">{row.model}</div>}
+          <div className="font-medium">{typeof v === 'string' ? v : (v?.name || 'N/A')}</div>
+          {(row && typeof row.model === 'string') ? <div className="text-sm text-gray-500">{row.model}</div> : null}
         </div>
       )
     },
@@ -286,7 +301,7 @@ function Vehicles() {
       render: (v) => (
         <div className="flex items-center gap-2">
           <FaUser className="text-gray-400" />
-          <span>{v || 'Unassigned'}</span>
+          <span>{typeof v === 'string' ? v : (v?.name || 'Unassigned')}</span>
         </div>
       )
     },
@@ -295,7 +310,7 @@ function Vehicles() {
       accessor: 'status',
       render: (v) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(v)}`}>
-          {v?.replace('-', ' ').toUpperCase()}
+          {typeof v === 'string' ? v.replace('-', ' ').toUpperCase() : 'Unknown'}
         </span>
       )
     },
@@ -304,17 +319,16 @@ function Vehicles() {
       accessor: 'insuranceExpiry',
       render: (v, row) => {
         const insuranceStatus = getExpiryStatus(v);
-        const pucStatus = getExpiryStatus(row.pucExpiry);
-        
+        const pucStatus = getExpiryStatus(row && row.pucExpiry);
         return (
           <div className="space-y-1">
             <div className={`flex items-center gap-1 text-xs ${insuranceStatus.color}`}>
               {insuranceStatus.status === 'expired' ? <FaExclamationTriangle /> : <FaCheckCircle />}
-              <span>Insurance: {v ? new Date(v).toLocaleDateString() : 'N/A'}</span>
+              <span>Insurance: {typeof v === 'string' || typeof v === 'number' ? (v ? new Date(v).toLocaleDateString() : 'N/A') : 'N/A'}</span>
             </div>
             <div className={`flex items-center gap-1 text-xs ${pucStatus.color}`}>
               {pucStatus.status === 'expired' ? <FaExclamationTriangle /> : <FaCheckCircle />}
-              <span>PUC: {row.pucExpiry ? new Date(row.pucExpiry).toLocaleDateString() : 'N/A'}</span>
+              <span>PUC: {(row && (typeof row.pucExpiry === 'string' || typeof row.pucExpiry === 'number')) ? new Date(row.pucExpiry).toLocaleDateString() : 'N/A'}</span>
             </div>
           </div>
         );
@@ -323,7 +337,7 @@ function Vehicles() {
     { 
       label: 'Created', 
       accessor: 'createdAt',
-      render: (v) => new Date(v).toLocaleDateString()
+      render: (v) => (typeof v === 'string' || typeof v === 'number') && !isNaN(new Date(v)) ? new Date(v).toLocaleDateString() : 'N/A'
     },
   ];
 
@@ -355,8 +369,8 @@ function Vehicles() {
       render: (val, row) => (
         <input
           type="checkbox"
-          checked={selectedVehicles.includes(row._id)}
-          onChange={() => handleSelectOne(row._id)}
+          checked={safeSelectedVehicles.includes((row && row._id) ? row._id : '')}
+          onChange={() => handleSelectOne((row && row._id) ? row._id : '')}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
         />
       )
@@ -588,14 +602,8 @@ function Vehicles() {
             </div>
             
             <Table
-              columns={selectedVehicles.length > 0 ? columnsWithCheckbox : columns}
-              data={paginatedVehicles.map(v => ({
-                ...v,
-                driverName: v.driverName || '-',
-                numberPlate: v.numberPlate || '-',
-                vehicleType: v.vehicleType || '-',
-                name: v.name || '-',
-              }))}
+              columns={safeSelectedVehicles.length > 0 ? columnsWithCheckbox : columns}
+              data={safePaginatedVehicles}
               actions={vehicle => (
                 <div className="flex gap-2">
                   <Button

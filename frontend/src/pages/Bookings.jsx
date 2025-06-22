@@ -44,7 +44,13 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const [bookingsPerPage] = useState(15);
 
   // Use context if available, otherwise use local state
-  const bookings = bookingsContext?.bookings || [];
+  const bookings = (bookingsContext?.bookings || []).map(b => ({
+    ...b,
+    client: typeof b.client === 'object' && b.client !== null ? b.client : { name: b.client || 'Unknown' },
+    agent: typeof b.agent === 'object' && b.agent !== null ? b.agent : { name: b.agent || 'Unassigned' },
+    vehicle: typeof b.vehicle === 'object' && b.vehicle !== null ? b.vehicle : { name: b.vehicle || 'Unassigned' },
+    destination: typeof b.destination === 'object' && b.destination !== null ? b.destination : { name: b.destination || 'N/A' },
+  }));
   const loading = bookingsContext?.loading || false;
   const fetchBookings = bookingsContext?.fetchBookings;
 
@@ -246,8 +252,8 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const bookingsByDestination = (() => {
     const map = {};
     bookings.forEach(b => {
-      const dest = b.destination || 'Unknown';
-      map[dest] = (map[dest] || 0) + 1;
+      const destName = b.destination?.name || 'Unknown';
+      map[destName] = (map[destName] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   })();
@@ -313,7 +319,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
             {typeof v === 'string' ? v : (v?.name || 'N/A')}
           </div>
           <div className="text-sm text-gray-500">
-            {row && row.startDate ? new Date(row.startDate).toLocaleDateString() : 'No date'} - {row && row.endDate ? new Date(row.endDate).toLocaleDateString() : 'No end date'}
+            {row && row.startDate && !isNaN(new Date(row.startDate)) ? new Date(row.startDate).toLocaleDateString() : 'No date'} - {row && row.endDate && !isNaN(new Date(row.endDate)) ? new Date(row.endDate).toLocaleDateString() : 'No end date'}
           </div>
         </div>
       )
@@ -362,14 +368,16 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
       accessor: 'price',
       render: (v) => (
         <span className="font-medium text-green-600">
-          ${Number(v || 0).toLocaleString()}
+          ${!isNaN(Number(v)) && v !== null && v !== undefined ? Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
         </span>
       )
     },
     { 
       label: 'Created', 
       accessor: 'createdAt',
-      render: (v) => new Date(v).toLocaleDateString()
+      render: (v) => (
+        isNaN(new Date(v)) || !v ? 'N/A' : new Date(v).toLocaleDateString()
+      )
     },
   ];
 
