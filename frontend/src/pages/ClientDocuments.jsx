@@ -142,36 +142,35 @@ function ClientDocuments({ clientId: propClientId }) {
           </label>
         </PageHeading>
 
-        {/* Modern Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
-          <SearchInput
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search documents..."
-            className="w-96"
-          />
-          <div className="flex gap-4 items-center">
-            <Dropdown
-              value={filterType}
-              onChange={e => setFilterType(e.target.value)}
-              options={[
-                { value: '', label: 'All Types' },
-                { value: 'pdf', label: 'PDF' },
-                { value: 'image', label: 'Image' },
-                { value: 'word', label: 'Word' },
-                { value: 'other', label: 'Other' },
-              ]}
-              className="w-48"
-            />
-            <Button variant="outline">
-              <FaDownload className="mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        <Card>
-          <div className="p-6">
+        <Card className="p-4">
+          <div className="p-4">
+            {/* Table-integrated Filter/Search Bar */}
+            <div className="flex flex-wrap items-center justify-between mb-4 gap-4">
+              <SearchInput
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search documents..."
+                className="w-80"
+              />
+              <div className="flex gap-3 items-center">
+                <Dropdown
+                  value={filterType}
+                  onChange={e => setFilterType(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Types' },
+                    { value: 'pdf', label: 'PDF' },
+                    { value: 'image', label: 'Image' },
+                    { value: 'word', label: 'Word' },
+                    { value: 'other', label: 'Other' },
+                  ]}
+                  className="w-40"
+                />
+                <Button variant="outline">
+                  <FaDownload className="mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
             <Table
               data={filteredDocuments}
               columns={columns}

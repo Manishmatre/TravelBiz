@@ -10,7 +10,7 @@ import React from 'react';
  * - children: ReactNode (right-side actions/buttons)
  */
 const PageHeading = ({ icon, title, subtitle, iconColor = 'text-blue-600', children }) => (
-  <div className="flex items-center justify-between mb-6">
+  <div className="flex items-center justify-between">
     <div>
       <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2 flex items-center gap-3">
         {icon && React.cloneElement(icon, { className: `${icon.props.className || ''} ${iconColor}`.trim() })}

@@ -13,6 +13,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Notification from '../components/common/Notification';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import PageHeading from '../components/common/PageHeading';
+import Card from '../components/common/Card';
 
 function Clients() {
   const { token, user } = useAuth();
@@ -343,152 +344,151 @@ function Clients() {
         <StatCard icon={<FaUsers />} label="New This Month" value={newClientsThisMonth} accentColor="yellow" />
       </div>
 
-      {/* Modern Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
-        <SearchInput
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search clients..."
-          className="w-96"
-        />
-        <div className="flex gap-4 items-center">
-          <Dropdown
-            value={filterAgent}
-            onChange={e => setFilterAgent(e.target.value)}
-            options={[
-              { value: '', label: 'All Agents' },
-              ...agents.map(agent => ({ value: agent._id, label: agent.name }))
-            ]}
-            className="w-48"
-          />
-          <Dropdown
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            options={[
-              { value: '', label: 'All Status' },
-              { value: 'Active', label: 'Active' },
-              { value: 'Inactive', label: 'Inactive' }
-            ]}
-            className="w-40"
-          />
-          <Dropdown
-            value={filterNationality}
-            onChange={e => setFilterNationality(e.target.value)}
-            options={[
-              { value: '', label: 'All Nationalities' },
-              ...[...new Set(clients.map(c => c.nationality).filter(Boolean))].map(nat => ({ value: nat, label: nat }))
-            ]}
-            className="w-48"
-          />
-          <Button color="secondary" onClick={exportToCSV} className="flex items-center gap-2">
-            <FaDownload /> Export CSV
-          </Button>
-          {selectedClients.length > 0 && (
-            <Button color="danger" onClick={handleBulkDelete} className="flex items-center gap-2">
-              <FaTrash /> Delete Selected ({selectedClients.length})
-            </Button>
-          )}
-        </div>
-      </div>
-
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        {loading ? (
-          <Loader className="my-10" />
-        ) : error ? (
-          <div className="text-red-500 p-6">{error}</div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * clientsPerPage) + 1} to {Math.min(currentPage * clientsPerPage, sortedClients.length)} of {sortedClients.length} clients
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  color="secondary"
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                >
-                  {sortOrder === 'asc' ? '↑' : '↓'} {sortBy}
+      <Card className="p-4">
+        <div className="p-4">
+          {/* Table-integrated Filter/Search Bar */}
+          <div className="flex flex-wrap items-center justify-between mb-4 gap-4">
+            <SearchInput
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search clients..."
+              className="w-96"
+            />
+            <div className="flex gap-4 items-center">
+              <Dropdown
+                value={filterAgent}
+                onChange={e => setFilterAgent(e.target.value)}
+                options={[
+                  { value: '', label: 'All Agents' },
+                  ...agents.map(agent => ({ value: agent._id, label: agent.name }))
+                ]}
+                className="w-48"
+              />
+              <Dropdown
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+                options={[
+                  { value: '', label: 'All Status' },
+                  { value: 'Active', label: 'Active' },
+                  { value: 'Inactive', label: 'Inactive' }
+                ]}
+                className="w-40"
+              />
+              <Dropdown
+                value={filterNationality}
+                onChange={e => setFilterNationality(e.target.value)}
+                options={[
+                  { value: '', label: 'All Nationalities' },
+                  ...[...new Set(clients.map(c => c.nationality).filter(Boolean))].map(nat => ({ value: nat, label: nat }))
+                ]}
+                className="w-48"
+              />
+              <Button color="secondary" onClick={exportToCSV} className="flex items-center gap-2">
+                <FaDownload /> Export CSV
+              </Button>
+              {selectedClients.length > 0 && (
+                <Button color="danger" onClick={handleBulkDelete} className="flex items-center gap-2">
+                  <FaTrash /> Delete Selected ({selectedClients.length})
                 </Button>
-              </div>
+              )}
             </div>
-            
-            <Table
-              columns={selectedClients.length > 0 ? columnsWithCheckbox : columns}
-              data={paginatedClients.map(c => ({
-                ...c,
-                assignedAgentName: c.assignedAgent?.name || '-',
-              }))}
-              actions={client => (
-                <div className="flex gap-2">
-                  <Button
-                    color="primary"
-                    size="sm"
-                    onClick={() => navigate(`/clients/${client._id}`)}
-                  >
-                    <FaEye />
-                  </Button>
+          </div>
+          {loading ? (
+            <Loader className="my-10" />
+          ) : error ? (
+            <div className="text-red-500 p-6">{error}</div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-sm text-gray-600">
+                  Showing {((currentPage - 1) * clientsPerPage) + 1} to {Math.min(currentPage * clientsPerPage, sortedClients.length)} of {sortedClients.length} clients
+                </p>
+                <div className="flex items-center gap-2">
                   <Button
                     color="secondary"
                     size="sm"
-                    onClick={() => navigate(`/clients/${client._id}/edit`)}
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                   >
-                    <FaEdit />
+                    {sortOrder === 'asc' ? '↑' : '↓'} {sortBy}
                   </Button>
-                  <Button
-                    color="danger"
-                    size="sm"
-                    onClick={() => handleDeleteClient(client._id)}
-                  >
-                    <FaTrash />
-                  </Button>
+                </div>
+              </div>
+              <Table
+                columns={selectedClients.length > 0 ? columnsWithCheckbox : columns}
+                data={paginatedClients.map(c => ({
+                  ...c,
+                  assignedAgentName: c.assignedAgent?.name || '-',
+                }))}
+                actions={client => (
+                  <div className="flex gap-2">
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onClick={() => navigate(`/clients/${client._id}`)}
+                    >
+                      <FaEye />
+                    </Button>
+                    <Button
+                      color="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/clients/${client._id}/edit`)}
+                    >
+                      <FaEdit />
+                    </Button>
+                    <Button
+                      color="danger"
+                      size="sm"
+                      onClick={() => handleDeleteClient(client._id)}
+                    >
+                      <FaTrash />
+                    </Button>
+                  </div>
+                )}
+              />
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-6">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      color="secondary"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                      return (
+                        <Button
+                          key={page}
+                          color={currentPage === page ? "primary" : "secondary"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      color="secondary"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
-            />
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-6">
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    color="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                    return (
-                      <Button
-                        key={page}
-                        color={currentPage === page ? "primary" : "secondary"}
-                        size="sm"
-                        onClick={() => handlePageChange(page)}
-                      >
-                        {page}
-                      </Button>
-                    );
-                  })}
-                  <Button
-                    color="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

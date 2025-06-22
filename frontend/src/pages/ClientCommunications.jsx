@@ -209,48 +209,47 @@ function ClientCommunications() {
           <StatCard icon={<FaPhone />} label="Phone Calls" value={phoneComms} accentColor="green" />
         </div>
 
-        {/* Modern Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
-          <SearchInput
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search communications..."
-            className="w-96"
-          />
-          <div className="flex gap-4 items-center">
-            <Dropdown
-              value={filterType}
-              onChange={e => setFilterType(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Types' },
-                { value: 'email', label: 'Email' },
-                { value: 'sms', label: 'SMS' },
-                { value: 'phone', label: 'Phone' },
-                { value: 'whatsapp', label: 'WhatsApp' }
-              ]}
-              className="w-40"
-            />
-            <Dropdown
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'sent', label: 'Sent' },
-                { value: 'pending', label: 'Pending' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'failed', label: 'Failed' }
-              ]}
-              className="w-40"
-            />
-            <Button variant="outline">
-              <FaDownload className="mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        <Card>
-          <div className="p-6">
+        <Card className="p-4">
+          <div className="p-4">
+            {/* Table-integrated Filter/Search Bar */}
+            <div className="flex flex-wrap items-center justify-between mb-4 gap-4">
+              <SearchInput
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search communications..."
+                className="w-80"
+              />
+              <div className="flex gap-3 items-center">
+                <Dropdown
+                  value={filterType}
+                  onChange={e => setFilterType(e.target.value)}
+                  options={[
+                    { value: 'all', label: 'All Types' },
+                    { value: 'email', label: 'Email' },
+                    { value: 'phone', label: 'Phone' },
+                    { value: 'sms', label: 'SMS' },
+                    { value: 'whatsapp', label: 'WhatsApp' }
+                  ]}
+                  className="w-36"
+                />
+                <Dropdown
+                  value={filterStatus}
+                  onChange={e => setFilterStatus(e.target.value)}
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'sent', label: 'Sent' },
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'completed', label: 'Completed' },
+                    { value: 'failed', label: 'Failed' }
+                  ]}
+                  className="w-36"
+                />
+                <Button variant="outline">
+                  <FaDownload className="mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
             <Table
               data={filteredCommunications}
               columns={columns}

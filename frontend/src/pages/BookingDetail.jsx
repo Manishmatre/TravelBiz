@@ -3,13 +3,17 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getBooking, updateBooking, deleteBooking } from '../services/bookingService';
 import { getClients } from '../services/clientService';
-import { getUsers } from '../services/userService';
+import { getUsers, getUserById } from '../services/userService';
 import Button from '../components/common/Button';
 import { FaCalendarAlt, FaArrowLeft, FaEdit, FaTrash, FaSave, FaTimes, FaUser, FaCar, FaMoneyBillWave, FaMapMarkerAlt } from 'react-icons/fa';
 import Loader from '../components/common/Loader';
 import Notification from '../components/common/Notification';
 import Modal from '../components/common/Modal';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import Card from '../components/common/Card';
+import ClientDetailsCard from '../components/ClientDetailsCard';
+import VehicleCard from '../components/VehicleCard';
+import DriverDetailsCard from '../components/DriverDetailsCard';
 
 const libraries = ['places'];
 
@@ -43,6 +47,7 @@ const BookingDetail = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
   const [agents, setAgents] = useState([]);
+  const [driverDetails, setDriverDetails] = useState(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -52,6 +57,13 @@ const BookingDetail = () => {
   useEffect(() => {
     fetchBooking();
     fetchDropdownData();
+    if (booking && booking.driver && typeof booking.driver === 'string' && token) {
+      getUserById(booking.driver, token).then(setDriverDetails).catch(() => setDriverDetails(null));
+    } else if (booking && booking.driver && typeof booking.driver === 'object') {
+      setDriverDetails(booking.driver);
+    } else {
+      setDriverDetails(null);
+    }
   }, [id, token]);
 
   const fetchBooking = async () => {
@@ -162,100 +174,130 @@ const BookingDetail = () => {
   } : { lat: 25.2048, lng: 55.2708 }; // Default to Dubai
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
       {notification && <Notification message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
       <div className="p-4 md:p-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-                <Button color="secondary" onClick={() => navigate('/bookings')} className="!p-2">
-                    <FaArrowLeft />
-                </Button>
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Trip to {booking.destination?.name || 'Unknown'}
-                    </h1>
-                    <p className="text-gray-500 font-mono text-sm">
-                        Booking ID: {booking._id}
-                    </p>
-                </div>
+        <Card className="mb-8 px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <Button color="secondary" onClick={() => navigate('/bookings')} size="sm" className="!p-2"><FaArrowLeft /></Button>
+            {booking.client?.avatarUrl ? (
+              <img src={booking.client.avatarUrl} alt={booking.client.name} className="w-10 h-10 rounded-full object-cover border-2 border-blue-200 shadow-sm" />
+            ) : (
+              <span className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-base border-2 border-blue-200 shadow-sm">{booking.client?.name?.[0] || <FaUser />}</span>
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-lg font-bold text-gray-900 truncate">Trip to {booking.destination?.name || 'Unknown'}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(booking.status)}`}>{booking.status}</span>
+              </div>
+              <div className="text-xs text-gray-500 font-mono truncate">Booking ID: {booking._id}</div>
             </div>
-            <div className="flex items-center gap-2 mt-4 md:mt-0">
-                <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(booking.status)}`}>
-                    {booking.status}
-                </span>
-                <Button color="primary" onClick={() => setIsEditing(true)}><FaEdit /> Edit</Button>
-                <Button color="danger" onClick={() => setDeleteModalOpen(true)}><FaTrash /> Delete</Button>
-            </div>
-        </div>
+          </div>
+          <div className="flex flex-row gap-2 items-center ml-4">
+            <Button size="sm" color="primary" onClick={() => setIsEditing(true)}><FaEdit /> Edit</Button>
+            <Button size="sm" color="danger" onClick={() => setDeleteModalOpen(true)}><FaTrash /> Delete</Button>
+          </div>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column */}
-            <div className="lg:col-span-2 space-y-8">
-                {/* Map */}
-                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                    <div className="h-96">
-                        {isLoaded && (
-                             <GoogleMap
-                                mapContainerStyle={{ height: '100%', width: '100%' }}
-                                center={mapCenter}
-                                zoom={10}
-                            >
-                                {hasCoordinates && (
-                                    <>
-                                        <Marker position={booking.pickupCoordinates} />
-                                        <Marker position={booking.destinationCoordinates} />
-                                    </>
-                                )}
-                            </GoogleMap>
-                        )}
-                    </div>
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Map Card */}
+            <Card className="p-0 overflow-hidden">
+              <div className="px-6 py-3 border-b border-gray-100 flex items-center gap-2 bg-white/80">
+                <FaMapMarkerAlt className="text-blue-500" />
+                <span className="font-semibold text-gray-800">Trip Route</span>
+              </div>
+              <div className="h-80">
+                {isLoaded && (
+                  <GoogleMap
+                    mapContainerStyle={{ height: '100%', width: '100%' }}
+                    center={mapCenter}
+                    zoom={10}
+                  >
+                    {hasCoordinates && (
+                      <>
+                        <Marker position={booking.pickupCoordinates} />
+                        <Marker position={booking.destinationCoordinates} />
+                      </>
+                    )}
+                  </GoogleMap>
+                )}
+              </div>
+            </Card>
+            {/* Trip Details Card */}
+            <Card className="p-6">
+              <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaCalendarAlt className="text-blue-500" /> Trip Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DetailItem icon={<FaMapMarkerAlt />} label="From" value={booking.pickup?.name} />
+                <DetailItem icon={<FaMapMarkerAlt />} label="To" value={booking.destination?.name} />
+                <DetailItem icon={<FaCalendarAlt />} label="Start Date" value={new Date(booking.startDate).toLocaleString()} />
+                <DetailItem icon={<FaCalendarAlt />} label="End Date" value={booking.endDate ? new Date(booking.endDate).toLocaleString() : 'N/A'} />
+                <DetailItem icon={<FaMoneyBillWave />} label="Price" value={`$${booking.price}`} />
+                <DetailItem icon={<FaUser />} label="Agent" value={booking.agent?.name} to={booking.agent?._id ? `/users/${booking.agent._id}` : undefined} />
+              </div>
+            </Card>
+          </div>
+          {/* Right Column */}
+          <div className="space-y-8">
+            {/* Client Card */}
+            <Card className="p-4">
+              <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaUser className="text-blue-500" /> Client</h3>
+              <div className="flex items-center gap-3 mb-2">
+                {booking.client?.avatarUrl ? (
+                  <img src={booking.client.avatarUrl} alt={booking.client.name} className="w-12 h-12 rounded-full object-cover border-2 border-blue-200 shadow-sm" />
+                ) : (
+                  <span className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg border-2 border-blue-200 shadow-sm">{booking.client?.name?.[0] || <FaUser />}</span>
+                )}
+                <div>
+                  <div className="font-semibold text-gray-900">{booking.client?.name}</div>
+                  <div className="text-xs text-gray-500">{booking.client?.email}</div>
+                  <div className="text-xs text-gray-500">{booking.client?.phone}</div>
+                  <div className="text-xs text-gray-400">{booking.client?.status}</div>
                 </div>
-                {/* Other details can go here */}
-            </div>
-            {/* Right Column */}
-            <div className="space-y-8">
-                {/* Trip Info */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg">
-                     <h3 className="text-xl font-bold mb-4 text-gray-800">Trip Details</h3>
-                     <div className="space-y-4">
-                        <DetailItem icon={<FaMapMarkerAlt />} label="From" value={booking.pickup?.name} />
-                        <DetailItem icon={<FaMapMarkerAlt />} label="To" value={booking.destination?.name} />
-                        <DetailItem icon={<FaCalendarAlt />} label="Start Date" value={new Date(booking.startDate).toLocaleString()} />
-                        <DetailItem icon={<FaCalendarAlt />} label="End Date" value={booking.endDate ? new Date(booking.endDate).toLocaleString() : 'N/A'} />
-                     </div>
+              </div>
+              <Button size="sm" color="primary" onClick={() => navigate(`/clients/${booking.client?._id}`)} className="w-full mt-2"><FaUser /> View Client</Button>
+            </Card>
+            {/* Vehicle Card */}
+            {booking.vehicle && <VehicleCard vehicle={booking.vehicle} />}
+            {/* Driver Card */}
+            {driverDetails && (
+              <Card className="p-4">
+                <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaUser className="text-purple-500" /> Driver</h3>
+                <div className="flex items-center gap-3 mb-2">
+                  {driverDetails.avatarUrl ? (
+                    <img src={driverDetails.avatarUrl} alt={driverDetails.name} className="w-12 h-12 rounded-full object-cover border-2 border-purple-200 shadow-sm" />
+                  ) : (
+                    <span className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-lg border-2 border-purple-200 shadow-sm">{driverDetails.name?.[0] || <FaUser />}</span>
+                  )}
+                  <div>
+                    <div className="font-semibold text-gray-900">{driverDetails.name}</div>
+                    <div className="text-xs text-gray-500">{driverDetails.email}</div>
+                    <div className="text-xs text-gray-500">{driverDetails.phone}</div>
+                    <div className="text-xs text-gray-400">{driverDetails.status}</div>
+                  </div>
                 </div>
-
-                {/* Client Info */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg">
-                     <h3 className="text-xl font-bold mb-4 text-gray-800">Client Details</h3>
-                     <div className="space-y-4">
-                        <DetailItem icon={<FaUser />} label="Name" value={booking.client?.name} to={`/clients/${booking.client?._id}`} />
-                        <DetailItem icon={<FaUser />} label="Email" value={booking.client?.email} />
-                     </div>
-                </div>
-                 {/* Vehicle & Payment */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <h3 className="text-xl font-bold mb-4 text-gray-800">Additional Info</h3>
-                     <div className="space-y-4">
-                        <DetailItem icon={<FaCar />} label="Vehicle" value={booking.vehicle?.name || 'Not Assigned'} to={`/vehicles/${booking.vehicle?._id}`} />
-                        <DetailItem icon={<FaMoneyBillWave />} label="Price" value={`$${booking.price}`} />
-                        <DetailItem icon={<FaUser />} label="Agent" value={booking.agent?.name} to={`/users/${booking.agent?._id}`} />
-                     </div>
-                </div>
-            </div>
+                <div className="text-xs text-gray-700 mb-1"><b>License #:</b> {driverDetails.licenseNumber || '-'}</div>
+                <div className="text-xs text-gray-700 mb-1"><b>License Expiry:</b> {driverDetails.licenseExpiry || '-'}</div>
+                <div className="text-xs text-gray-700 mb-1"><b>Assignment:</b> {driverDetails.assignedVehicle?.numberPlate || driverDetails.assignedVehicle?.name || 'Unassigned'}</div>
+                <Button size="sm" color="primary" onClick={() => navigate(`/users/${driverDetails._id}`)} className="w-full mt-2"><FaUser /> View Driver</Button>
+              </Card>
+            )}
+          </div>
         </div>
-      </div>
-       {/* Delete Confirmation Modal */}
-      <Modal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Confirm Deletion">
-        <p className="text-gray-600 mb-6">Are you sure you want to permanently delete this booking? This action cannot be undone.</p>
-        <div className="flex justify-end gap-2">
+
+        {/* Delete Confirmation Modal */}
+        <Modal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Confirm Deletion">
+          <p className="text-gray-600 mb-6">Are you sure you want to permanently delete this booking? This action cannot be undone.</p>
+          <div className="flex justify-end gap-2">
             <Button color="secondary" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
             <Button color="danger" onClick={handleDelete} loading={deleting}>
-                {deleting ? 'Deleting...' : 'Delete Booking'}
+              {deleting ? 'Deleting...' : 'Delete Booking'}
             </Button>
-        </div>
-      </Modal>
+          </div>
+        </Modal>
+      </div>
     </div>
   );
 };

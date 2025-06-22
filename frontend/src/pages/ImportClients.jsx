@@ -118,37 +118,37 @@ function ImportClients() {
           </Button>
         </PageHeading>
 
-        {/* Modern Filter Bar (for future extensibility) */}
-        <div className="flex flex-wrap items-center justify-between bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
-          <SearchInput
-            value={''}
-            onChange={() => {}}
-            placeholder="Search import history..."
-            className="w-96"
-            disabled
-          />
-          <div className="flex gap-4 items-center">
-            <Dropdown
-              value={''}
-              onChange={() => {}}
-              options={[
-                { value: '', label: 'All Status' },
-                { value: 'success', label: 'Success' },
-                { value: 'error', label: 'Error' }
-              ]}
-              className="w-40"
-              disabled
-            />
-            <Button variant="outline" disabled>
-              <FaDownload className="mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        {/* Instructions */}
-        <Card>
-          <div className="p-6">
+        {/* File Upload */}
+        <Card className="p-4">
+          <div className="p-4">
+            {/* Table-integrated Filter/Search Bar (future extensibility) */}
+            <div className="flex flex-wrap items-center justify-between mb-4 gap-4">
+              <SearchInput
+                value={''}
+                onChange={() => {}}
+                placeholder="Search import history..."
+                className="w-96"
+                disabled
+              />
+              <div className="flex gap-4 items-center">
+                <Dropdown
+                  value={''}
+                  onChange={() => {}}
+                  options={[
+                    { value: '', label: 'All Status' },
+                    { value: 'success', label: 'Success' },
+                    { value: 'error', label: 'Error' }
+                  ]}
+                  className="w-40"
+                  disabled
+                />
+                <Button variant="outline" disabled>
+                  <FaDownload className="mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
+            {/* Import Instructions */}
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <FaInfoCircle className="text-blue-600" />
               Import Instructions

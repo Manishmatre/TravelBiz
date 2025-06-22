@@ -541,7 +541,7 @@ function ClientDetail() {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 via-white to-gray-100 min-h-screen p-4 md:p-8">
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen py-6 px-2 md:px-8">
       {notification && (
         <Notification
           message={notification.message}
@@ -551,22 +551,36 @@ function ClientDetail() {
       )}
 
       {/* Header */}
-      <Card className="mb-8 p-6 shadow-lg">
-        <PageHeading
-          icon={<FaUser />}
-          title={client.name}
-          subtitle={client.email}
-        >
-          {isEditing ? (
-            <>
-              <Button color="secondary" onClick={handleEditToggle} className="flex items-center gap-2"><FaTimes /> Cancel</Button>
-              <Button color="primary" onClick={handleSave} loading={saving} className="flex items-center gap-2"><FaSave /> Save</Button>
-            </>
+      <Card className="mb-8 px-6 py-5 min-h-[100px] rounded-2xl shadow-lg">
+        <div className="flex items-center gap-5">
+          {client.avatarUrl ? (
+            <img src={client.avatarUrl} alt={client.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-200 shadow-sm" />
           ) : (
-            <Button color="primary" onClick={handleEditToggle} className="flex items-center gap-2"><FaEdit /> Edit Client</Button>
+            <span className="w-14 h-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-2xl border-2 border-blue-200 shadow-sm">
+              {client.name?.[0] || <FaUser />}
+            </span>
           )}
-          <Button color="success" onClick={() => navigate(`/bookings/add?clientId=${id}`)} className="flex items-center gap-2"><FaPlus /> New Booking</Button>
-        </PageHeading>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-gray-900 truncate">{client.name}</span>
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${client.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>{client.status || 'Active'}</span>
+            </div>
+            <div className="text-sm text-gray-500 truncate flex items-center gap-2"><FaEnvelope className="inline" /> {client.email}</div>
+            <div className="text-sm text-gray-500 truncate flex items-center gap-2"><FaPhone className="inline" /> {client.phone}</div>
+            {client.nationality && <div className="text-xs text-gray-400 flex items-center gap-2"><FaGlobe className="inline" /> {client.nationality}</div>}
+          </div>
+          <div className="flex flex-row gap-2 items-center ml-4">
+            {isEditing ? (
+              <>
+                <Button size="sm" color="secondary" onClick={handleEditToggle} className="flex items-center gap-2"><FaTimes /> Cancel</Button>
+                <Button size="sm" color="primary" onClick={handleSave} loading={saving} className="flex items-center gap-2"><FaSave /> Save</Button>
+              </>
+            ) : (
+              <Button size="sm" color="primary" onClick={handleEditToggle} className="flex items-center gap-2"><FaEdit /> Edit Client</Button>
+            )}
+            <Button size="sm" color="success" onClick={() => navigate(`/bookings/add?clientId=${id}`)} className="flex items-center gap-2"><FaPlus /> New Booking</Button>
+          </div>
+        </div>
       </Card>
 
       {/* Stat Cards */}

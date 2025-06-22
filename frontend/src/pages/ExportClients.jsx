@@ -93,152 +93,150 @@ function ExportClients() {
           iconColor="text-blue-600"
         />
 
-        {/* Modern Filter Bar (for future extensibility) */}
-        <div className="flex flex-wrap items-center justify-between bg-white rounded-xl shadow p-3 mb-4 border border-gray-100">
-          <SearchInput
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search clients..."
-            className="w-80"
-          />
-          <div className="flex gap-3 items-center">
-            <Dropdown
-              value={clientStatus}
-              onChange={e => setClientStatus(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'active', label: 'Active' },
-                { value: 'inactive', label: 'Inactive' },
-                { value: 'vip', label: 'VIP' }
-              ]}
-              className="w-36"
-            />
-            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
-              <FaDownload className="mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card>
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <FaFilter className="text-blue-600" />
-                Export Settings
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { key: 'csv', label: 'CSV File', description: 'Comma separated values' },
-                      { key: 'excel', label: 'Excel File', description: 'Microsoft Excel format' }
-                    ].map(format => (
-                      <div
-                        key={format.key}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                          exportFormat === format.key
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                        onClick={() => setExportFormat(format.key)}
-                      >
-                        <div className="flex items-center gap-2">
-                          {getFormatIcon(format.key)}
-                          <div>
-                            <div className="font-medium">{format.label}</div>
-                            <div className="text-xs text-gray-500">{format.description}</div>
-                          </div>
+        <Card className="p-4">
+          <div className="p-4">
+            {/* Table-integrated Filter/Search Bar (future extensibility) */}
+            <div className="flex flex-wrap items-center justify-between mb-4 gap-4">
+              <SearchInput
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search clients..."
+                className="w-80"
+              />
+              <div className="flex gap-3 items-center">
+                <Dropdown
+                  value={clientStatus}
+                  onChange={e => setClientStatus(e.target.value)}
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                    { value: 'vip', label: 'VIP' }
+                  ]}
+                  className="w-36"
+                />
+                <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+                  <FaDownload className="mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
+            {/* Export Settings */}
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <FaFilter className="text-blue-600" />
+              Export Settings
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'csv', label: 'CSV File', description: 'Comma separated values' },
+                    { key: 'excel', label: 'Excel File', description: 'Microsoft Excel format' }
+                  ].map(format => (
+                    <div
+                      key={format.key}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        exportFormat === format.key
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      onClick={() => setExportFormat(format.key)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {getFormatIcon(format.key)}
+                        <div>
+                          <div className="font-medium">{format.label}</div>
+                          <div className="text-xs text-gray-500">{format.description}</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                  <select
-                    value={dateRange}
-                    onChange={(e) => setDateRange(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Time</option>
-                    <option value="today">Today</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                    <option value="quarter">This Quarter</option>
-                    <option value="year">This Year</option>
-                    <option value="custom">Custom Range</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Client Status</label>
-                  <select
-                    value={clientStatus}
-                    onChange={(e) => setClientStatus(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Clients</option>
-                    <option value="active">Active Only</option>
-                    <option value="inactive">Inactive Only</option>
-                    <option value="vip">VIP Clients Only</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Filter</label>
-                  <Input
-                    type="text"
-                    placeholder="Search by name, email, or company..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <FaUsers className="text-green-600" />
-                Select Fields
-              </h3>
-              
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {availableFields.map(field => (
-                  <label key={field.key} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedFields.includes(field.key)}
-                      onChange={() => handleFieldToggle(field.key)}
-                      disabled={field.required}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">
-                        {field.label}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </div>
-                      {field.required && (
-                        <div className="text-xs text-gray-500">Required field</div>
-                      )}
                     </div>
-                  </label>
-                ))}
+                  ))}
+                </div>
               </div>
-              
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
-                  Selected {selectedFields.length} of {availableFields.length} fields
-                </p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                <select
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="quarter">This Quarter</option>
+                  <option value="year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client Status</label>
+                <select
+                  value={clientStatus}
+                  onChange={(e) => setClientStatus(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Clients</option>
+                  <option value="active">Active Only</option>
+                  <option value="inactive">Inactive Only</option>
+                  <option value="vip">VIP Clients Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search Filter</label>
+                <Input
+                  type="text"
+                  placeholder="Search by name, email, or company..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <FaUsers className="text-green-600" />
+              Select Fields
+            </h3>
+            
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {availableFields.map(field => (
+                <label key={field.key} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFields.includes(field.key)}
+                    onChange={() => handleFieldToggle(field.key)}
+                    disabled={field.required}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </div>
+                    {field.required && (
+                      <div className="text-xs text-gray-500">Required field</div>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Selected {selectedFields.length} of {availableFields.length} fields
+              </p>
+            </div>
+          </div>
+        </Card>
 
         <Card>
           <div className="p-6">
