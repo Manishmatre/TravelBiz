@@ -408,8 +408,8 @@ function ClientDetail() {
       key: 'destination',
       render: (row) => (
         <div>
-          <p className="font-semibold text-gray-800">{row.destination}</p>
-          <p className="text-xs text-gray-500">Booking ID: {row._id.slice(-6)}</p>
+          <p className="font-semibold text-gray-800">{typeof row.destination === 'string' ? row.destination : (row.destination?.name || 'N/A')}</p>
+          <p className="text-xs text-gray-500">Booking ID: {typeof row._id === 'string' ? row._id.slice(-6) : (row._id?.toString ? row._id.toString().slice(-6) : 'N/A')}</p>
         </div>
       )
     },
@@ -428,7 +428,11 @@ function ClientDetail() {
       key: 'vehicle',
       render: (row) => row.vehicle ? (
         <div className="flex items-center gap-2">
-           <img src={row.vehicle.imageUrls[0] || `https://ui-avatars.com/api/?name=${row.vehicle.make}&background=random`} alt={row.vehicle.make} className="w-10 h-10 rounded-md object-cover" />
+           <img src={
+             Array.isArray(row.vehicle.imageUrls) && row.vehicle.imageUrls.length > 0
+               ? row.vehicle.imageUrls[0]
+               : `https://ui-avatars.com/api/?name=${row.vehicle.make}&background=random`
+           } alt={row.vehicle.make} className="w-10 h-10 rounded-md object-cover" />
           <div>
             <p className="font-semibold">{row.vehicle.make} {row.vehicle.model}</p>
             <p className="text-xs text-gray-500">{row.vehicle.licensePlate}</p>

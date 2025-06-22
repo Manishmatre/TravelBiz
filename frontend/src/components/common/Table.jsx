@@ -6,8 +6,8 @@ function Table({ columns, data, actions, className = '' }) {
       <table className="min-w-full text-sm">
         <thead>
           <tr className="bg-white/60 sticky top-0 z-10 rounded-t-2xl">
-            {columns.map(col => (
-              <th key={col.key} className="py-3 px-4 text-left font-semibold text-gray-700 whitespace-nowrap first:rounded-tl-2xl last:rounded-tr-2xl">
+            {columns.map((col, colIdx) => (
+              <th key={col.key || colIdx} className="py-3 px-4 text-left font-semibold text-gray-700 whitespace-nowrap first:rounded-tl-2xl last:rounded-tr-2xl">
                 {col.label}
               </th>
             ))}
@@ -22,8 +22,8 @@ function Table({ columns, data, actions, className = '' }) {
           ) : (
             data.map((row, idx) => (
               <tr key={row._id || row.id || idx} className="hover:bg-blue-50/60 transition-colors border-t border-blue-50">
-                {columns.map(col => (
-                  <td key={col.key} className="py-2 px-4 whitespace-nowrap align-middle">
+                {columns.map((col, colIdx) => (
+                  <td key={`${row._id || row.id || idx}-${col.key || colIdx}`} className="py-2 px-4 whitespace-nowrap align-middle">
                     {col.render ? col.render(row) : row[col.key]}
                   </td>
                 ))}

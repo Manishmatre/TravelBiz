@@ -12,7 +12,7 @@ import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
 import { useAuth } from '../contexts/AuthContext';
 import StatCard from '../components/common/StatCard';
-import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave, FaPlus, FaFilter, FaSearch, FaEye, FaEdit, FaTrash, FaSyncAlt, FaDownload, FaMapMarkerAlt, FaUser, FaCar } from 'react-icons/fa';
+import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave, FaPlus, FaFilter, FaSearch, FaEye, FaEdit, FaTrash, FaSyncAlt, FaDownload, FaMapMarkerAlt, FaUser, FaCar, FaUserTie } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useBookings } from '../contexts/BookingsContext';
 import Notification from '../components/common/Notification';
@@ -55,7 +55,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
 
   const filteredBookings = bookings.filter(b => {
     const matchesSearch =
-      b.destination?.toLowerCase().includes(search.toLowerCase()) ||
+      (typeof b.destination === 'string' ? b.destination : (b.destination?.name || '')).toLowerCase().includes(search.toLowerCase()) ||
       (b.client?.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (b.agent?.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (b.vehicle?.name || '').toLowerCase().includes(search.toLowerCase());
@@ -310,10 +310,10 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
       render: (v, row) => (
         <div>
           <div className="font-medium text-blue-700 hover:underline cursor-pointer" onClick={() => navigate(`/bookings/${row._id}`)}>
-            {v}
+            {typeof v === 'string' ? v : (v?.name || 'N/A')}
           </div>
           <div className="text-sm text-gray-500">
-            {row.startDate ? new Date(row.startDate).toLocaleDateString() : 'No date'} - {row.endDate ? new Date(row.endDate).toLocaleDateString() : 'No end date'}
+            {row && row.startDate ? new Date(row.startDate).toLocaleDateString() : 'No date'} - {row && row.endDate ? new Date(row.endDate).toLocaleDateString() : 'No end date'}
           </div>
         </div>
       )
@@ -324,7 +324,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
       render: (v, row) => (
         <div className="flex items-center gap-2">
           <FaUser className="text-gray-400" />
-          <span>{v?.name || 'Unknown'}</span>
+          <span>{typeof v === 'string' ? v : (v?.name || 'Unknown')}</span>
         </div>
       )
     },
@@ -334,7 +334,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
       render: (v, row) => (
         <div className="flex items-center gap-2">
           <FaUserTie className="text-gray-400" />
-          <span>{v?.name || 'Unassigned'}</span>
+          <span>{typeof v === 'string' ? v : (v?.name || 'Unassigned')}</span>
         </div>
       )
     },
@@ -344,7 +344,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
       render: (v, row) => (
         <div className="flex items-center gap-2">
           <FaCar className="text-gray-400" />
-          <span>{v?.name || 'Unassigned'}</span>
+          <span>{typeof v === 'string' ? v : (v?.name || 'Unassigned')}</span>
         </div>
       )
     },
@@ -353,7 +353,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
       accessor: 'status',
       render: (v) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(v)}`}>
-          {v}
+          {typeof v === 'string' || typeof v === 'number' ? v : 'Unknown'}
         </span>
       )
     },
