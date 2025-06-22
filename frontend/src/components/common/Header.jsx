@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   FaUserCircle, 
@@ -23,15 +23,19 @@ import {
   FaShieldAlt,
   FaCog,
   FaQuestionCircle,
-  FaUserPlus
+  FaUserPlus,
+  FaTimesCircle,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
+import { NotificationContext } from '../../contexts/NotificationContext';
 
 // Modernized logo is now directly in the header for gradient effect
 
 function Header({ onLogout, onMenuClick }) {
   const { user, logout, agency } = useAuth();
   const location = useLocation();
+  const { notificationLog } = useContext(NotificationContext);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -42,47 +46,11 @@ function Header({ onLogout, onMenuClick }) {
   const notificationRef = useRef(null);
   const searchRef = useRef(null);
 
-  // Mock notifications data
-  const [notifications] = useState([
-    {
-      id: 1,
-      type: 'booking',
-      title: 'New Booking Request',
-      message: 'Client John Doe requested a booking for tomorrow',
-      time: '2 minutes ago',
-      read: false,
-      icon: <FaCalendarAlt className="text-blue-500" />
-    },
-    {
-      id: 2,
-      type: 'vehicle',
-      title: 'Vehicle Maintenance Due',
-      message: 'Vehicle ABC-123 needs maintenance check',
-      time: '1 hour ago',
-      read: false,
-      icon: <FaCar className="text-orange-500" />
-    },
-    {
-      id: 3,
-      type: 'client',
-      title: 'New Client Registration',
-      message: 'Sarah Wilson registered as a new client',
-      time: '3 hours ago',
-      read: true,
-      icon: <FaUsers className="text-green-500" />
-    },
-    {
-      id: 4,
-      type: 'system',
-      title: 'System Update',
-      message: 'System maintenance completed successfully',
-      time: '1 day ago',
-      read: true,
-      icon: <FaCheckCircle className="text-purple-500" />
-    }
-  ]);
-
-  const unreadNotifications = notifications.filter(n => !n.read).length;
+  // Use real notifications
+  const notifications = notificationLog.slice().reverse().slice(0, 10); // show latest 10
+  const [read, setRead] = useState([]);
+  const unreadNotifications = notifications.filter((_, i) => !read.includes(i)).length;
+  const handleMarkAllRead = () => setRead(notifications.map((_, i) => i));
 
   // Update time every minute
   useEffect(() => {
@@ -295,31 +263,34 @@ function Header({ onLogout, onMenuClick }) {
               )}
             </button>
             {notificationDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-blue-100 rounded-2xl shadow-xl py-2 z-50">
+              <div className="absolute right-0 mt-2 w-96 bg-white/95 backdrop-blur-md border border-blue-100 rounded-2xl shadow-xl py-2 z-50">
                 <div className="px-4 py-2 border-b border-blue-50">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-gray-900">Notifications</h3>
-                    <button className="text-xs text-blue-600 hover:text-blue-800">Mark all read</button>
+                    <button className="text-xs text-blue-600 hover:text-blue-800" onClick={handleMarkAllRead}>Mark all read</button>
                   </div>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  {notifications.map(notification => (
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-gray-400">No notifications</div>
+                  ) : notifications.map((notification, i) => (
                     <div
-                      key={notification.id}
-                      className={`px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors ${
-                        !notification.read ? 'bg-blue-50/50' : ''
-                      }`}
+                      key={i}
+                      className={`px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors ${!read.includes(i) ? 'bg-blue-50/50' : ''}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="mt-1">{notification.icon}</div>
+                        <div className="mt-1">
+                          {notification.type === 'success' ? <FaCheckCircle className="text-green-500" /> :
+                           notification.type === 'error' ? <FaTimesCircle className="text-red-500" /> :
+                           <FaInfoCircle className="text-blue-500" />}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <h4 className="text-sm font-medium text-gray-900 truncate">
-                              {notification.title}
+                              {notification.message}
                             </h4>
-                            <span className="text-xs text-gray-500">{notification.time}</span>
+                            <span className="text-xs text-gray-500">{notification.timestamp ? new Date(notification.timestamp).toLocaleTimeString() : ''}</span>
                           </div>
-                          <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
                         </div>
                       </div>
                     </div>

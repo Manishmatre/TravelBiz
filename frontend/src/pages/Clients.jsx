@@ -257,20 +257,6 @@ function Clients() {
       key: 'totalBookings',
       render: (row) => <div className="text-center font-medium">{row.totalBookings || 0}</div>
     },
-    {
-      label: 'Actions',
-      key: 'actions',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate(`/clients/edit/${row._id}`)} className="text-blue-600 hover:text-blue-800 p-1" title="Edit Client">
-            <FaEdit size={16}/>
-          </button>
-          <button onClick={() => handleDeleteClient(row._id)} className="text-red-600 hover:text-red-800 p-1" title="Delete Client">
-            <FaTrash size={16}/>
-          </button>
-        </div>
-      )
-    }
   ];
 
   const handlePageChange = (page) => {

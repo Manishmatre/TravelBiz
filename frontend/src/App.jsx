@@ -59,6 +59,11 @@ import DriverReports from './pages/DriverReports';
 import FleetUsage from './pages/FleetUsage';
 import GeneralSettings from './pages/GeneralSettings';
 import RoleManagement from './pages/RoleManagement';
+import { NotificationProvider, NotificationContext } from './contexts/NotificationContext';
+import { socket } from './services/socket';
+import { useContext, useEffect } from 'react';
+import Notifications from './pages/Notifications';
+import SocketNotificationListener from './components/SocketNotificationListener';
 
 function ProtectedRoute({ children, requireAgency = false }) {
   const { user, loading } = useAuth();
@@ -79,96 +84,100 @@ function App() {
   const { user, loading } = useAuth() || {};
   if (loading) return <div>Loading...</div>;
   return (
-    <AuthProvider>
-      <BookingsProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/agency-info" element={
-              <ProtectedRoute>
-                <AgencyInfoForm />
-              </ProtectedRoute>
-            } />
-            <Route path="/agency-selection" element={
-              <ProtectedRoute>
-                <AgencySelection />
-              </ProtectedRoute>
-            } />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute requireAgency={true}>
-                  <Layout>
-                    {user?.role === 'driver' ? <DriverDashboard /> : <Dashboard />}
-                  </Layout>
+    <NotificationProvider>
+      <SocketNotificationListener />
+      <AuthProvider>
+        <BookingsProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/agency-info" element={
+                <ProtectedRoute>
+                  <AgencyInfoForm />
                 </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute requireAgency={true}>
-                  <Layout>
-                    {user?.role === 'driver' ? <DriverDashboard /> : <Dashboard />}
-                  </Layout>
+              } />
+              <Route path="/agency-selection" element={
+                <ProtectedRoute>
+                  <AgencySelection />
                 </ProtectedRoute>
-              }
-            />
-            <Route path="/clients" element={<ProtectedRoute><Layout><Clients /></Layout></ProtectedRoute>} />
-            <Route path="/clients/add" element={<ProtectedRoute><Layout><AddClient /></Layout></ProtectedRoute>} />
-            <Route path="/clients/edit/:id" element={<ProtectedRoute><Layout><AddClient /></Layout></ProtectedRoute>} />
-            <Route path="/clients/:id" element={<ProtectedRoute><Layout><ClientDetail /></Layout></ProtectedRoute>} />
-            <Route path="/clients/vip" element={<ProtectedRoute><Layout><VipClients /></Layout></ProtectedRoute>} />
-            <Route path="/clients/analytics" element={<ProtectedRoute><Layout><ClientAnalytics /></Layout></ProtectedRoute>} />
-            <Route path="/clients/import" element={<ProtectedRoute><Layout><ImportClients /></Layout></ProtectedRoute>} />
-            <Route path="/clients/export" element={<ProtectedRoute><Layout><ExportClients /></Layout></ProtectedRoute>} />
-            <Route path="/clients/communications" element={<ProtectedRoute><Layout><ClientCommunications /></Layout></ProtectedRoute>} />
-            <Route path="/clients/documents" element={<ProtectedRoute><Layout><ClientDocuments /></Layout></ProtectedRoute>} />
-            <Route path="/files" element={<ProtectedRoute><Layout><Files /></Layout></ProtectedRoute>} />
-            <Route path="/users" element={<ProtectedRoute requireAgency={true}><Layout><Users /></Layout></ProtectedRoute>} />
-            <Route path="/users/add" element={<ProtectedRoute requireAgency={true}><Layout><AddUser /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles" element={<ProtectedRoute><Layout><Vehicles /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/add" element={<ProtectedRoute><Layout><AddVehicle /></Layout></ProtectedRoute>} />
-            <Route path="/tracking" element={<ProtectedRoute><Layout><LiveTracking /></Layout></ProtectedRoute>} />
-            <Route path="/activity-log" element={<ProtectedRoute><Layout><ActivityLog /></Layout></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
-            <Route path="/agency-profile" element={<ProtectedRoute requireAgency={true}><Layout><AgencyProfile /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/dashboard" element={<ProtectedRoute><Layout><VehicleDashboard /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/maintenance" element={<ProtectedRoute><Layout><VehicleMaintenance /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/fuel" element={<ProtectedRoute><Layout><VehicleFuel /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/documents" element={<ProtectedRoute><Layout><VehicleDocuments /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/assignments" element={<ProtectedRoute><Layout><VehicleAssignments /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/analytics" element={<ProtectedRoute><Layout><VehicleAnalytics /></Layout></ProtectedRoute>} />
-            <Route path="/vehicles/:id" element={<ProtectedRoute><Layout><VehicleDetail /></Layout></ProtectedRoute>} />
-            <Route path="/drivers" element={<ProtectedRoute><Layout><Drivers /></Layout></ProtectedRoute>} />
-            <Route path="/drivers/add" element={<ProtectedRoute><Layout><AddUser /></Layout></ProtectedRoute>} />
-            <Route path="/drivers/dashboard" element={<ProtectedRoute><Layout><DriverDashboard /></Layout></ProtectedRoute>} />
-            <Route path="/drivers/contracts" element={<ProtectedRoute><Layout><DriverContracts /></Layout></ProtectedRoute>} />
-            <Route path="/drivers/performance" element={<ProtectedRoute><Layout><DriverPerformance /></Layout></ProtectedRoute>} />
-            <Route path="/drivers/:id" element={<ProtectedRoute><Layout><DriverDetail /></Layout></ProtectedRoute>} />
-            <Route path="/bookings" element={<ProtectedRoute><Layout><Bookings /></Layout></ProtectedRoute>} />
-            <Route path="/booking-list" element={<ProtectedRoute><Layout><BookingList /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/add" element={<ProtectedRoute><Layout><BookingFlow /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/pending" element={<ProtectedRoute><Layout><PendingBookings /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/confirmed" element={<ProtectedRoute><Layout><ConfirmedBookings /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/completed" element={<ProtectedRoute><Layout><CompletedBookings /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/cancelled" element={<ProtectedRoute><Layout><CancelledBookings /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/today" element={<ProtectedRoute><Layout><TodayBookings /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/upcoming" element={<ProtectedRoute><Layout><UpcomingBookings /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/overdue" element={<ProtectedRoute><Layout><OverdueBookings /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/calendar" element={<ProtectedRoute><Layout><BookingCalendar /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/reports" element={<ProtectedRoute><Layout><BookingReports /></Layout></ProtectedRoute>} />
-            <Route path="/bookings/:id" element={<ProtectedRoute><Layout><BookingDetail /></Layout></ProtectedRoute>} />
-            <Route path="/reports/financial" element={<ProtectedRoute><Layout><FinancialReports /></Layout></ProtectedRoute>} />
-            <Route path="/reports/driver" element={<ProtectedRoute><Layout><DriverReports /></Layout></ProtectedRoute>} />
-            <Route path="/reports/fleet" element={<ProtectedRoute><Layout><FleetUsage /></Layout></ProtectedRoute>} />
-            <Route path="/settings/general" element={<ProtectedRoute><Layout><GeneralSettings /></Layout></ProtectedRoute>} />
-            <Route path="/settings/roles" element={<ProtectedRoute><Layout><RoleManagement /></Layout></ProtectedRoute>} />
-          </Routes>
-        </Router>
-      </BookingsProvider>
-    </AuthProvider>
+              } />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute requireAgency={true}>
+                    <Layout>
+                      {user?.role === 'driver' ? <DriverDashboard /> : <Dashboard />}
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute requireAgency={true}>
+                    <Layout>
+                      {user?.role === 'driver' ? <DriverDashboard /> : <Dashboard />}
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/clients" element={<ProtectedRoute><Layout><Clients /></Layout></ProtectedRoute>} />
+              <Route path="/clients/add" element={<ProtectedRoute><Layout><AddClient /></Layout></ProtectedRoute>} />
+              <Route path="/clients/edit/:id" element={<ProtectedRoute><Layout><AddClient /></Layout></ProtectedRoute>} />
+              <Route path="/clients/:id" element={<ProtectedRoute><Layout><ClientDetail /></Layout></ProtectedRoute>} />
+              <Route path="/clients/vip" element={<ProtectedRoute><Layout><VipClients /></Layout></ProtectedRoute>} />
+              <Route path="/clients/analytics" element={<ProtectedRoute><Layout><ClientAnalytics /></Layout></ProtectedRoute>} />
+              <Route path="/clients/import" element={<ProtectedRoute><Layout><ImportClients /></Layout></ProtectedRoute>} />
+              <Route path="/clients/export" element={<ProtectedRoute><Layout><ExportClients /></Layout></ProtectedRoute>} />
+              <Route path="/clients/communications" element={<ProtectedRoute><Layout><ClientCommunications /></Layout></ProtectedRoute>} />
+              <Route path="/clients/documents" element={<ProtectedRoute><Layout><ClientDocuments /></Layout></ProtectedRoute>} />
+              <Route path="/files" element={<ProtectedRoute><Layout><Files /></Layout></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute requireAgency={true}><Layout><Users /></Layout></ProtectedRoute>} />
+              <Route path="/users/add" element={<ProtectedRoute requireAgency={true}><Layout><AddUser /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles" element={<ProtectedRoute><Layout><Vehicles /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/add" element={<ProtectedRoute><Layout><AddVehicle /></Layout></ProtectedRoute>} />
+              <Route path="/tracking" element={<ProtectedRoute><Layout><LiveTracking /></Layout></ProtectedRoute>} />
+              <Route path="/activity-log" element={<ProtectedRoute><Layout><ActivityLog /></Layout></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
+              <Route path="/agency-profile" element={<ProtectedRoute requireAgency={true}><Layout><AgencyProfile /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/dashboard" element={<ProtectedRoute><Layout><VehicleDashboard /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/maintenance" element={<ProtectedRoute><Layout><VehicleMaintenance /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/fuel" element={<ProtectedRoute><Layout><VehicleFuel /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/documents" element={<ProtectedRoute><Layout><VehicleDocuments /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/assignments" element={<ProtectedRoute><Layout><VehicleAssignments /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/analytics" element={<ProtectedRoute><Layout><VehicleAnalytics /></Layout></ProtectedRoute>} />
+              <Route path="/vehicles/:id" element={<ProtectedRoute><Layout><VehicleDetail /></Layout></ProtectedRoute>} />
+              <Route path="/drivers" element={<ProtectedRoute><Layout><Drivers /></Layout></ProtectedRoute>} />
+              <Route path="/drivers/add" element={<ProtectedRoute><Layout><AddUser /></Layout></ProtectedRoute>} />
+              <Route path="/drivers/dashboard" element={<ProtectedRoute><Layout><DriverDashboard /></Layout></ProtectedRoute>} />
+              <Route path="/drivers/contracts" element={<ProtectedRoute><Layout><DriverContracts /></Layout></ProtectedRoute>} />
+              <Route path="/drivers/performance" element={<ProtectedRoute><Layout><DriverPerformance /></Layout></ProtectedRoute>} />
+              <Route path="/drivers/:id" element={<ProtectedRoute><Layout><DriverDetail /></Layout></ProtectedRoute>} />
+              <Route path="/bookings" element={<ProtectedRoute><Layout><Bookings /></Layout></ProtectedRoute>} />
+              <Route path="/booking-list" element={<ProtectedRoute><Layout><BookingList /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/add" element={<ProtectedRoute><Layout><BookingFlow /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/pending" element={<ProtectedRoute><Layout><PendingBookings /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/confirmed" element={<ProtectedRoute><Layout><ConfirmedBookings /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/completed" element={<ProtectedRoute><Layout><CompletedBookings /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/cancelled" element={<ProtectedRoute><Layout><CancelledBookings /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/today" element={<ProtectedRoute><Layout><TodayBookings /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/upcoming" element={<ProtectedRoute><Layout><UpcomingBookings /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/overdue" element={<ProtectedRoute><Layout><OverdueBookings /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/calendar" element={<ProtectedRoute><Layout><BookingCalendar /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/reports" element={<ProtectedRoute><Layout><BookingReports /></Layout></ProtectedRoute>} />
+              <Route path="/bookings/:id" element={<ProtectedRoute><Layout><BookingDetail /></Layout></ProtectedRoute>} />
+              <Route path="/reports/financial" element={<ProtectedRoute><Layout><FinancialReports /></Layout></ProtectedRoute>} />
+              <Route path="/reports/driver" element={<ProtectedRoute><Layout><DriverReports /></Layout></ProtectedRoute>} />
+              <Route path="/reports/fleet" element={<ProtectedRoute><Layout><FleetUsage /></Layout></ProtectedRoute>} />
+              <Route path="/settings/general" element={<ProtectedRoute><Layout><GeneralSettings /></Layout></ProtectedRoute>} />
+              <Route path="/settings/roles" element={<ProtectedRoute><Layout><RoleManagement /></Layout></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Layout><Notifications /></Layout></ProtectedRoute>} />
+            </Routes>
+          </Router>
+        </BookingsProvider>
+      </AuthProvider>
+    </NotificationProvider>
   );
 }
 

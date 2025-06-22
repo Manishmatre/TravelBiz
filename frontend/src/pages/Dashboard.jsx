@@ -13,6 +13,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend, BarChart, Bar, LineChart, Line
 } from 'recharts';
 import { Link } from 'react-router-dom';
+import { getAgencyStats } from '../services/agencyService';
 
 // Mock data for analytics
 const mockTrendsData = [
@@ -61,6 +62,20 @@ function Dashboard() {
   const [recentClients, setRecentClients] = useState([]);
   const [liveLocations, setLiveLocations] = useState([]);
   const [timeRange, setTimeRange] = useState('month'); // week, month, quarter, year
+  const [revenueData, setRevenueData] = useState([
+    { month: 'Jan', revenue: 0 },
+    { month: 'Feb', revenue: 0 },
+    { month: 'Mar', revenue: 0 },
+    { month: 'Apr', revenue: 0 },
+    { month: 'May', revenue: 0 },
+    { month: 'Jun', revenue: 0 },
+    { month: 'Jul', revenue: 0 },
+    { month: 'Aug', revenue: 0 },
+    { month: 'Sep', revenue: 0 },
+    { month: 'Oct', revenue: 0 },
+    { month: 'Nov', revenue: 0 },
+    { month: 'Dec', revenue: 0 },
+  ]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -73,15 +88,19 @@ function Dashboard() {
           files, 
           bookings, 
           users, 
-          locations
+          locations,
+          agencyStats
         ] = await Promise.all([
           getClients(token),
           getVehicles(token),
           getFiles(token),
-          getBookings(token),
-          getUsers(token),
-          getAllLocations(token)
+          getBookings(null, token),
+          getUsers({}, token),
+          getAllLocations(token),
+          getAgencyStats(token)
         ]);
+
+        console.log('AGENCY STATS RESPONSE:', agencyStats);
 
         // Filter users by role
         const drivers = users.filter(u => u.role === 'driver');
@@ -92,6 +111,33 @@ function Dashboard() {
         const pendingBookings = bookings.filter(b => b.status === 'Pending').length;
         const completedBookings = bookings.filter(b => b.status === 'Completed').length;
         const cancelledBookings = bookings.filter(b => b.status === 'Cancelled').length;
+        
+        // Revenue trend by month for current year
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const monthlyRevenue = Array(12).fill(0);
+        bookings.forEach(b => {
+          if (b.status === 'Completed' && b.price && b.createdAt) {
+            const date = new Date(b.createdAt);
+            if (date.getFullYear() === currentYear) {
+              monthlyRevenue[date.getMonth()] += Number(b.price);
+            }
+          }
+        });
+        const revenueData = [
+          { month: 'Jan', revenue: monthlyRevenue[0] },
+          { month: 'Feb', revenue: monthlyRevenue[1] },
+          { month: 'Mar', revenue: monthlyRevenue[2] },
+          { month: 'Apr', revenue: monthlyRevenue[3] },
+          { month: 'May', revenue: monthlyRevenue[4] },
+          { month: 'Jun', revenue: monthlyRevenue[5] },
+          { month: 'Jul', revenue: monthlyRevenue[6] },
+          { month: 'Aug', revenue: monthlyRevenue[7] },
+          { month: 'Sep', revenue: monthlyRevenue[8] },
+          { month: 'Oct', revenue: monthlyRevenue[9] },
+          { month: 'Nov', revenue: monthlyRevenue[10] },
+          { month: 'Dec', revenue: monthlyRevenue[11] },
+        ];
         
         const onlineVehicles = vehicles.filter(v => {
           const location = locations.find(l => l.vehicleId === v._id);
@@ -119,8 +165,10 @@ function Dashboard() {
           onlineVehicles,
           availableVehicles,
           onTripVehicles,
-          maintenanceVehicles
+          maintenanceVehicles,
+          ...agencyStats
         });
+        setRevenueData(revenueData);
 
         // Build recent activity feed
         const recentClients = clients
@@ -176,7 +224,21 @@ function Dashboard() {
         const merged = [...recentClients, ...recentVehicles, ...recentBookingsData, ...recentFiles]
           .sort((a, b) => new Date(b.date) - new Date(a.date))
           .slice(0, 8);
-        setActivity(merged);
+        // Normalize activity items to ensure name and detail are always strings or numbers
+        const normalized = merged.map(item => ({
+          ...item,
+          name: typeof item.name === 'string' || typeof item.name === 'number'
+            ? item.name
+            : item.name && typeof item.name === 'object'
+              ? (item.name.name || item.name.email || item.name._id || JSON.stringify(item.name))
+              : String(item.name),
+          detail: typeof item.detail === 'string' || typeof item.detail === 'number'
+            ? item.detail
+            : item.detail && typeof item.detail === 'object'
+              ? (item.detail.name || item.detail.email || item.detail._id || JSON.stringify(item.detail))
+              : String(item.detail)
+        }));
+        setActivity(normalized);
         setRecentBookings(recentBookingsData);
         setRecentClients(recentClients);
         setLiveLocations(locations);
@@ -226,15 +288,6 @@ function Dashboard() {
   const totalUsers = stats.drivers + stats.agents;
   
   // Analytics data
-  const revenueData = [
-    { month: 'Jan', revenue: 45000 },
-    { month: 'Feb', revenue: 52000 },
-    { month: 'Mar', revenue: 48000 },
-    { month: 'Apr', revenue: 61000 },
-    { month: 'May', revenue: 55000 },
-    { month: 'Jun', revenue: 67000 },
-  ];
-
   const bookingStatusData = [
     { name: 'Completed', value: stats.completedBookings, color: '#10b981' },
     { name: 'Pending', value: stats.pendingBookings, color: '#f59e0b' },
