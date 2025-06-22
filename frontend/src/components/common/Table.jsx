@@ -23,8 +23,8 @@ function Table({ columns, data, actions, className = '' }) {
             data.map((row, idx) => (
               <tr key={row._id || row.id || idx} className="hover:bg-blue-50/60 transition-colors border-t border-blue-50">
                 {columns.map((col, colIdx) => (
-                  <td key={`${row._id || row.id || idx}-${col.key || colIdx}`} className="py-2 px-4 whitespace-nowrap align-middle">
-                    {col.render ? col.render(row) : row[col.key]}
+                  <td key={`${row._id || row.id || idx}-${col.accessor || colIdx}`} className="py-2 px-4 whitespace-nowrap align-middle">
+                    {col.render ? col.render(row[col.accessor], row) : row[col.accessor]}
                   </td>
                 ))}
                 {actions && <td className="py-2 px-4 whitespace-nowrap align-middle">{actions(row)}</td>}

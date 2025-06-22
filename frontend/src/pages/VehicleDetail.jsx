@@ -22,6 +22,7 @@ import {
   deleteVehicleDocument,
   updateVehicle,
 } from '../services/vehicleService';
+import { getUsers } from '../services/userService';
 import Table from '../components/common/Table';
 import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
@@ -56,6 +57,7 @@ function VehicleDetail() {
   const [editAssignment, setEditAssignment] = useState(null);
   const [assignForm, setAssignForm] = useState({ driver: '', status: 'Assigned', assignedAt: '' });
   const [assignSaving, setAssignSaving] = useState(false);
+  const [drivers, setDrivers] = useState([]);
 
   // Maintenance state
   const [maintenance, setMaintenance] = useState([]);
@@ -108,6 +110,17 @@ function VehicleDetail() {
     };
     if (id) fetchVehicle();
   }, [id, token]);
+
+  // Fetch drivers for assignment dropdown
+  useEffect(() => {
+    if (!token) return;
+    getUsers({ role: 'driver' }, token)
+      .then(setDrivers)
+      .catch(err => {
+        console.error("Failed to fetch drivers:", err);
+        setAssignError('Could not load list of drivers.');
+      });
+  }, [token]);
 
   // Fetch assignments
   useEffect(() => {
@@ -404,8 +417,20 @@ function VehicleDetail() {
                   )}
                   <Modal open={assignModalOpen} onClose={handleCloseAssignModal} title={editAssignment ? 'Edit Assignment' : 'Add Assignment'}>
                     <form onSubmit={handleAssignSubmit} className="space-y-2">
-                      <Input label="Driver" name="driver" value={assignForm.driver} onChange={handleAssignChange} required />
                       <Dropdown
+                        label="Driver"
+                        name="driver"
+                        value={assignForm.driver}
+                        onChange={handleAssignChange}
+                        options={[
+                          { value: '', label: 'Select a Driver' },
+                          ...drivers.map(d => ({ value: d._id, label: d.name }))
+                        ]}
+                        required
+                      />
+                      <Dropdown
+                        label="Status"
+                        name="status"
                         value={assignForm.status}
                         onChange={e => setAssignForm(f => ({ ...f, status: e.target.value }))}
                         options={[

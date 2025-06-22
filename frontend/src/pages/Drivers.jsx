@@ -173,7 +173,7 @@ function Drivers() {
               key: 'name',
               render: (row) => (
                 <div className="flex items-center gap-3">
-                  <img src={row.avatarUrl || `https://ui-avatars.com/api/?name=${row.name}&background=random`} alt={row.name} className="w-9 h-9 rounded-full object-cover" />
+                  <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name)}&background=random`} alt={row.name} className="w-9 h-9 rounded-full object-cover" />
                   <div>
                     <Link to={`/drivers/${row._id}`} className="text-blue-700 hover:underline font-semibold">
                       {row.name}

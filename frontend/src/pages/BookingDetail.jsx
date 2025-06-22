@@ -9,13 +9,21 @@ import { FaCalendarAlt, FaArrowLeft, FaEdit, FaTrash, FaSave, FaTimes, FaUser, F
 import Loader from '../components/common/Loader';
 import Notification from '../components/common/Notification';
 import Modal from '../components/common/Modal';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import LocationMap from '../components/common/LocationMap';
 import Card from '../components/common/Card';
 import ClientDetailsCard from '../components/ClientDetailsCard';
 import VehicleCard from '../components/VehicleCard';
 import DriverDetailsCard from '../components/DriverDetailsCard';
+import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from '@react-google-maps/api';
 
-const libraries = ['places'];
+const libraries = ['places', 'directions'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '300px',
+  borderRadius: '8px',
+  overflow: 'hidden',
+};
 
 const DetailItem = ({ icon, label, value, to }) => (
   <div>
@@ -48,6 +56,7 @@ const BookingDetail = () => {
   const [clients, setClients] = useState([]);
   const [agents, setAgents] = useState([]);
   const [driverDetails, setDriverDetails] = useState(null);
+  const [directions, setDirections] = useState(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -55,46 +64,63 @@ const BookingDetail = () => {
   });
 
   useEffect(() => {
-    fetchBooking();
-    fetchDropdownData();
-    if (booking && booking.driver && typeof booking.driver === 'string' && token) {
+    const fetchInitialData = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const bookingData = await getBooking(id, token);
+        setBooking(bookingData);
+
+        const [clientsData, agentsData] = await Promise.all([
+          getClients(token),
+          user?.role === 'admin' ? getUsers({ role: 'agent' }, token) : Promise.resolve([])
+        ]);
+        setClients(clientsData);
+        setAgents(agentsData);
+
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch initial data');
+        setNotification({ 
+          message: 'Failed to fetch data: ' + (err.response?.data?.message || err.message), 
+          type: 'error' 
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInitialData();
+  }, [id, token, user?.role]);
+
+  useEffect(() => {
+    if (!booking) return;
+
+    if (booking.driver && typeof booking.driver === 'string' && token) {
       getUserById(booking.driver, token).then(setDriverDetails).catch(() => setDriverDetails(null));
-    } else if (booking && booking.driver && typeof booking.driver === 'object') {
+    } else if (booking.driver && typeof booking.driver === 'object') {
       setDriverDetails(booking.driver);
     } else {
       setDriverDetails(null);
     }
-  }, [id, token]);
 
-  const fetchBooking = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await getBooking(id, token);
-      setBooking(data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch booking');
-      setNotification({ 
-        message: 'Failed to fetch booking: ' + (err.response?.data?.message || err.message), 
-        type: 'error' 
-      });
-    } finally {
-      setLoading(false);
+    if (isLoaded && booking.pickupCoordinates && booking.destinationCoordinates) {
+      const directionsService = new window.google.maps.DirectionsService();
+      directionsService.route(
+        {
+          origin: booking.pickupCoordinates,
+          destination: booking.destinationCoordinates,
+          travelMode: window.google.maps.TravelMode.DRIVING
+        },
+        (result, status) => {
+          if (status === window.google.maps.DirectionsStatus.OK) {
+            setDirections(result);
+          } else {
+            console.error(`error fetching directions ${result}`);
+          }
+        }
+      );
     }
-  };
-
-  const fetchDropdownData = async () => {
-    try {
-      const [clientsData, agentsData] = await Promise.all([
-        getClients(token),
-        user?.role === 'admin' ? getUsers({ role: 'agent' }, token) : Promise.resolve([])
-      ]);
-      setClients(clientsData);
-      setAgents(agentsData);
-    } catch (err) {
-      console.error('Failed to fetch dropdown data:', err);
-    }
-  };
+  }, [booking, isLoaded, token]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -168,10 +194,6 @@ const BookingDetail = () => {
   }
 
   const hasCoordinates = booking.pickupCoordinates?.lat && booking.destinationCoordinates?.lat;
-  const mapCenter = hasCoordinates ? {
-      lat: (booking.pickupCoordinates.lat + booking.destinationCoordinates.lat) / 2,
-      lng: (booking.pickupCoordinates.lng + booking.destinationCoordinates.lng) / 2,
-  } : { lat: 25.2048, lng: 55.2708 }; // Default to Dubai
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
@@ -209,23 +231,34 @@ const BookingDetail = () => {
                 <FaMapMarkerAlt className="text-blue-500" />
                 <span className="font-semibold text-gray-800">Trip Route</span>
               </div>
-              <div className="h-80">
-                {isLoaded && (
+              <div className="h-[500px]">
+                {hasCoordinates ? (
                   <GoogleMap
                     mapContainerStyle={{ height: '100%', width: '100%' }}
-                    center={mapCenter}
+                    center={booking.pickupCoordinates}
                     zoom={10}
                   >
-                    {hasCoordinates && (
+                    {directions && <DirectionsRenderer directions={directions} />}
+                    {!directions && (
                       <>
-                        <Marker position={booking.pickupCoordinates} />
-                        <Marker position={booking.destinationCoordinates} />
+                        <Marker position={booking.pickupCoordinates} label="P" />
+                        <Marker position={booking.destinationCoordinates} label="D" />
                       </>
                     )}
                   </GoogleMap>
+                ) : (
+                  <div className="flex items-center justify-center h-full bg-gray-50">
+                    <p className="text-gray-500">Location coordinates not available for this booking.</p>
+                  </div>
                 )}
               </div>
             </Card>
+          </div>
+          {/* Right Column */}
+          <div className="space-y-8">
+            {/* Client Card */}
+            {booking.client && <ClientDetailsCard client={booking.client} />}
+            
             {/* Trip Details Card */}
             <Card className="p-6">
               <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaCalendarAlt className="text-blue-500" /> Trip Details</h3>
@@ -238,50 +271,30 @@ const BookingDetail = () => {
                 <DetailItem icon={<FaUser />} label="Agent" value={booking.agent?.name} to={booking.agent?._id ? `/users/${booking.agent._id}` : undefined} />
               </div>
             </Card>
-          </div>
-          {/* Right Column */}
-          <div className="space-y-8">
-            {/* Client Card */}
-            <Card className="p-4">
-              <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaUser className="text-blue-500" /> Client</h3>
-              <div className="flex items-center gap-3 mb-2">
-                {booking.client?.avatarUrl ? (
-                  <img src={booking.client.avatarUrl} alt={booking.client.name} className="w-12 h-12 rounded-full object-cover border-2 border-blue-200 shadow-sm" />
-                ) : (
-                  <span className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg border-2 border-blue-200 shadow-sm">{booking.client?.name?.[0] || <FaUser />}</span>
-                )}
-                <div>
-                  <div className="font-semibold text-gray-900">{booking.client?.name}</div>
-                  <div className="text-xs text-gray-500">{booking.client?.email}</div>
-                  <div className="text-xs text-gray-500">{booking.client?.phone}</div>
-                  <div className="text-xs text-gray-400">{booking.client?.status}</div>
-                </div>
-              </div>
-              <Button size="sm" color="primary" onClick={() => navigate(`/clients/${booking.client?._id}`)} className="w-full mt-2"><FaUser /> View Client</Button>
-            </Card>
+
             {/* Vehicle Card */}
             {booking.vehicle && <VehicleCard vehicle={booking.vehicle} />}
+
             {/* Driver Card */}
-            {driverDetails && (
+            {driverDetails && <DriverDetailsCard driver={driverDetails} />}
+            
+            {/* Edit Form */}
+            {isEditing && (
               <Card className="p-4">
-                <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaUser className="text-purple-500" /> Driver</h3>
-                <div className="flex items-center gap-3 mb-2">
-                  {driverDetails.avatarUrl ? (
-                    <img src={driverDetails.avatarUrl} alt={driverDetails.name} className="w-12 h-12 rounded-full object-cover border-2 border-purple-200 shadow-sm" />
-                  ) : (
-                    <span className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-lg border-2 border-purple-200 shadow-sm">{driverDetails.name?.[0] || <FaUser />}</span>
-                  )}
-                  <div>
-                    <div className="font-semibold text-gray-900">{driverDetails.name}</div>
-                    <div className="text-xs text-gray-500">{driverDetails.email}</div>
-                    <div className="text-xs text-gray-500">{driverDetails.phone}</div>
-                    <div className="text-xs text-gray-400">{driverDetails.status}</div>
-                  </div>
+                <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2"><FaEdit className="text-blue-500" /> Edit Booking</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DetailItem icon={<FaMapMarkerAlt />} label="From" value={booking.pickup?.name} name="pickup" />
+                  <DetailItem icon={<FaMapMarkerAlt />} label="To" value={booking.destination?.name} name="destination" />
+                  <DetailItem icon={<FaCalendarAlt />} label="Start Date" value={booking.startDate} name="startDate" />
+                  <DetailItem icon={<FaCalendarAlt />} label="End Date" value={booking.endDate} name="endDate" />
+                  <DetailItem icon={<FaMoneyBillWave />} label="Price" value={booking.price} name="price" />
+                  <DetailItem icon={<FaUser />} label="Agent" value={booking.agent?.name} name="agent" />
                 </div>
-                <div className="text-xs text-gray-700 mb-1"><b>License #:</b> {driverDetails.licenseNumber || '-'}</div>
-                <div className="text-xs text-gray-700 mb-1"><b>License Expiry:</b> {driverDetails.licenseExpiry || '-'}</div>
-                <div className="text-xs text-gray-700 mb-1"><b>Assignment:</b> {driverDetails.assignedVehicle?.numberPlate || driverDetails.assignedVehicle?.name || 'Unassigned'}</div>
-                <Button size="sm" color="primary" onClick={() => navigate(`/users/${driverDetails._id}`)} className="w-full mt-2"><FaUser /> View Driver</Button>
+                <div className="mt-4">
+                  <Button color="primary" onClick={handleSave} loading={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
               </Card>
             )}
           </div>

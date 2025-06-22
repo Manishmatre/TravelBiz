@@ -15,6 +15,7 @@ import { Tooltip } from 'react-tooltip';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PageHeading from '../components/common/PageHeading';
 import Card from '../components/common/Card';
+import LocationMap from '../components/common/LocationMap';
 
 function BookingFlow() {
   const { token, user } = useAuth();
@@ -30,7 +31,7 @@ function BookingFlow() {
   const [showAddClient, setShowAddClient] = useState(false);
   const [newClient, setNewClient] = useState({ name: '', email: '', passportNumber: '', nationality: '' });
   const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [bookingDetails, setBookingDetails] = useState({ agent: '', pickup: '', destination: '', startDate: '', startTime: '', price: '', bags: '', notes: '' });
+  const [bookingDetails, setBookingDetails] = useState({ agent: '', driver: '', pickup: { address: '' }, destination: { address: '' }, startDate: '', startTime: '', price: '', bags: '', notes: '' });
   const [payment, setPayment] = useState({ mode: '', type: 'full', amountPaid: '', percent: 20 });
   const [status, setStatus] = useState('Pending');
   const [bookingId, setBookingId] = useState(null);
@@ -57,6 +58,12 @@ function BookingFlow() {
     }
     // eslint-disable-next-line
   }, [user]);
+
+  useEffect(() => {
+    if (selectedVehicle && selectedVehicle.assignedDriver) {
+      setBookingDetails(d => ({ ...d, driver: selectedVehicle.assignedDriver._id }));
+    }
+  }, [selectedVehicle]);
 
   // Step 1: Select or Create Client
   const filteredClients = clients.filter(c =>
@@ -86,6 +93,10 @@ function BookingFlow() {
     setBookingDetails(d => ({ ...d, [name]: value }));
   };
 
+  const handleLocationChange = (name, value) => {
+    setBookingDetails(d => ({ ...d, [name]: value }));
+  };
+
   // Step 4: Payment
   const totalAmount = Number(bookingDetails.price) || 0;
   const advanceAmount = payment.type === 'partial' ? Math.round((payment.percent / 100) * totalAmount) : totalAmount;
@@ -97,10 +108,19 @@ function BookingFlow() {
     try {
       const booking = await addBooking({
         ...bookingDetails,
-        pickup: { name: bookingDetails.pickup },
-        destination: { name: bookingDetails.destination },
+        pickup: { name: bookingDetails.pickup.address },
+        destination: { name: bookingDetails.destination.address },
+        pickupCoordinates: {
+          lat: bookingDetails.pickup.lat,
+          lng: bookingDetails.pickup.lng,
+        },
+        destinationCoordinates: {
+          lat: bookingDetails.destination.lat,
+          lng: bookingDetails.destination.lng,
+        },
         client: selectedClient._id,
         vehicle: selectedVehicle?._id,
+        driver: bookingDetails.driver,
         agent: bookingDetails.agent || user.id,
         payment,
         status,
@@ -190,6 +210,7 @@ function BookingFlow() {
                 agents={agents}
                 bookingDetails={bookingDetails}
                 handleBookingInput={handleBookingInput}
+                handleLocationChange={handleLocationChange}
                 setStep={setStep}
                 detailsErrors={detailsErrors}
                 setDetailsErrors={setDetailsErrors}
@@ -654,7 +675,7 @@ function StepVehicle({ vehicles, selectedVehicle, setSelectedVehicle, setStep, v
     </div>
   );
 }
-function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, detailsErrors, setDetailsErrors }) {
+function StepDetails({ agents, bookingDetails, handleBookingInput, handleLocationChange, setStep, detailsErrors, setDetailsErrors }) {
   const { user } = useAuth();
   // Build agent options for admin: first option is a placeholder 'Select Agent', then 'Myself (Admin)', then all agents
   let agentOptions = [];
@@ -700,36 +721,18 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
 
           {/* Location Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Location</label>
-              <input
-                type="text"
-                name="pickup"
-                value={bookingDetails.pickup}
-                onChange={handleBookingInput}
-                placeholder="Enter pickup address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Where should the vehicle pick up the client?</p>
-              {detailsErrors.pickup && (
-                <div className="text-red-500 text-sm mt-1">{detailsErrors.pickup}</div>
-              )}
-      </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Destination</label>
-              <input
-                type="text"
-                name="destination"
-                value={bookingDetails.destination}
-                onChange={handleBookingInput}
-                placeholder="Enter destination address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Final drop-off location</p>
-              {detailsErrors.destination && (
-                <div className="text-red-500 text-sm mt-1">{detailsErrors.destination}</div>
-              )}
-            </div>
+            <LocationMap
+              label="Pickup Location"
+              value={bookingDetails.pickup.address}
+              onLocationSelect={(loc) => handleLocationChange('pickup', loc)}
+              error={detailsErrors.pickup}
+            />
+            <LocationMap
+              label="Destination"
+              value={bookingDetails.destination.address}
+              onLocationSelect={(loc) => handleLocationChange('destination', loc)}
+              error={detailsErrors.destination}
+            />
           </div>
 
           {/* Date and Time */}
@@ -819,11 +822,11 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">From:</span>
-                <span className="font-medium">{bookingDetails.pickup || 'Not specified'}</span>
+                <span className="font-medium">{bookingDetails.pickup.address || 'Not specified'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">To:</span>
-                <span className="font-medium">{bookingDetails.destination || 'Not specified'}</span>
+                <span className="font-medium">{bookingDetails.destination.address || 'Not specified'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Date:</span>
@@ -836,7 +839,7 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
             </div>
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-4">
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
             <h4 className="font-semibold text-gray-900 mb-3">Financial Details</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -853,7 +856,7 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
           </div>
 
           {bookingDetails.notes && (
-            <div className="bg-yellow-50 rounded-lg p-4">
+            <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
               <h4 className="font-semibold text-gray-900 mb-3">Notes</h4>
               <p className="text-sm text-gray-700">{bookingDetails.notes}</p>
             </div>
@@ -875,9 +878,9 @@ function StepDetails({ agents, bookingDetails, handleBookingInput, setStep, deta
             color="primary" 
             className="flex-1" 
             onClick={() => {
-          const errors = validateDetails(bookingDetails);
-          setDetailsErrors(errors);
-          if (Object.keys(errors).length === 0) setStep(4);
+              const errors = validateDetails(bookingDetails);
+              setDetailsErrors(errors);
+              if (Object.keys(errors).length === 0) setStep(4);
             }}
           >
             Continue to Payment
@@ -1159,6 +1162,10 @@ function StepReview({ selectedClient, selectedVehicle, agents, bookingDetails, p
                 <span className="font-medium">{selectedVehicle?.name}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-gray-600">Driver:</span>
+                <span className="font-medium">{selectedVehicle?.assignedDriver?.name || 'Not Assigned'}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-600">Plate:</span>
                 <span className="font-medium">{selectedVehicle?.numberPlate}</span>
               </div>
@@ -1171,11 +1178,11 @@ function StepReview({ selectedClient, selectedVehicle, agents, bookingDetails, p
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">From:</span>
-                <span className="font-medium">{bookingDetails.pickup}</span>
+                <span className="font-medium">{bookingDetails.pickup.address}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">To:</span>
-                <span className="font-medium">{bookingDetails.destination}</span>
+                <span className="font-medium">{bookingDetails.destination.address}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Date:</span>
@@ -1332,11 +1339,11 @@ function StepSuccess({ bookingId, navigate, bookingDetails, payment, totalAmount
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Pickup:</span>
-                <span className="font-medium">{bookingDetails.pickup}</span>
+                <span className="font-medium">{bookingDetails.pickup.address}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Destination:</span>
-                <span className="font-medium">{bookingDetails.destination}</span>
+                <span className="font-medium">{bookingDetails.destination.address}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Date:</span>
@@ -1425,8 +1432,8 @@ function validateClient(client) {
 function validateDetails(details) {
   const errors = {};
   if (!details.agent) errors.agent = 'Agent is required';
-  if (!details.pickup) errors.pickup = 'Pickup location is required';
-  if (!details.destination) errors.destination = 'Destination is required';
+  if (!details.pickup.address) errors.pickup = 'Pickup location is required';
+  if (!details.destination.address) errors.destination = 'Destination is required';
   if (!details.startDate) errors.startDate = 'Pickup date is required';
   if (!details.startTime) errors.startTime = 'Pickup time is required';
   if (!details.price) errors.price = 'Price is required';

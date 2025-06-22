@@ -73,6 +73,12 @@ const AddVehicle = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!form.vehicleType) {
+      toast.error('Please select a vehicle type.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -224,6 +230,7 @@ const AddVehicle = () => {
                   type="date"
                   value={form.insuranceExpiry}
                   onChange={handleChange}
+                  required
                 />
                 <Input
                   label="PUC Expiry"

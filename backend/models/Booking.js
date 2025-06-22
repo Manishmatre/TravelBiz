@@ -10,6 +10,7 @@ const paymentSchema = new mongoose.Schema({
 const bookingSchema = new mongoose.Schema({
   client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
+  driver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   agent: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   pickup: { name: { type: String, required: true } },
   destination: { name: { type: String, required: true } },

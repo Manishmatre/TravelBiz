@@ -7,6 +7,12 @@ const Client = require('../models/Client');
 exports.createBooking = async (req, res) => {
   try {
     const { vehicle, startDate, endDate, agent, status, pickup, destination } = req.body;
+
+    // Sanitize driver field
+    if (req.body.driver === '') {
+      delete req.body.driver;
+    }
+
     // Validate required fields
     if (!pickup || !pickup.name) return res.status(400).json({ message: 'Pickup location name is required' });
     if (!destination || !destination.name) return res.status(400).json({ message: 'Destination location name is required' });
@@ -59,6 +65,7 @@ exports.getBookings = async (req, res) => {
         const client = booking.client ? await Client.findById(booking.client).select('name email').lean() : null;
         const vehicle = booking.vehicle ? await Vehicle.findById(booking.vehicle).select('name numberPlate').lean() : null;
         const agent = booking.agent ? await User.findById(booking.agent).select('name email').lean() : null;
+        const driver = booking.driver ? await User.findById(booking.driver).select('name email').lean() : null;
   
         // Ensure pickup and destination are in the object format for consistency
         const normalizedBooking = { ...booking };
@@ -74,6 +81,7 @@ exports.getBookings = async (req, res) => {
           client,
           vehicle,
           agent,
+          driver,
         };
       } catch (e) {
         console.error(`Skipping booking due to error: ${booking._id}`, e);
@@ -104,7 +112,8 @@ exports.getBookingById = async (req, res) => {
     const booking = await Booking.findById(req.params.id)
       .populate('client', 'name email')
       .populate('vehicle', 'name numberPlate')
-      .populate('agent', 'name email');
+      .populate('agent', 'name email')
+      .populate('driver', 'name email');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     res.json(booking);
   } catch (err) {

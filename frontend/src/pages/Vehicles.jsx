@@ -83,21 +83,6 @@ function Vehicles() {
   const totalPages = Math.ceil(sortedVehicles.length / vehiclesPerPage);
   const paginatedVehicles = sortedVehicles.slice((currentPage - 1) * vehiclesPerPage, currentPage * vehiclesPerPage);
 
-  // Before rendering the Table, normalize paginatedVehicles to ensure _id, name, and numberPlate are always defined and _id is always a non-empty string
-  const safePaginatedVehicles = paginatedVehicles.map((v, idx) => {
-    let safeId = v._id || v.id || `vehicle-${idx}-${Math.random().toString(36).slice(2)}`;
-    if (!safeId || typeof safeId !== 'string') safeId = `vehicle-${idx}-${Math.random().toString(36).slice(2)}`;
-    return {
-      ...v,
-      _id: safeId,
-      name: v.name || 'Unknown',
-      numberPlate: v.numberPlate || 'N/A',
-    };
-  });
-
-  // Ensure selectedVehicles only contains valid, non-empty string ids
-  const safeSelectedVehicles = selectedVehicles.filter(id => typeof id === 'string' && id.length > 0);
-
   // Vehicle statistics
   const totalVehicles = vehicles.length;
   const availableVehicles = vehicles.filter(v => v.status === 'available').length;
@@ -273,13 +258,13 @@ function Vehicles() {
     { 
       label: 'Vehicle', 
       accessor: 'name',
-      render: (v, row) => (
-        <Link to={`/vehicles/${(row && row._id) ? row._id : 'unknown'}`} className="text-blue-700 hover:underline font-semibold">
+      render: (name, row) => (
+        <Link to={`/vehicles/${row._id}`} className="text-blue-700 hover:underline font-semibold">
           <div className="flex items-center gap-2">
             <FaCar className="text-gray-400" />
             <div>
-              <div>{typeof v === 'string' ? v : (v?.name || 'Unknown')}</div>
-              <div className="text-xs text-gray-500">{row && typeof row.numberPlate === 'string' ? row.numberPlate : 'N/A'}</div>
+              <div>{name || 'Unnamed Vehicle'}</div>
+              <div className="text-xs text-gray-500">{row.numberPlate || 'N/A'}</div>
             </div>
           </div>
         </Link>
@@ -369,8 +354,8 @@ function Vehicles() {
       render: (val, row) => (
         <input
           type="checkbox"
-          checked={safeSelectedVehicles.includes((row && row._id) ? row._id : '')}
-          onChange={() => handleSelectOne((row && row._id) ? row._id : '')}
+          checked={selectedVehicles.includes(row._id)}
+          onChange={() => handleSelectOne(row._id)}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
         />
       )
@@ -580,99 +565,60 @@ function Vehicles() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-lg p-6">
-        {loading ? (
-          <Loader className="my-10" />
-        ) : error ? (
-          <div className="text-red-500 p-6">{error}</div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * vehiclesPerPage) + 1} to {Math.min(currentPage * vehiclesPerPage, sortedVehicles.length)} of {sortedVehicles.length} vehicles
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  color="secondary"
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                >
-                  {sortOrder === 'asc' ? '↑' : '↓'} {sortBy}
-                </Button>
-              </div>
-            </div>
-            
-            <Table
-              columns={safeSelectedVehicles.length > 0 ? columnsWithCheckbox : columns}
-              data={safePaginatedVehicles}
-              actions={vehicle => (
-                <div className="flex gap-2">
-                  <Button
-                    color="primary"
-                    size="sm"
-                    onClick={() => navigate(`/vehicles/${vehicle._id}`)}
-                  >
-                    <FaEye />
-                  </Button>
-                  <Button
-                    color="secondary"
-                    size="sm"
-                    onClick={() => { setEditVehicle(vehicle); setModalOpen(true); }}
-                  >
-                    <FaEdit />
-                  </Button>
-                  <Button
-                    color="danger"
-                    size="sm"
-                    onClick={() => handleDeleteVehicle(vehicle._id)}
-                  >
-                    <FaTrash />
-                  </Button>
-                </div>
-              )}
-            />
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-6">
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    color="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                    return (
-                      <Button
-                        key={page}
-                        color={currentPage === page ? "primary" : "secondary"}
-                        size="sm"
-                        onClick={() => handlePageChange(page)}
-                      >
-                        {page}
-                      </Button>
-                    );
-                  })}
-                  <Button
-                    color="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        <Table 
+          columns={columnsWithCheckbox} 
+          data={paginatedVehicles} 
+          onSort={(key) => {
+            if (sortBy === key) {
+              setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+            } else {
+              setSortBy(key);
+              setSortOrder('asc');
+            }
+          }}
+        />
+        {loading && <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center"><Loader /></div>}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center mt-6">
+          <div className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              color="secondary"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+              return (
+                <Button
+                  key={page}
+                  color={currentPage === page ? "primary" : "secondary"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </Button>
+              );
+            })}
+            <Button
+              color="secondary"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       <VehicleFormModal
