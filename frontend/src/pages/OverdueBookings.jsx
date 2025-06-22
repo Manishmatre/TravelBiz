@@ -4,6 +4,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Table from '../components/common/Table';
+import PageHeading from '../components/common/PageHeading';
 
 function OverdueBookings() {
   const [overdueBookings, setOverdueBookings] = useState([]);
@@ -96,48 +97,36 @@ function OverdueBookings() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
-        <div>
-          <h1 className="text-3xl font-bold text-red-800 flex items-center gap-3">
-            <FaExclamationTriangle />
-            Overdue Bookings
-          </h1>
-          <p className="text-red-700 mt-2">Trips that passed their scheduled time without being completed. Immediate action may be required.</p>
-        </div>
+    <div className="bg-gradient-to-br from-red-50 via-white to-red-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaExclamationTriangle />}
+          title="Overdue Bookings"
+          subtitle="Trips that passed their scheduled time without being completed. Immediate action may be required."
+          iconColor="text-red-600"
+        />
       </div>
-
-       <Card>
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by client, driver, or trip..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-72"
-                />
-              </div>
-            </div>
-            <div className="text-lg font-bold">
-              <span className="text-red-600">{overdueBookings.length}</span>
-              <span className="text-gray-600"> Overdue Trip(s)</span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div className="p-6">
-          <Table
-            data={filteredBookings}
-            columns={columns}
-            loading={loading}
-            emptyMessage="No overdue bookings found."
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card><div className="p-6 flex items-center"><div className="p-3 rounded-full bg-red-100 text-red-600"><FaExclamationTriangle size={24}/></div><div className="ml-4"><p className="text-sm font-medium text-gray-500">Total Overdue</p><p className="text-2xl font-bold text-gray-900">{overdueBookings.length}</p></div></div></Card>
+        <Card><div className="p-6 flex items-center"><div className="p-3 rounded-full bg-yellow-100 text-yellow-600"><FaClock size={24}/></div><div className="ml-4"><p className="text-sm font-medium text-gray-500">Most Overdue</p><p className="text-2xl font-bold text-gray-900">{overdueBookings[0] ? getTimeDifference(overdueBookings[0].scheduledTime) : '-'}</p></div></div></Card>
+        <Card><div className="p-6 flex items-center"><div className="p-3 rounded-full bg-blue-100 text-blue-600"><FaUser size={24}/></div><div className="ml-4"><p className="text-sm font-medium text-gray-500">Drivers Involved</p><p className="text-2xl font-bold text-gray-900">{[...new Set(overdueBookings.map(b => b.driver))].length}</p></div></div></Card>
+      </div>
+      {/* Filter/Search Bar */}
+      <Card className="p-0 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 p-6 pb-0">
+          <Input
+            type="text"
+            placeholder="Search by client, driver, or trip..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full h-[44px]"
+            style={{ marginBottom: 0 }}
           />
+        </div>
+        <div className="p-6 pt-0">
+          {/* Table */}
+          <Table data={filteredBookings} columns={columns} loading={loading} emptyMessage="No overdue bookings found." />
         </div>
       </Card>
     </div>

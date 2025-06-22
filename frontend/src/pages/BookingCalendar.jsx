@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaPlus, FaClock } from 'react-icons/fa';
+import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaPlus, FaClock, FaUser } from 'react-icons/fa';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import PageHeading from '../components/common/PageHeading';
 
 // Mock data for bookings
 const mockBookings = {
@@ -62,21 +63,27 @@ function BookingCalendar() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <FaCalendarAlt className="text-purple-600" />
-            Booking Calendar
-          </h1>
-          <p className="text-gray-600 mt-2">A visual overview of your booking schedule</p>
-        </div>
-        <Button>
-          <FaPlus className="mr-2" />
-          New Booking
-        </Button>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCalendarAlt />}
+          title="Booking Calendar"
+          subtitle="A visual overview of your booking schedule"
+          iconColor="text-purple-600"
+        >
+          <Button>
+            <FaPlus className="mr-2" />
+            New Booking
+          </Button>
+        </PageHeading>
       </div>
-
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card><div className="p-6 flex items-center"><div className="p-3 rounded-full bg-blue-100 text-blue-600"><FaCalendarAlt size={24}/></div><div className="ml-4"><p className="text-sm font-medium text-gray-500">Total Bookings (Month)</p><p className="text-2xl font-bold text-gray-900">42</p></div></div></Card>
+        <Card><div className="p-6 flex items-center"><div className="p-3 rounded-full bg-green-100 text-green-600"><FaClock size={24}/></div><div className="ml-4"><p className="text-sm font-medium text-gray-500">Busiest Day</p><p className="text-2xl font-bold text-gray-900">July 20</p></div></div></Card>
+        <Card><div className="p-6 flex items-center"><div className="p-3 rounded-full bg-purple-100 text-purple-600"><FaUser size={24}/></div><div className="ml-4"><p className="text-sm font-medium text-gray-500">Unique Clients</p><p className="text-2xl font-bold text-gray-900">18</p></div></div></Card>
+      </div>
+      {/* Calendar */}
       <Card>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -104,7 +111,7 @@ function BookingCalendar() {
           </div>
         </div>
       </Card>
-      
+      {/* Upcoming Key Dates */}
       <Card>
         <div className="p-6">
           <h3 className="text-xl font-semibold mb-4">Upcoming Key Dates</h3>

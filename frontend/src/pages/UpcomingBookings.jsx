@@ -4,6 +4,8 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Table from '../components/common/Table';
+import StatCard from '../components/common/StatCard';
+import PageHeading from '../components/common/PageHeading';
 
 function UpcomingBookings() {
   const [upcomingBookings, setUpcomingBookings] = useState([]);
@@ -108,102 +110,70 @@ function UpcomingBookings() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <FaCalendar className="text-teal-600" />
-            Upcoming Bookings
-          </h1>
-          <p className="text-gray-600 mt-2">Plan ahead with a view of future confirmed trips</p>
-        </div>
-        <Button>
-          <FaCalendar className="mr-2" />
-          Add Future Booking
-        </Button>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCalendar className="text-teal-600" />}
+          title="Upcoming Bookings"
+          subtitle="Plan ahead with a view of future confirmed trips"
+          iconColor="text-teal-600"
+        >
+          <Button>
+            <FaCalendar className="mr-2" />
+            Add Future Booking
+          </Button>
+        </PageHeading>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Upcoming (7 days)</p>
-                <p className="text-2xl font-bold text-gray-900">{upcomingBookings.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                <FaCalendar className="text-teal-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Unassigned Drivers</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {upcomingBookings.filter(b => b.driver === 'Not Assigned').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <FaUser className="text-red-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Passengers</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {upcomingBookings.reduce((sum, b) => sum + b.pax, 0)}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaUsers className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <StatCard
+          icon={<FaCalendar className="text-teal-600" />} 
+          label="Upcoming (7 days)" 
+          value={upcomingBookings.length} 
+          accentColor="teal"
+        />
+        <StatCard
+          icon={<FaUser className="text-red-600" />} 
+          label="Unassigned Drivers" 
+          value={upcomingBookings.filter(b => b.driver === 'Not Assigned').length} 
+          accentColor="red"
+        />
+        <StatCard
+          icon={<FaUsers className="text-blue-600" />} 
+          label="Total Passengers" 
+          value={upcomingBookings.reduce((sum, b) => sum + b.pax, 0)} 
+          accentColor="blue"
+        />
       </div>
-
-      <Card>
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by client or trip..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FaFilter className="text-gray-400" />
-                <select
-                  value={filterRange}
-                  onChange={(e) => setFilterRange(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="week">Next 7 Days</option>
-                  <option value="month">Next 30 Days</option>
-                  <option value="all">All Upcoming</option>
-                </select>
-              </div>
+      {/* Filter/Search Bar + Table in one Card */}
+      <Card className="p-0">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-6 pb-0">
+          <div className="flex gap-4 items-center">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search by client or trip..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <FaFilter className="text-gray-400" />
+              <select
+                value={filterRange}
+                onChange={(e) => setFilterRange(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="week">Next 7 Days</option>
+                <option value="month">Next 30 Days</option>
+                <option value="all">All Upcoming</option>
+              </select>
             </div>
           </div>
         </div>
-      </Card>
-
-      <Card>
-        <div className="p-6">
+        <div className="p-6 pt-0">
           <Table
             data={filteredBookings}
             columns={columns}

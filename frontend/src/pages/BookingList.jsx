@@ -14,6 +14,8 @@ import { FaPlus, FaSearch, FaEye, FaTrash, FaCalendarAlt, FaUsers, FaUserTie, Fa
 import { useBookings } from '../contexts/BookingsContext';
 import Notification from '../components/common/Notification';
 import StatCard from '../components/common/StatCard';
+import PageHeading from '../components/common/PageHeading';
+import Card from '../components/common/Card';
 
 function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
   const { token } = useAuth();
@@ -153,23 +155,21 @@ function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
           onClose={() => setNotification(null)}
         />
       )}
-
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{getPageTitle()}</h1>
-          <p className="text-gray-600 mt-1">{getPageDescription()}</p>
-        </div>
-        <div className="flex gap-2">
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCalendarAlt />}
+          title={getPageTitle()}
+          subtitle={getPageDescription()}
+          iconColor="text-blue-600"
+        >
           <Button 
             color="secondary" 
             onClick={handleRefresh}
             className="flex items-center gap-2"
             disabled={loading || !fetchBookings}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
+            <FaCalendarAlt className="w-4 h-4" />
             Refresh
           </Button>
           <Button 
@@ -179,10 +179,9 @@ function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
           >
             <FaPlus /> New Booking
           </Button>
-        </div>
+        </PageHeading>
       </div>
-
-      {/* Dashboard Stat Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <StatCard icon={<FaCalendarAlt />} label="Total Bookings" value={totalBookings} accentColor="blue" />
         <StatCard icon={<FaCalendarAlt />} label="Pending" value={pendingBookings} accentColor="yellow" />
@@ -190,11 +189,10 @@ function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
         <StatCard icon={<FaCalendarAlt />} label="Completed" value={completedBookings} accentColor="blue" />
         <StatCard icon={<FaCalendarAlt />} label="Cancelled" value={cancelledBookings} accentColor="red" />
       </div>
-
       {/* Table Container */}
-      <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
+      <Card className="p-0 mb-8">
         {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 p-6 pb-0">
           <SearchInput
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -230,113 +228,114 @@ function BookingList({ filterStatus: initialFilterStatus, filterDate }) {
             style={{ marginBottom: 0 }}
           />
         </div>
-
-        {/* Bookings Table */}
-        {loading ? (
-          <Loader className="my-10" />
-        ) : (
-          <>
-            <Table
-              columns={[
-                { 
-                  label: 'Booking Details', 
-                  key: 'details',
-                  render: (row) => (
-                    <div>
-                      <Link to={`/bookings/${row._id}`} className="font-bold text-blue-700 hover:underline">
-                        {row.destination?.name || `Trip to ${row.pickup?.name || 'Unknown'}`}
-                      </Link>
-                      <div className="text-xs text-gray-500 font-mono">
-                        {row.bookingNumber || `BK-${row._id.slice(-6).toUpperCase()}`}
+        {/* Table */}
+        <div className="p-6 pt-0">
+          {loading ? (
+            <Loader className="my-10" />
+          ) : (
+            <>
+              <Table
+                columns={[
+                  { 
+                    label: 'Booking Details', 
+                    key: 'details',
+                    render: (row) => (
+                      <div>
+                        <Link to={`/bookings/${row._id}`} className="font-bold text-blue-700 hover:underline">
+                          {row.destination?.name || `Trip to ${row.pickup?.name || 'Unknown'}`}
+                        </Link>
+                        <div className="text-xs text-gray-500 font-mono">
+                          {row.bookingNumber || `BK-${row._id.slice(-6).toUpperCase()}`}
+                        </div>
                       </div>
-                    </div>
-                  )
-                },
-                { 
-                  label: 'Client', 
-                  key: 'client',
-                  render: (row) => row.client ? (
-                    <Link to={`/clients/${row.client._id}`} className="hover:underline">{row.client.name}</Link>
-                  ) : 'N/A'
-                },
-                { 
-                  label: 'Date', 
-                  key: 'startDate',
-                  render: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString() : 'N/A'
-                },
-                {
-                  label: 'Vehicle',
-                  key: 'vehicle',
-                  render: (row) => row.vehicle ? (
-                    <Link to={`/vehicles/${row.vehicle._id}`} className="hover:underline">{row.vehicle.name}</Link>
-                  ) : 'N/A'
-                },
-                { 
-                  label: 'Status', 
-                  key: 'status',
-                  render: (row) => (
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status)}`}>
-                      {row.status}
-                    </span>
-                  )
-                },
-              ]}
-              data={paginatedBookings}
-              actions={(row) => (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => navigate(`/bookings/${row._id}`)}>
-                    <FaEye />
-                  </Button>
+                    )
+                  },
+                  { 
+                    label: 'Client', 
+                    key: 'client',
+                    render: (row) => row.client ? (
+                      <Link to={`/clients/${row.client._id}`} className="hover:underline">{row.client.name}</Link>
+                    ) : 'N/A'
+                  },
+                  { 
+                    label: 'Date', 
+                    key: 'startDate',
+                    render: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString() : 'N/A'
+                  },
+                  {
+                    label: 'Vehicle',
+                    key: 'vehicle',
+                    render: (row) => row.vehicle ? (
+                      <Link to={`/vehicles/${row.vehicle._id}`} className="hover:underline">{row.vehicle.name}</Link>
+                    ) : 'N/A'
+                  },
+                  { 
+                    label: 'Status', 
+                    key: 'status',
+                    render: (row) => (
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status)}`}>
+                        {row.status}
+                      </span>
+                    )
+                  },
+                ]}
+                data={paginatedBookings}
+                actions={(row) => (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/bookings/${row._id}`)}>
+                      <FaEye />
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedBooking(row);
+                        setDeleteModalOpen(true);
+                      }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  </div>
+                )}
+              />
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
                   <Button
+                    color="secondary"
                     size="sm"
-                    color="danger"
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedBooking(row);
-                      setDeleteModalOpen(true);
-                    }}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
                   >
-                    <FaTrash />
+                    Previous
+                  </Button>
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <Button
+                      key={i + 1}
+                      color={currentPage === i + 1 ? 'primary' : 'secondary'}
+                      size="sm"
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={currentPage === i + 1 ? 'font-bold' : ''}
+                    >
+                      {i + 1}
+                    </Button>
+                  ))}
+                  <Button
+                    color="secondary"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
                   </Button>
                 </div>
               )}
-            />
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-6">
-                <Button
-                  color="secondary"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <Button
-                    key={i + 1}
-                    color={currentPage === i + 1 ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={currentPage === i + 1 ? 'font-bold' : ''}
-                  >
-                    {i + 1}
-                  </Button>
-                ))}
-                <Button
-                  color="secondary"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      </Card>
 
       {/* Delete Confirmation Modal */}
       <Modal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)}>

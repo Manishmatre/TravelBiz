@@ -14,6 +14,7 @@ import Notification from '../components/common/Notification';
 import Modal from '../components/common/Modal';
 import Card from '../components/common/Card';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import PageHeading from '../components/common/PageHeading';
 
 const libraries = ['places'];
 
@@ -209,11 +210,15 @@ const AddBooking = () => {
   }
   
   if (!isLoaded || initialLoading) {
-    return <div className="p-8"><Loader /></div>;
+    return (
+      <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+        <Loader className="my-10" />
+      </div>
+    );
   }
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
       {/* Notification */}
       {notification && (
         <Notification
@@ -222,24 +227,21 @@ const AddBooking = () => {
           onClose={() => setNotification(null)}
         />
       )}
-      
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Create New Booking</h1>
-          <p className="text-gray-600 mt-1">Create a comprehensive booking with client and trip details</p>
-        </div>
-        <Button 
-          color="secondary" 
-          onClick={() => navigate('/bookings')}
-          className="flex items-center gap-2"
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCalendarAlt />}
+          title="Add New Booking"
+          subtitle="Create a new trip booking for a client"
+          iconColor="text-blue-600"
         >
-          <FaArrowLeft /> Back to Bookings
-        </Button>
+          <Button color="secondary" onClick={() => navigate('/bookings')} className="flex items-center gap-2">
+            <FaArrowLeft /> Back to Bookings
+          </Button>
+        </PageHeading>
       </div>
-
       {/* Form Card */}
-      <Card className="p-6">
+      <Card className="p-6 max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-3 bg-blue-100 rounded-full">
             <FaCalendarAlt className="text-blue-600 text-xl" />

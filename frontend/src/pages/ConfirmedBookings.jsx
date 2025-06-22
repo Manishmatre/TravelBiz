@@ -4,6 +4,8 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Table from '../components/common/Table';
+import PageHeading from '../components/common/PageHeading';
+import StatCard from '../components/common/StatCard';
 
 function ConfirmedBookings() {
   const [confirmedBookings, setConfirmedBookings] = useState([]);
@@ -112,112 +114,66 @@ function ConfirmedBookings() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <FaCheckCircle className="text-green-600" />
-            Confirmed Bookings
-          </h1>
-          <p className="text-gray-600 mt-2">View all confirmed and scheduled bookings</p>
-        </div>
-        <Button>
-          <FaCalendarAlt className="mr-2" />
-          New Booking
-        </Button>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCheckCircle />}
+          title="Confirmed Bookings"
+          subtitle="View all confirmed and scheduled bookings"
+          iconColor="text-green-600"
+        >
+          <Button>
+            <FaCalendarAlt className="mr-2" />
+            New Booking
+          </Button>
+        </PageHeading>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Confirmed</p>
-                <p className="text-2xl font-bold text-gray-900">{confirmedBookings.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FaCheckCircle className="text-green-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Upcoming Today</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {confirmedBookings.filter(b => new Date(b.date).toDateString() === new Date().toDateString()).length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaCalendarAlt className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Confirmed Value</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${confirmedBookings.reduce((sum, b) => sum + b.amount, 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FaDollarSign className="text-purple-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <StatCard
+          icon={<FaCheckCircle className="text-green-600" />} 
+          label="Total Confirmed" 
+          value={confirmedBookings.length} 
+          accentColor="green"
+        />
+        <StatCard
+          icon={<FaCalendarAlt className="text-blue-600" />} 
+          label="Upcoming Today" 
+          value={confirmedBookings.filter(b => new Date(b.date).toDateString() === new Date().toDateString()).length} 
+          accentColor="blue"
+        />
+        <StatCard
+          icon={<FaDollarSign className="text-purple-600" />} 
+          label="Confirmed Value" 
+          value={`$${confirmedBookings.reduce((sum, b) => sum + b.amount, 0).toLocaleString()}`} 
+          accentColor="purple"
+        />
       </div>
-
-      <Card>
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by ID, client, or trip..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FaFilter className="text-gray-400" />
-                <select
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Dates</option>
-                  <option value="today">Today</option>
-                  <option value="upcoming">Upcoming</option>
-                </select>
-              </div>
-            </div>
-            <Button variant="outline">
-              <FaDownload className="mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div className="p-6">
-          <Table
-            data={filteredBookings}
-            columns={columns}
-            loading={loading}
-            emptyMessage="No confirmed bookings found"
+      {/* Filter/Search Bar */}
+      <Card className="p-0 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 p-6 pb-0">
+          <Input
+            type="text"
+            placeholder="Search by ID, client, or trip..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full h-[44px]"
+            style={{ marginBottom: 0 }}
           />
+          <select
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{ marginBottom: 0 }}
+          >
+            <option value="all">All Dates</option>
+            <option value="today">Today</option>
+            <option value="upcoming">Upcoming</option>
+          </select>
+        </div>
+        <div className="p-6 pt-0">
+          {/* Table */}
+          <Table columns={columns} data={filteredBookings} loading={loading} />
         </div>
       </Card>
     </div>

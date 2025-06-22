@@ -16,6 +16,8 @@ import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBi
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useBookings } from '../contexts/BookingsContext';
 import Notification from '../components/common/Notification';
+import PageHeading from '../components/common/PageHeading';
+import Card from '../components/common/Card';
 
 function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const { token } = useAuth();
@@ -428,13 +430,14 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           onClose={() => setNotification(null)}
         />
       )}
-      
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{getPageTitle()}</h1>
-          <p className="text-gray-600 mt-1">{getPageDescription()}</p>
-        </div>
-        <div className="flex gap-2">
+      {/* Header */}
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCalendarAlt />}
+          title={getPageTitle()}
+          subtitle={getPageDescription()}
+          iconColor="text-blue-600"
+        >
           <Button 
             color="secondary" 
             onClick={handleRefresh}
@@ -451,295 +454,151 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           >
             <FaPlus /> New Booking
           </Button>
-        </div>
+        </PageHeading>
       </div>
-
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <StatCard icon={<FaCalendarAlt />} label="Total Bookings" value={totalBookings} accentColor="blue" />
-        <StatCard icon={<FaHourglassHalf />} label="Pending" value={pendingCount} accentColor="yellow" />
-        <StatCard icon={<FaCheckCircle />} label="Confirmed" value={confirmedCount} accentColor="green" />
-        <StatCard icon={<FaCheckCircle />} label="Completed" value={completedCount} accentColor="emerald" />
-        <StatCard icon={<FaTimesCircle />} label="Cancelled" value={cancelledCount} accentColor="red" />
-        <StatCard icon={<FaMoneyBillWave />} label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} accentColor="teal" />
+        <StatCard icon={<FaCalendarAlt />} label="Pending" value={pendingCount} accentColor="yellow" />
+        <StatCard icon={<FaCalendarAlt />} label="Confirmed" value={confirmedCount} accentColor="green" />
+        <StatCard icon={<FaCalendarAlt />} label="Completed" value={completedCount} accentColor="blue" />
+        <StatCard icon={<FaCalendarAlt />} label="Cancelled" value={cancelledCount} accentColor="red" />
       </div>
-
-      {/* Analytics Charts Section */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <h2 className="text-lg font-bold mb-4">Booking Analytics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          {/* Bookings Over Time */}
-          <div>
-            <h3 className="font-semibold mb-2">Bookings Over Time</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={bookingsByDate} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Line type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          {/* Bookings by Status */}
-          <div>
-            <h3 className="font-semibold mb-2">Bookings by Status</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={bookingsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
-                  {bookingsByStatus.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={statusColors[entry.name]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          {/* Revenue Over Time */}
-          <div>
-            <h3 className="font-semibold mb-2">Revenue Over Time</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={revenueByDate} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#14b8a6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {/* Table Container */}
+      <Card className="p-0 mb-8">
+        {/* Search and Filters */}
+        <div className="flex flex-col md:flex-row md:items-center gap-4 p-6 pb-0">
+          <SearchInput
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by destination, client, agent, or booking number..."
+            className="w-full h-[44px]"
+            style={{ marginBottom: 0 }}
+          />
+          <Dropdown
+            value={filterClient}
+            onChange={e => setFilterClient(e.target.value)}
+            options={[{ value: '', label: 'All Clients' }, ...clients.map(c => ({ value: c._id, label: c.name }))]}
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0"
+            style={{ marginBottom: 0 }}
+          />
+          <Dropdown
+            value={filterAgent}
+            onChange={e => setFilterAgent(e.target.value)}
+            options={[{ value: '', label: 'All Agents' }, ...agents.map(a => ({ value: a._id, label: a.name }))]}
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0"
+            style={{ marginBottom: 0 }}
+          />
+          <Dropdown
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            options={[
+              { value: '', label: 'All Statuses' },
+              { value: 'Pending', label: 'Pending' },
+              { value: 'Confirmed', label: 'Confirmed' },
+              { value: 'Completed', label: 'Completed' },
+              { value: 'Cancelled', label: 'Cancelled' },
+            ]}
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0"
+            style={{ marginBottom: 0 }}
+          />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Bookings by Agent */}
-          <div>
-            <h3 className="font-semibold mb-2">Bookings by Agent</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={bookingsByAgent} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="value" fill="#2563eb" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          {/* Bookings by Destination */}
-          <div>
-            <h3 className="font-semibold mb-2">Bookings by Destination</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={bookingsByDestination} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="value" fill="#f59e42" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters and Search */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <SearchInput
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search bookings..."
-              className="w-64"
-            />
-            <Button
-              color="secondary"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="flex items-center gap-2"
-            >
-              <FaFilter />
-              {showAdvancedFilters ? 'Hide' : 'Show'} Filters
-            </Button>
-          </div>
-          
-          <div className="flex gap-2">
-            {selectedBookings.length > 0 && (
-              <Button
-                color="danger"
-                onClick={handleBulkDelete}
-                className="flex items-center gap-2"
-              >
-                <FaTrash />
-                Delete Selected ({selectedBookings.length})
-              </Button>
-            )}
-            <Button
-              color="secondary"
-              onClick={() => exportCSV(filteredBookings)}
-              className="flex items-center gap-2"
-            >
-              <FaDownload />
-              Export CSV
-            </Button>
-          </div>
-        </div>
-
-        {/* Advanced Filters */}
-        {showAdvancedFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
-            <Dropdown
-              value={filterClient}
-              onChange={e => setFilterClient(e.target.value)}
-              options={[
-                { value: '', label: 'All Clients' },
-                ...clients.map(client => ({ value: client._id, label: client.name }))
-              ]}
-              className="w-full"
-            />
-            <Dropdown
-              value={filterAgent}
-              onChange={e => setFilterAgent(e.target.value)}
-              options={[
-                { value: '', label: 'All Agents' },
-                ...agents.map(agent => ({ value: agent._id, label: agent.name }))
-              ]}
-              className="w-full"
-            />
-            <Dropdown
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              options={[
-                { value: '', label: 'All Status' },
-                { value: 'Pending', label: 'Pending' },
-                { value: 'Confirmed', label: 'Confirmed' },
-                { value: 'Completed', label: 'Completed' },
-                { value: 'Cancelled', label: 'Cancelled' }
-              ]}
-              className="w-full"
-            />
-            <Dropdown
-              value={filterDateRange}
-              onChange={e => setFilterDateRange(e.target.value)}
-              options={[
-                { value: '', label: 'All Dates' },
-                { value: 'today', label: 'Today' },
-                { value: 'upcoming', label: 'Upcoming' },
-                { value: 'overdue', label: 'Overdue' },
-                { value: 'this-week', label: 'This Week' },
-                { value: 'this-month', label: 'This Month' }
-              ]}
-              className="w-full"
-            />
-            <Dropdown
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
-              options={[
-                { value: 'startDate', label: 'Sort by Date' },
-                { value: 'destination', label: 'Sort by Destination' },
-                { value: 'price', label: 'Sort by Price' },
-                { value: 'status', label: 'Sort by Status' },
-                { value: 'createdAt', label: 'Sort by Created' }
-              ]}
-              className="w-full"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        {loading ? (
-          <Loader className="my-10" />
-        ) : error ? (
-          <div className="text-red-500 p-6">{error}</div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * bookingsPerPage) + 1} to {Math.min(currentPage * bookingsPerPage, sortedBookings.length)} of {sortedBookings.length} bookings
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  color="secondary"
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                >
-                  {sortOrder === 'asc' ? '↑' : '↓'} {sortBy}
-                </Button>
-              </div>
-            </div>
-            
-            <Table
-              columns={selectedBookings.length > 0 ? columnsWithCheckbox : columns}
-              data={paginatedBookings}
-              actions={booking => (
-                <div className="flex gap-2">
-                  <Button
-                    color="primary"
-                    size="sm"
-                    onClick={() => navigate(`/bookings/${booking._id}`)}
-                  >
-                    <FaEye />
-                  </Button>
+        {/* Table */}
+        <div className="p-6 pt-0">
+          {loading ? (
+            <Loader className="my-10" />
+          ) : error ? (
+            <div className="text-red-500 p-6">{error}</div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-sm text-gray-600">
+                  Showing {((currentPage - 1) * bookingsPerPage) + 1} to {Math.min(currentPage * bookingsPerPage, sortedBookings.length)} of {sortedBookings.length} bookings
+                </p>
+                <div className="flex items-center gap-2">
                   <Button
                     color="secondary"
                     size="sm"
-                    onClick={() => navigate(`/bookings/${booking._id}/edit`)}
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                   >
-                    <FaEdit />
+                    {sortOrder === 'asc' ? '↑' : '↓'} {sortBy}
                   </Button>
-                  <Button
-                    color="danger"
-                    size="sm"
-                    onClick={() => { setSelectedBooking(booking); setDeleteModalOpen(true); }}
-                  >
-                    <FaTrash />
-                  </Button>
+                </div>
+              </div>
+              
+              <Table
+                columns={selectedBookings.length > 0 ? columnsWithCheckbox : columns}
+                data={paginatedBookings}
+                actions={booking => (
+                  <div className="flex gap-2">
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onClick={() => navigate(`/bookings/${booking._id}`)}
+                    >
+                      <FaEye />
+                    </Button>
+                    <Button
+                      color="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/bookings/${booking._id}/edit`)}
+                    >
+                      <FaEdit />
+                    </Button>
+                    <Button
+                      color="danger"
+                      size="sm"
+                      onClick={() => { setSelectedBooking(booking); setDeleteModalOpen(true); }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  </div>
+                )}
+              />
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-6">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      color="secondary"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                      return (
+                        <Button
+                          key={page}
+                          color={currentPage === page ? "primary" : "secondary"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      color="secondary"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
-            />
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-6">
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    color="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                    return (
-                      <Button
-                        key={page}
-                        color={currentPage === page ? "primary" : "secondary"}
-                        size="sm"
-                        onClick={() => handlePageChange(page)}
-                      >
-                        {page}
-                      </Button>
-                    );
-                  })}
-                  <Button
-                    color="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
+            </>
+          )}
+        </div>
+      </Card>
       {/* Delete Confirmation Modal */}
       <Modal
         open={deleteModalOpen}

@@ -59,12 +59,12 @@ const navLinks = [
 const clientMenuLinks = [
   { to: '/clients', label: 'All Clients', icon: <FaUsers />, description: 'View and manage all clients' },
   { to: '/clients/add', label: 'Add New Client', icon: <FaUserPlus />, description: 'Create a new client profile' },
-  { to: '/clients/vip', label: 'VIP Clients', icon: <FaStar />, description: 'Manage VIP client accounts' },
-  { to: '/clients/analytics', label: 'Client Analytics', icon: <FaChartBar />, description: 'Client statistics and insights' },
-  { to: '/clients/import', label: 'Import Clients', icon: <FaUpload />, description: 'Bulk import client data' },
-  { to: '/clients/export', label: 'Export Clients', icon: <FaDownload />, description: 'Export client data' },
-  { to: '/clients/communications', label: 'Communications', icon: <FaEnvelope />, description: 'Client communication history' },
-  { to: '/clients/documents', label: 'Documents', icon: <FaFileContract />, description: 'Client documents and files' },
+  // { to: '/clients/vip', label: 'VIP Clients', icon: <FaStar />, description: 'Manage VIP client accounts' },
+  // { to: '/clients/analytics', label: 'Client Analytics', icon: <FaChartBar />, description: 'Client statistics and insights' },
+  // { to: '/clients/import', label: 'Import Clients', icon: <FaUpload />, description: 'Bulk import client data' },
+  // { to: '/clients/export', label: 'Export Clients', icon: <FaDownload />, description: 'Export client data' },
+  // { to: '/clients/communications', label: 'Communications', icon: <FaEnvelope />, description: 'Client communication history' },
+  // { to: '/clients/documents', label: 'Documents', icon: <FaFileContract />, description: 'Client documents and files' },
 ];
 
 // Vehicle Management Links
@@ -72,49 +72,49 @@ const vehicleMenuLinks = [
   { to: '/vehicles', label: 'All Vehicles', icon: <FaCar />, description: 'View and manage all vehicles' },
   { to: '/vehicles/add', label: 'Add Vehicle', icon: <FaPlus />, description: 'Add a new vehicle to the fleet' },
   { to: '/vehicles/assignments', label: 'Assignments', icon: <FaRoute />, description: 'Vehicle-driver assignments' },
-  { to: '/vehicles/documents', label: 'Documents', icon: <FaFileContract />, description: 'Manage vehicle documentation' },
-  { to: '/vehicles/maintenance', label: 'Maintenance', icon: <FaTools />, description: 'Track vehicle maintenance' },
-  { to: '/vehicles/fuel', label: 'Fuel Logs', icon: <FaGasPump />, description: 'Monitor fuel consumption' },
-  { to: '/vehicles/analytics', label: 'Analytics', icon: <FaChartBar />, description: 'Vehicle performance analytics' },
+  // { to: '/vehicles/documents', label: 'Documents', icon: <FaFileContract />, description: 'Manage vehicle documentation' },
+  // { to: '/vehicles/maintenance', label: 'Maintenance', icon: <FaTools />, description: 'Track vehicle maintenance' },
+  // { to: '/vehicles/fuel', label: 'Fuel Logs', icon: <FaGasPump />, description: 'Monitor fuel consumption' },
+  // { to: '/vehicles/analytics', label: 'Analytics', icon: <FaChartBar />, description: 'Vehicle performance analytics' },
 ];
 
 // Booking Management Links
 const bookingMenuLinks = [
   { to: '/bookings', label: 'All Bookings', icon: <FaList />, description: 'Overview of all bookings' },
   { to: '/bookings/add', label: 'New Booking', icon: <FaPlus />, description: 'Create a new booking' },
-  { to: '/bookings/pending', label: 'Pending', icon: <FaClock />, description: 'Bookings awaiting confirmation' },
-  { to: '/bookings/confirmed', label: 'Confirmed', icon: <FaCheckCircle />, description: 'All confirmed bookings' },
-  { to: '/bookings/completed', label: 'Completed', icon: <FaCheckCircle style={{ color: 'green' }}/>, description: 'Past completed bookings' },
-  { to: '/bookings/cancelled', label: 'Cancelled', icon: <FaTimesCircle />, description: 'Log of cancelled bookings' },
-  { to: '/bookings/today', label: 'Today\'s Bookings', icon: <FaCalendar />, description: 'All trips for today' },
-  { to: '/bookings/upcoming', label: 'Upcoming', icon: <FaCalendar />, description: 'Future scheduled bookings' },
-  { to: '/bookings/overdue', label: 'Overdue', icon: <FaExclamationTriangle />, description: 'Bookings needing attention' },
-  { to: '/bookings/calendar', label: 'Calendar View', icon: <FaCalendarAlt />, description: 'Visual booking schedule' },
-  { to: '/bookings/reports', label: 'Booking Reports', icon: <FaChartLine />, description: 'Booking data and trends' },
+  // { to: '/bookings/pending', label: 'Pending', icon: <FaClock />, description: 'Bookings awaiting confirmation' },
+  // { to: '/bookings/confirmed', label: 'Confirmed', icon: <FaCheckCircle />, description: 'All confirmed bookings' },
+  // { to: '/bookings/completed', label: 'Completed', icon: <FaCheckCircle style={{ color: 'green' }}/>, description: 'Past completed bookings' },
+  // { to: '/bookings/cancelled', label: 'Cancelled', icon: <FaTimesCircle />, description: 'Log of cancelled bookings' },
+  // { to: '/bookings/today', label: 'Today\'s Bookings', icon: <FaCalendar />, description: 'All trips for today' },
+  // { to: '/bookings/upcoming', label: 'Upcoming', icon: <FaCalendar />, description: 'Future scheduled bookings' },
+  // { to: '/bookings/overdue', label: 'Overdue', icon: <FaExclamationTriangle />, description: 'Bookings needing attention' },
+  // { to: '/bookings/calendar', label: 'Calendar View', icon: <FaCalendarAlt />, description: 'Visual booking schedule' },
+  // { to: '/bookings/reports', label: 'Booking Reports', icon: <FaChartLine />, description: 'Booking data and trends' },
 ];
 
 // Driver Management Links
 const driverMenuLinks = [
   { to: '/drivers', label: 'All Drivers', icon: <FaUsers />, description: 'View and manage all drivers' },
   { to: '/drivers/add', label: 'Add Driver', icon: <FaUserPlus />, description: 'Onboard a new driver' },
-  { to: '/drivers/performance', label: 'Performance', icon: <FaTachometerAlt />, description: 'Driver performance metrics' },
-  { to: '/drivers/contracts', label: 'Contracts', icon: <FaFileContract />, description: 'Manage driver contracts' },
+  // { to: '/drivers/performance', label: 'Performance', icon: <FaTachometerAlt />, description: 'Driver performance metrics' },
+  // { to: '/drivers/contracts', label: 'Contracts', icon: <FaFileContract />, description: 'Manage driver contracts' },
 ];
 
 // Analytics & Reports Links
 const analyticsMenuLinks = [
   { to: '/reports/financial', label: 'Financial Reports', icon: <FaChartPie />, description: 'Revenue, expenses, and profit' },
   { to: '/reports/driver', label: 'Driver Reports', icon: <FaChartLine />, description: 'Driver activity and earnings' },
-  { to: '/reports/fleet', label: 'Fleet Usage', icon: <FaChartArea />, description: 'Vehicle utilization reports' },
-  { to: '/activity-log', label: 'Activity Log', icon: <FaHistory />, description: 'System-wide activity log' },
+  // { to: '/reports/fleet', label: 'Fleet Usage', icon: <FaChartArea />, description: 'Vehicle utilization reports' },
+  // { to: '/activity-log', label: 'Activity Log', icon: <FaHistory />, description: 'System-wide activity log' },
 ];
 
 // Settings & Configuration Links
 const settingsMenuLinks = [
   { to: '/profile', label: 'My Profile', icon: <FaUserCog />, description: 'Your personal profile settings' },
   { to: '/agency-profile', label: 'Agency Profile', icon: <FaBuilding />, description: 'Your agency information' },
-  { to: '/settings/general', label: 'General Settings', icon: <FaCog />, description: 'System-wide configurations' },
-  { to: '/settings/roles', label: 'Role Management', icon: <FaUsersCog />, description: 'Define user roles and permissions' },
+  // { to: '/settings/general', label: 'General Settings', icon: <FaCog />, description: 'System-wide configurations' },
+  // { to: '/settings/roles', label: 'Role Management', icon: <FaUsersCog />, description: 'Define user roles and permissions' },
 ];
 
 function Sidebar({ open, onClose }) {

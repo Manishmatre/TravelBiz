@@ -4,11 +4,13 @@ import { addVehicle, getVehicleById, updateVehicle } from '../services/vehicleSe
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
-import { FaCar, FaArrowLeft } from 'react-icons/fa';
+import { FaCar, FaArrowLeft, FaExclamationTriangle } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate, useParams } from 'react-router-dom';
 import Loader from '../components/common/Loader';
+import Card from '../components/common/Card';
+import PageHeading from '../components/common/PageHeading';
 
 const AddVehicle = () => {
   const { token } = useAuth();
@@ -109,72 +111,47 @@ const AddVehicle = () => {
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
       <ToastContainer position="top-right" autoClose={3000} />
-      
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            color="secondary" 
-            onClick={() => navigate('/vehicles')}
-            className="flex items-center gap-2"
-          >
-            <FaArrowLeft /> Back
-          </Button>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            {isEditMode ? 'Edit Vehicle' : 'Add New Vehicle'}
-          </h1>
+      <PageHeading
+        icon={<FaCar />}
+        title={isEditMode ? 'Edit Vehicle' : 'Add New Vehicle'}
+        subtitle={isEditMode ? 'Edit vehicle details or update information' : 'Add a new vehicle to your fleet'}
+      />
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-red-600"><FaExclamationTriangle /></span>
+            <p className="text-red-700 font-medium">{error}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Form Card */}
-      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-blue-100 rounded-full">
-            <FaCar className="text-blue-600 text-xl" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {isEditMode ? 'Update Vehicle Information' : 'Vehicle Information'}
-            </h2>
-            <p className="text-gray-600">
-              {isEditMode 
-                ? 'Modify the vehicle details below' 
-                : 'Fill in the vehicle details below to add it to your fleet'
-              }
-            </p>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <Card className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-12 pb-24">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2 flex items-center gap-2"><FaCar className="text-blue-400" /> Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <Input
-                  label="Vehicle Name/Model"
+                  label={<span className="flex items-center gap-2">Vehicle Name/Model <span className="text-red-500">*</span></span>}
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   required
                   placeholder="e.g., Toyota Innova"
                 />
-
                 <Input
-                  label="Number Plate"
+                  label={<span className="flex items-center gap-2">Number Plate <span className="text-red-500">*</span></span>}
                   name="numberPlate"
                   value={form.numberPlate}
                   onChange={handleChange}
                   required
                   placeholder="e.g., MH-12-AB-1234"
                 />
-
                 <Dropdown
                   label="Vehicle Type"
                   name="vehicleType"
@@ -190,7 +167,6 @@ const AddVehicle = () => {
                     { value: 'truck', label: 'Truck' },
                   ]}
                 />
-
                 <Input
                   label="Passenger Capacity"
                   name="capacity"
@@ -200,10 +176,6 @@ const AddVehicle = () => {
                   placeholder="e.g., 7"
                 />
               </div>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Details</h3>
               <div className="space-y-4">
                 <Dropdown
                   label="Fuel Type"
@@ -219,7 +191,6 @@ const AddVehicle = () => {
                     { value: 'hybrid', label: 'Hybrid' },
                   ]}
                 />
-
                 <Dropdown
                   label="Status"
                   name="status"
@@ -227,88 +198,78 @@ const AddVehicle = () => {
                   onChange={handleChange}
                   options={[
                     { value: 'available', label: 'Available' },
-                    { value: 'maintenance', label: 'Maintenance' },
                     { value: 'on-trip', label: 'On Trip' },
+                    { value: 'maintenance', label: 'Maintenance' },
                   ]}
                 />
-
                 <Input
                   label="Photo URL"
                   name="photoUrl"
                   value={form.photoUrl}
                   onChange={handleChange}
-                  placeholder="Vehicle image URL"
+                  placeholder="Paste image URL or leave blank"
                 />
               </div>
             </div>
           </div>
 
-          {/* Document Expiry Dates */}
+          {/* Expiry Dates */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Document Expiry Dates</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Input
-                label="Insurance Expiry"
-                name="insuranceExpiry"
-                type="date"
-                value={form.insuranceExpiry}
-                onChange={handleChange}
-              />
-
-              <Input
-                label="PUC Expiry"
-                name="pucExpiry"
-                type="date"
-                value={form.pucExpiry}
-                onChange={handleChange}
-              />
-
-              <Input
-                label="Registration Expiry"
-                name="registrationExpiry"
-                type="date"
-                value={form.registrationExpiry}
-                onChange={handleChange}
-              />
-
-              <Input
-                label="Permit Expiry"
-                name="permitExpiry"
-                type="date"
-                value={form.permitExpiry}
-                onChange={handleChange}
-              />
-
-              <Input
-                label="Fitness Expiry"
-                name="fitnessExpiry"
-                type="date"
-                value={form.fitnessExpiry}
-                onChange={handleChange}
-              />
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2 flex items-center gap-2"><FaCar className="text-blue-400" /> Expiry Dates</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <Input
+                  label="Insurance Expiry"
+                  name="insuranceExpiry"
+                  type="date"
+                  value={form.insuranceExpiry}
+                  onChange={handleChange}
+                />
+                <Input
+                  label="PUC Expiry"
+                  name="pucExpiry"
+                  type="date"
+                  value={form.pucExpiry}
+                  onChange={handleChange}
+                />
+                <Input
+                  label="Registration Expiry"
+                  name="registrationExpiry"
+                  type="date"
+                  value={form.registrationExpiry}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-4">
+                <Input
+                  label="Permit Expiry"
+                  name="permitExpiry"
+                  type="date"
+                  value={form.permitExpiry}
+                  onChange={handleChange}
+                />
+                <Input
+                  label="Fitness Expiry"
+                  name="fitnessExpiry"
+                  type="date"
+                  value={form.fitnessExpiry}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-4 pt-4">
-            <Button 
-              type="button"
-              color="secondary" 
-              onClick={() => navigate('/vehicles')}
-              className="flex-1"
-            >
-              Cancel
+          {/* Submit Button */}
+          <div className="flex justify-end gap-4 mt-8">
+            <Button color="secondary" type="button" onClick={() => navigate('/vehicles')}>
+              <FaArrowLeft className="mr-2" /> Cancel
             </Button>
-            <Button 
-              type="submit"
-              color="primary" 
-              loading={loading}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              <FaCar /> {isEditMode ? 'Update Vehicle' : 'Add Vehicle'}
+            <Button color="primary" type="submit" loading={loading}>
+              {isEditMode ? 'Update Vehicle' : 'Add Vehicle'}
             </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };

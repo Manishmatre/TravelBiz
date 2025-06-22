@@ -4,6 +4,8 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Table from '../components/common/Table';
+import StatCard from '../components/common/StatCard';
+import PageHeading from '../components/common/PageHeading';
 
 function CancelledBookings() {
   const [cancelledBookings, setCancelledBookings] = useState([]);
@@ -109,103 +111,69 @@ function CancelledBookings() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <FaTimesCircle className="text-red-600" />
-            Cancelled Bookings
-          </h1>
-          <p className="text-gray-600 mt-2">A log of all bookings that have been cancelled</p>
-        </div>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaTimesCircle className="text-red-600" />}
+          title="Cancelled Bookings"
+          subtitle="A log of all bookings that have been cancelled"
+          iconColor="text-red-600"
+        >
+          <Button>
+            <FaCalendarAlt className="mr-2" />
+            New Booking
+          </Button>
+        </PageHeading>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Cancelled</p>
-                <p className="text-2xl font-bold text-gray-900">{cancelledBookings.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <FaTimesCircle className="text-red-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Client Cancellations</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {cancelledBookings.filter(b => b.reason === 'Client Request').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaUser className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Lost Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${cancelledBookings.reduce((sum, b) => sum + b.amount, 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                <FaDollarSign className="text-gray-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <StatCard
+          icon={<FaTimesCircle className="text-red-600" />} 
+          label="Total Cancelled" 
+          value={cancelledBookings.length} 
+          accentColor="red"
+        />
+        <StatCard
+          icon={<FaUser className="text-blue-600" />} 
+          label="Client Cancellations" 
+          value={cancelledBookings.filter(b => b.reason === 'Client Request').length} 
+          accentColor="blue"
+        />
+        <StatCard
+          icon={<FaDollarSign className="text-gray-600" />} 
+          label="Lost Revenue" 
+          value={`$${cancelledBookings.reduce((sum, b) => sum + b.amount, 0).toLocaleString()}`} 
+          accentColor="gray"
+        />
       </div>
-
-      <Card>
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by ID or client..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FaFilter className="text-gray-400" />
-                <select
-                  value={filterReason}
-                  onChange={(e) => setFilterReason(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Reasons</option>
-                  <option value="ClientRequest">Client Request</option>
-                  <option value="VehicleUnavailable">Vehicle Unavailable</option>
-                  <option value="ClientNo-Show">Client No-Show</option>
-                </select>
-              </div>
-            </div>
-             <Button variant="outline">
-              <FaDownload className="mr-2" />
-              Export
-            </Button>
-          </div>
+      {/* Filter/Search Bar + Table in one Card */}
+      <Card className="p-0">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 p-6 pb-0">
+          <Input
+            type="text"
+            placeholder="Search by ID or client..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full md:w-64 h-[44px]"
+            style={{ marginBottom: 0 }}
+          />
+          <select
+            value={filterReason}
+            onChange={(e) => setFilterReason(e.target.value)}
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{ marginBottom: 0 }}
+          >
+            <option value="all">All Reasons</option>
+            <option value="ClientRequest">Client Request</option>
+            <option value="VehicleUnavailable">Vehicle Unavailable</option>
+            <option value="ClientNo-Show">Client No-Show</option>
+          </select>
+          <Button variant="outline" className="h-[44px]">
+            <FaDownload className="mr-2" />
+            Export
+          </Button>
         </div>
-      </Card>
-
-      <Card>
-        <div className="p-6">
+        <div className="p-6 pt-0">
           <Table
             data={filteredBookings}
             columns={columns}

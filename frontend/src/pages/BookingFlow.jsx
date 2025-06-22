@@ -10,9 +10,11 @@ import Button from '../components/common/Button';
 import Loader from '../components/common/Loader';
 import Modal from '../components/common/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { FaUser, FaCar, FaInfoCircle, FaMoneyBillWave, FaClipboardCheck, FaCheckCircle } from 'react-icons/fa';
+import { FaUser, FaCar, FaInfoCircle, FaMoneyBillWave, FaClipboardCheck, FaCheckCircle, FaCalendarAlt } from 'react-icons/fa';
 import { Tooltip } from 'react-tooltip';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import PageHeading from '../components/common/PageHeading';
+import Card from '../components/common/Card';
 
 function BookingFlow() {
   const { token, user } = useAuth();
@@ -122,120 +124,110 @@ function BookingFlow() {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-blue-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Create New Booking</h1>
-              <p className="text-gray-600 mt-1">Step-by-step booking creation process</p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Step {step} of {steps.length}</div>
-              <div className="text-lg font-semibold text-blue-600">{steps[step - 1]?.label}</div>
-            </div>
-          </div>
-        </div>
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCalendarAlt />}
+          title="Create New Booking"
+          subtitle="Step-by-step booking creation process"
+          iconColor="text-blue-600"
+        />
       </div>
-
-        {/* Stepper */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <Stepper steps={steps} currentStep={step} />
+      {/* Stepper and Content */}
+      <Card className="p-0 mb-8">
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <Stepper steps={steps} currentStep={step} />
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error</h3>
-                <div className="mt-2 text-sm text-red-700">{error}</div>
+        <div className="p-6">
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Error</h3>
+                  <div className="mt-2 text-sm text-red-700">{error}</div>
+                </div>
               </div>
             </div>
+          )}
+          <div className="w-full">
+            {step === 1 && (
+              <StepClient
+                clients={clients}
+                filteredClients={filteredClients}
+                clientSearch={clientSearch}
+                setClientSearch={setClientSearch}
+                selectedClient={selectedClient}
+                setSelectedClient={setSelectedClient}
+                showAddClient={showAddClient}
+                setShowAddClient={setShowAddClient}
+                newClient={newClient}
+                setNewClient={setNewClient}
+                handleAddClient={handleAddClient}
+                loading={loading}
+                setStep={setStep}
+                clientErrors={clientErrors}
+                setClientErrors={setClientErrors}
+              />
+            )}
+            {step === 2 && (
+              <StepVehicle
+                vehicles={vehicles}
+                selectedVehicle={selectedVehicle}
+                setSelectedVehicle={setSelectedVehicle}
+                setStep={setStep}
+                vehicleError={vehicleError}
+                setVehicleError={setVehicleError}
+              />
+            )}
+            {step === 3 && (
+              <StepDetails
+                agents={agents}
+                bookingDetails={bookingDetails}
+                handleBookingInput={handleBookingInput}
+                setStep={setStep}
+                detailsErrors={detailsErrors}
+                setDetailsErrors={setDetailsErrors}
+              />
+            )}
+            {step === 4 && (
+              <StepPayment
+                payment={payment}
+                setPayment={setPayment}
+                totalAmount={totalAmount}
+                advanceAmount={advanceAmount}
+                balanceAmount={balanceAmount}
+                setStep={setStep}
+                paymentErrors={paymentErrors}
+                setPaymentErrors={setPaymentErrors}
+              />
+            )}
+            {step === 5 && (
+              <StepReview
+                selectedClient={selectedClient}
+                selectedVehicle={selectedVehicle}
+                agents={agents}
+                bookingDetails={bookingDetails}
+                payment={payment}
+                status={status}
+                setStatus={setStatus}
+                setStep={setStep}
+                handleSubmitBooking={handleSubmitBooking}
+                submitting={submitting}
+                totalAmount={totalAmount}
+              />
+            )}
+            {step === 6 && (
+              <StepSuccess bookingId={bookingId} navigate={navigate} bookingDetails={bookingDetails} payment={payment} totalAmount={totalAmount} />
+            )}
           </div>
-        )}
-
-        <div className="w-full">
-          {step === 1 && (
-            <StepClient
-              clients={clients}
-              filteredClients={filteredClients}
-              clientSearch={clientSearch}
-              setClientSearch={setClientSearch}
-              selectedClient={selectedClient}
-              setSelectedClient={setSelectedClient}
-              showAddClient={showAddClient}
-              setShowAddClient={setShowAddClient}
-              newClient={newClient}
-              setNewClient={setNewClient}
-              handleAddClient={handleAddClient}
-              loading={loading}
-              setStep={setStep}
-              clientErrors={clientErrors}
-              setClientErrors={setClientErrors}
-            />
-          )}
-          {step === 2 && (
-            <StepVehicle
-              vehicles={vehicles}
-              selectedVehicle={selectedVehicle}
-              setSelectedVehicle={setSelectedVehicle}
-              setStep={setStep}
-              vehicleError={vehicleError}
-              setVehicleError={setVehicleError}
-            />
-          )}
-          {step === 3 && (
-            <StepDetails
-              agents={agents}
-              bookingDetails={bookingDetails}
-              handleBookingInput={handleBookingInput}
-              setStep={setStep}
-              detailsErrors={detailsErrors}
-              setDetailsErrors={setDetailsErrors}
-            />
-          )}
-          {step === 4 && (
-            <StepPayment
-              payment={payment}
-              setPayment={setPayment}
-              totalAmount={totalAmount}
-              advanceAmount={advanceAmount}
-              balanceAmount={balanceAmount}
-              setStep={setStep}
-              paymentErrors={paymentErrors}
-              setPaymentErrors={setPaymentErrors}
-            />
-          )}
-          {step === 5 && (
-            <StepReview
-              selectedClient={selectedClient}
-              selectedVehicle={selectedVehicle}
-              agents={agents}
-              bookingDetails={bookingDetails}
-              payment={payment}
-              status={status}
-              setStatus={setStatus}
-              setStep={setStep}
-              handleSubmitBooking={handleSubmitBooking}
-              submitting={submitting}
-              totalAmount={totalAmount}
-            />
-          )}
-          {step === 6 && (
-            <StepSuccess bookingId={bookingId} navigate={navigate} bookingDetails={bookingDetails} payment={payment} totalAmount={totalAmount} />
-          )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Table from '../components/common/Table';
+import PageHeading from '../components/common/PageHeading';
+import StatCard from '../components/common/StatCard';
 
 function CompletedBookings() {
   const [completedBookings, setCompletedBookings] = useState([]);
@@ -102,108 +104,66 @@ function CompletedBookings() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <FaCheckDouble className="text-blue-600" />
-            Completed Bookings
-          </h1>
-          <p className="text-gray-600 mt-2">A history of all successfully completed bookings</p>
-        </div>
-        <Button variant="outline">
-          <FaDownload className="mr-2" />
-          Export History
-        </Button>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
+      <div className="space-y-6 mb-6">
+        <PageHeading
+          icon={<FaCheckDouble />}
+          title="Completed Bookings"
+          subtitle="A history of all successfully completed bookings"
+          iconColor="text-blue-600"
+        >
+          <Button variant="outline">
+            <FaDownload className="mr-2" />
+            Export History
+          </Button>
+        </PageHeading>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Completed</p>
-                <p className="text-2xl font-bold text-gray-900">{completedBookings.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaCheckDouble className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${completedBookings.reduce((sum, b) => sum + b.amount, 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FaDollarSign className="text-green-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Average Rating</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {(completedBookings.reduce((sum, b) => sum + b.rating, 0) / completedBookings.length || 0).toFixed(1)}
-                  <span className="text-base"> / 5</span>
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <FaStar className="text-yellow-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <StatCard
+          icon={<FaCheckDouble className="text-blue-600" />} 
+          label="Total Completed" 
+          value={completedBookings.length} 
+          accentColor="blue"
+        />
+        <StatCard
+          icon={<FaDollarSign className="text-green-600" />} 
+          label="Total Revenue" 
+          value={`$${completedBookings.reduce((sum, b) => sum + b.amount, 0).toLocaleString()}`} 
+          accentColor="green"
+        />
+        <StatCard
+          icon={<FaStar className="text-yellow-600" />} 
+          label="Average Rating" 
+          value={`${(completedBookings.reduce((sum, b) => sum + b.rating, 0) / completedBookings.length || 0).toFixed(1)} / 5`} 
+          accentColor="yellow"
+        />
       </div>
-
-      <Card>
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search completed bookings..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FaFilter className="text-gray-400" />
-                <Input
-                  type="date"
-                  className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                 <Input
-                  type="date"
-                  className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div className="p-6">
-          <Table
-            data={filteredBookings}
-            columns={columns}
-            loading={loading}
-            emptyMessage="No completed bookings found"
+      {/* Filter/Search Bar */}
+      <Card className="p-0 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 p-6 pb-0">
+          <Input
+            type="text"
+            placeholder="Search completed bookings..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full h-[44px]"
+            style={{ marginBottom: 0 }}
           />
+          <Input
+            type="date"
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0"
+            style={{ marginBottom: 0 }}
+          />
+          <Input
+            type="date"
+            className="min-w-[200px] h-[44px] w-full md:w-auto mb-0"
+            style={{ marginBottom: 0 }}
+          />
+        </div>
+        <div className="p-6 pt-0">
+          {/* Table */}
+          <Table columns={columns} data={filteredBookings} loading={loading} />
         </div>
       </Card>
     </div>
