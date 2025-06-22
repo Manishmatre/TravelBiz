@@ -131,54 +131,28 @@ function Sidebar({ open, onClose }) {
   const { user, logout, agency } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [clientMenuOpen, setClientMenuOpen] = useState(false);
-  const [vehicleMenuOpen, setVehicleMenuOpen] = useState(false);
-  const [driverMenuOpen, setDriverMenuOpen] = useState(false);
-  const [bookingMenuOpen, setBookingMenuOpen] = useState(false);
-  const [analyticsMenuOpen, setAnalyticsMenuOpen] = useState(false);
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [openMenus, setOpenMenus] = useState({});
 
-  // Auto-open menus based on current location
   useEffect(() => {
-    if (clientMenuLinks.some(link => location.pathname.startsWith(link.to))) {
-      setClientMenuOpen(true);
-    }
-    if (vehicleMenuLinks.some(link => location.pathname.startsWith(link.to))) {
-      setVehicleMenuOpen(true);
-    }
-    if (bookingMenuLinks.some(link => location.pathname.startsWith(link.to))) {
-      setBookingMenuOpen(true);
-    }
-    if (driverMenuLinks.some(link => location.pathname.startsWith(link.to))) {
-      setDriverMenuOpen(true);
-    }
-    if (analyticsMenuLinks.some(link => location.pathname.startsWith(link.to))) {
-      setAnalyticsMenuOpen(true);
-    }
-    if (settingsMenuLinks.some(link => location.pathname.startsWith(link.to))) {
-      setSettingsMenuOpen(true);
-    }
+    const currentOpenMenus = {};
+    if (clientMenuLinks.some(link => location.pathname.startsWith(link.to))) currentOpenMenus.clients = true;
+    if (vehicleMenuLinks.some(link => location.pathname.startsWith(link.to))) currentOpenMenus.vehicles = true;
+    if (bookingMenuLinks.some(link => location.pathname.startsWith(link.to))) currentOpenMenus.bookings = true;
+    if (driverMenuLinks.some(link => location.pathname.startsWith(link.to))) currentOpenMenus.drivers = true;
+    if (analyticsMenuLinks.some(link => location.pathname.startsWith(link.to))) currentOpenMenus.analytics = true;
+    if (settingsMenuLinks.some(link => location.pathname.startsWith(link.to))) currentOpenMenus.settings = true;
+    setOpenMenus(currentOpenMenus);
   }, [location.pathname]);
+
+  const toggleMenu = (menu) => {
+    setOpenMenus(prev => ({ ...prev, [menu]: !prev[menu] }));
+  };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // Sidebar classes for responsiveness
-  const sidebarBase = "fixed md:static top-0 left-0 h-screen w-64 bg-white/80 backdrop-blur-md border-r border-blue-100 shadow-xl flex flex-col rounded-r-2xl z-50 transition-transform duration-300";
-  const sidebarOpen = open ? "translate-x-0" : "-translate-x-full";
-  const sidebarClass = `
-    ${sidebarBase}
-    ${open ? 'block' : 'hidden'}
-    md:block md:translate-x-0
-    ${!open ? 'md:block' : ''}
-    ${open ? 'block' : 'hidden'}
-    ${open ? 'md:block' : ''}
-    ${open ? sidebarOpen : ''}
-  `;
-
-  // Render menu item with icon and description
   const renderMenuItem = (link, isSubmenu = false) => (
     <Link
       key={link.to}
@@ -189,9 +163,7 @@ function Sidebar({ open, onClose }) {
       onClick={onClose}
       title={link.description}
     >
-      <span className="text-lg text-blue-600 group-hover:text-blue-700 transition-colors">
-        {link.icon}
-      </span>
+      <span className="text-lg text-blue-600 group-hover:text-blue-700 transition-colors">{link.icon}</span>
       <div className="flex-1 min-w-0">
         <div className="font-medium truncate">{link.label}</div>
         {link.description && (
@@ -203,15 +175,15 @@ function Sidebar({ open, onClose }) {
     </Link>
   );
 
-  // Render collapsible menu section
-  const renderMenuSection = (title, icon, isOpen, setIsOpen, links, roles = ['admin', 'agent']) => {
+  const renderMenuSection = (title, menuKey, icon, links, roles = ['admin', 'agent']) => {
     if (!roles.includes(user?.role)) return null;
+    const isOpen = openMenus[menuKey];
     
     return (
       <div className="mt-4">
         <button
           className={`flex items-center w-full px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 focus:outline-none ${isOpen ? 'bg-blue-50' : ''}`}
-          onClick={() => setIsOpen(v => !v)}
+          onClick={() => toggleMenu(menuKey)}
           type="button"
           style={{ minHeight: '44px' }}
         >
@@ -220,7 +192,7 @@ function Sidebar({ open, onClose }) {
           {isOpen ? <FaChevronUp className="ml-2 shrink-0" /> : <FaChevronDown className="ml-2 shrink-0" />}
         </button>
         {isOpen && (
-          <div className="mt-2 space-y-1 max-h-64 overflow-y-auto">
+          <div className="mt-2 space-y-1">
             {links.map(link => renderMenuItem(link, true))}
           </div>
         )}
@@ -229,216 +201,99 @@ function Sidebar({ open, onClose }) {
   };
 
   return (
-    <aside className={`${sidebarClass} h-screen overflow-hidden`}>
-      {/* Mobile close button */}
-      <div className="flex md:hidden justify-end p-3">
-        <button onClick={onClose} className="text-blue-700 p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      
-      {/* Fixed Header */}
-      <div className="flex flex-col items-center p-6 pt-0 md:pt-6 border-b border-blue-100 bg-white/80 backdrop-blur-md flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="bg-gradient-to-br from-blue-600 to-blue-400 text-white rounded-full w-10 h-10 flex items-center justify-center font-black text-lg shadow">T</span>
-          <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-700 to-blue-400 bg-clip-text text-transparent">TravelBiz</span>
-        </div>
-        {agency && (
-          <div className="mt-2 flex flex-col items-center text-blue-700 font-bold text-sm leading-tight">
-            {agency.logo && <img src={agency.logo} alt="Agency Logo" className="h-7 w-7 rounded-full object-cover border mb-1" />}
-            <span>{agency.name}</span>
+    <aside className={`fixed inset-y-0 left-0 bg-white/80 backdrop-blur-md border-r border-blue-100 shadow-xl w-64 z-40 transform transition-transform duration-300 md:relative md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="flex flex-col h-full">
+        {/* Fixed Header */}
+        <div className="flex-shrink-0 p-6 pt-4 border-b border-blue-100">
+          <button onClick={onClose} className="absolute top-2 right-2 md:hidden text-blue-700 p-2 rounded-full hover:bg-blue-100">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="flex flex-col items-center">
+            <div className="flex items-center gap-2">
+              <span className="bg-gradient-to-br from-blue-600 to-blue-400 text-white rounded-full w-10 h-10 flex items-center justify-center font-black text-lg shadow">T</span>
+              <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-700 to-blue-400 bg-clip-text text-transparent">TravelBiz</span>
+            </div>
+            {agency && (
+              <div className="mt-2 flex flex-col items-center text-blue-700 font-bold text-sm leading-tight">
+                {agency.logo && <img src={agency.logo} alt="Agency Logo" className="h-7 w-7 rounded-full object-cover border mb-1" />}
+                <span>{agency.name}</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      
-      {/* Scrollable Navigation Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <nav className="p-4 space-y-1">
-          {user?.role === 'driver' ? (
-            <>
-              <Link
-                to="/dashboard"
-                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/dashboard' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                onClick={onClose}
-              >
-                <FaTachometerAlt className="text-lg" />
-                <span>Dashboard</span>
-              </Link>
-              <Link
-                to="/tracking"
-                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/tracking' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                onClick={onClose}
-              >
-                <FaMapMarkedAlt className="text-lg" />
-                <span>Live Tracking</span>
-              </Link>
-              <Link
-                to="/profile"
-                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/profile' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                onClick={onClose}
-              >
-                <FaUserCog className="text-lg" />
-                <span>Profile</span>
-              </Link>
-            </>
-          ) : (
-            <>
-              {/* Quick Action Buttons */}
-              {(user?.role === 'admin' || user?.role === 'agent') && (
+        </div>
+        
+        {/* Scrollable Navigation Area */}
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
+          <nav className="p-4 space-y-1">
+            {user?.role === 'driver' ? (
+              <>
+                {/* Driver-specific links */}
+              </>
+            ) : (
+              <>
+                {/* Admin/Agent links */}
                 <div className="mb-4 space-y-2">
-                  <Link
-                    to="/bookings/add"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105"
-                    onClick={onClose}
-                  >
+                  <Link to="/bookings/add" className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105" onClick={onClose}>
                     <FaCalendarAlt className="text-lg" />
                     <span>New Booking</span>
                   </Link>
-                  <Link
-                    to="/clients/add"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105"
-                    onClick={onClose}
-                  >
+                  <Link to="/clients/add" className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105" onClick={onClose}>
                     <FaUserPlus className="text-lg" />
                     <span>Add Client</span>
                   </Link>
                 </div>
-              )}
-
-              {/* Main Dashboard */}
-              <Link
-                to="/"
-                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                onClick={onClose}
-              >
-                <FaTachometerAlt className="text-lg" />
-                <span>Dashboard</span>
-              </Link>
-
-              {/* Client Management Section */}
-              {renderMenuSection(
-                'Client Management',
-                <FaUsers />,
-                clientMenuOpen,
-                setClientMenuOpen,
-                clientMenuLinks,
-                ['admin', 'agent']
-              )}
-
-              {/* Booking Management Section */}
-              {renderMenuSection(
-                'Booking Management',
-                <FaCalendarAlt />,
-                bookingMenuOpen,
-                setBookingMenuOpen,
-                bookingMenuLinks,
-                ['admin', 'agent']
-              )}
-
-              {/* Vehicle Management Section */}
-              {renderMenuSection(
-                'Vehicle Management',
-                <FaCar />,
-                vehicleMenuOpen,
-                setVehicleMenuOpen,
-                vehicleMenuLinks,
-                ['admin', 'agent']
-              )}
-
-              {/* Driver Management Section */}
-              {renderMenuSection(
-                'Driver Management',
-                <FaUserTie />,
-                driverMenuOpen,
-                setDriverMenuOpen,
-                driverMenuLinks,
-                ['admin', 'agent']
-              )}
-
-              {/* Analytics & Reports Section */}
-              {renderMenuSection(
-                'Analytics & Reports',
-                <FaChartBar />,
-                analyticsMenuOpen,
-                setAnalyticsMenuOpen,
-                analyticsMenuLinks,
-                ['admin', 'agent']
-              )}
-
-              {/* Live Tracking */}
-              <Link
-                to="/tracking"
-                className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/tracking' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                onClick={onClose}
-              >
-                <FaMapMarkedAlt className="text-lg" />
-                <span>Live Tracking</span>
-              </Link>
-
-              {/* Files Management */}
-              {(user?.role === 'admin' || user?.role === 'agent') && (
-                <Link
-                  to="/files"
-                  className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/files' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                  onClick={onClose}
-                >
-                  <FaFileAlt className="text-lg" />
-                  <span>Files</span>
+                <Link to="/" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+                  <FaTachometerAlt className="text-lg" />
+                  <span>Dashboard</span>
                 </Link>
-              )}
-
-              {/* User Management (Admin Only) */}
-              {user?.role === 'admin' && (
-                <Link
-                  to="/users"
-                  className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/users' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                  onClick={onClose}
-                >
-                  <FaUserCog className="text-lg" />
-                  <span>User Management</span>
+                {renderMenuSection('Client Management', 'clients', <FaUsers />, clientMenuLinks, ['admin', 'agent'])}
+                {renderMenuSection('Booking Management', 'bookings', <FaCalendarAlt />, bookingMenuLinks, ['admin', 'agent'])}
+                {renderMenuSection('Vehicle Management', 'vehicles', <FaCar />, vehicleMenuLinks, ['admin', 'agent'])}
+                {renderMenuSection('Driver Management', 'drivers', <FaUserTie />, driverMenuLinks, ['admin', 'agent'])}
+                {renderMenuSection('Analytics & Reports', 'analytics', <FaChartBar />, analyticsMenuLinks, ['admin', 'agent'])}
+                <Link to="/tracking" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/tracking' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+                  <FaMapMarkedAlt className="text-lg" />
+                  <span>Live Tracking</span>
                 </Link>
-              )}
-
-              {/* Activity Log */}
-              {(user?.role === 'admin' || user?.role === 'agent') && (
-                <Link
-                  to="/activity-log"
-                  className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 focus:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/activity-log' ? 'bg-blue-200/80 font-semibold shadow' : ''}`}
-                  onClick={onClose}
-                >
-                  <FaHistory className="text-lg" />
-                  <span>Activity Log</span>
-                </Link>
-              )}
-
-              {/* Settings Section */}
-              {renderMenuSection(
-                'Settings',
-                <FaCog />,
-                settingsMenuOpen,
-                setSettingsMenuOpen,
-                settingsMenuLinks,
-                ['admin', 'agent']
-              )}
-            </>
-          )}
-        </nav>
-      </div>
-        
-      {/* Fixed Footer */}
-      <div className="p-4 border-t border-blue-100 bg-white/80 backdrop-blur-md flex-shrink-0">
-        <div className="mb-2 text-sm text-blue-900">
-          Logged in as <span className="font-semibold">{user?.name}</span>
-          <div className="text-xs text-blue-700 capitalize">({user?.role})</div>
+                {(user?.role === 'admin' || user?.role === 'agent') && (
+                  <Link to="/files" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/files' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+                    <FaFileAlt className="text-lg" />
+                    <span>Files</span>
+                  </Link>
+                )}
+                {user?.role === 'admin' && (
+                  <Link to="/users" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/users' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+                    <FaUserCog className="text-lg" />
+                    <span>User Management</span>
+                  </Link>
+                )}
+                {(user?.role === 'admin' || user?.role === 'agent') && (
+                  <Link to="/activity-log" className={`flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-blue-100/80 transition font-medium text-base text-blue-900 ${location.pathname === '/activity-log' ? 'bg-blue-200/80 font-semibold shadow' : ''}`} onClick={onClose}>
+                    <FaHistory className="text-lg" />
+                    <span>Activity Log</span>
+                  </Link>
+                )}
+                {renderMenuSection('Settings', 'settings', <FaCog />, settingsMenuLinks, ['admin', 'agent'])}
+              </>
+            )}
+          </nav>
         </div>
-        <button 
-          onClick={handleLogout} 
-          className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-semibold shadow transition-all"
-        >
-          <FaSignOutAlt /> Logout
-        </button>
+          
+        {/* Fixed Footer */}
+        <div className="flex-shrink-0 p-4 border-t border-blue-100">
+          <div className="mb-2 text-sm text-blue-900">
+            Logged in as <span className="font-semibold">{user?.name}</span>
+            <div className="text-xs text-blue-700 capitalize">({user?.role})</div>
+          </div>
+          <button 
+            onClick={handleLogout} 
+            className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-semibold shadow transition-all"
+          >
+            <FaSignOutAlt /> Logout
+          </button>
+        </div>
       </div>
     </aside>
   );

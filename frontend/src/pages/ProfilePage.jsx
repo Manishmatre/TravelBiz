@@ -603,17 +603,17 @@ const ProfilePage = () => {
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between mb-8 gap-6 relative">
           <div className="flex flex-col md:flex-row items-center gap-6 w-full">
             <div className="flex-shrink-0 flex flex-col items-center">
-              {editMode ? (
-                <div className="flex flex-col items-center">
-                  <img src={formData.avatarUrl || '/default-avatar.png'} alt="User Avatar" className="h-32 w-32 rounded-2xl object-cover border-4 border-blue-200 shadow mb-2" />
-                  <label className="inline-flex items-center px-3 py-2 mt-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition">
-                    <FaUpload className="mr-2" />
-                    Upload Avatar
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                  </label>
-                </div>
-              ) : (
-                <img src={formData.avatarUrl || user.avatarUrl || '/default-avatar.png'} alt="User Avatar" className="h-32 w-32 rounded-2xl object-cover border-4 border-blue-200 shadow mb-2" />
+            {editMode ? (
+              <div className="flex flex-col items-center">
+                <img src={formData.avatarUrl || '/default-avatar.png'} alt="User Avatar" className="h-32 w-32 rounded-2xl object-cover border-4 border-blue-200 shadow mb-2" />
+                <label className="inline-flex items-center px-3 py-2 mt-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition">
+                  <FaUpload className="mr-2" />
+                  Upload Avatar
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+              </div>
+            ) : (
+              <img src={formData.avatarUrl || user.avatarUrl || '/default-avatar.png'} alt="User Avatar" className="h-32 w-32 rounded-2xl object-cover border-4 border-blue-200 shadow mb-2" />
               )}
               {/* Status Badges */}
               <div className="flex gap-2 mt-2">
@@ -624,51 +624,51 @@ const ProfilePage = () => {
                   <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold"><FaShieldAlt className="text-blue-500" /> 2FA Enabled</span>
                 )}
               </div>
-            </div>
-            <div className="flex-1 w-full">
-              {editMode ? (
-                <>
-                  <div className="mb-2 flex items-center gap-4">
-                    <FaUser className="text-blue-600 text-2xl" />
-                    <Input
-                      className="w-full text-3xl font-bold"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
+          </div>
+          <div className="flex-1 w-full">
+            {editMode ? (
+              <>
+                <div className="mb-2 flex items-center gap-4">
+                  <FaUser className="text-blue-600 text-2xl" />
                   <Input
-                    className="mb-2"
-                    name="email"
-                    label="Email"
-                    value={formData.email}
+                    className="w-full text-3xl font-bold"
+                    name="name"
+                    value={formData.name}
                     onChange={handleChange}
                     required
-                    disabled
                   />
-                  <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-4">
-                    <span><span className="font-semibold">Role:</span> {user.role}</span>
-                    {user.agencyId && <span><span className="font-semibold">Agency:</span> {user.agencyId}</span>}
-                    {user.createdAt && (
-                      <span><span className="font-semibold">Member since:</span> {new Date(user.createdAt).toLocaleDateString()}</span>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-4"><FaUser className="text-blue-600" /> {formData.name || user.name}</h1>
-                  <p className="text-gray-600 mb-2">{formData.email || user.email}</p>
-                  <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-4">
-                    <span><span className="font-semibold">Role:</span> {user.role}</span>
-                    {user.agencyId && <span><span className="font-semibold">Agency:</span> {user.agencyId}</span>}
-                    {user.createdAt && (
-                      <span><span className="font-semibold">Member since:</span> {new Date(user.createdAt).toLocaleDateString()}</span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+                </div>
+                <Input
+                  className="mb-2"
+                  name="email"
+                  label="Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  disabled
+                />
+                <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-4">
+                  <span><span className="font-semibold">Role:</span> {user.role}</span>
+                  {user.agencyId && <span><span className="font-semibold">Agency:</span> {user.agencyId}</span>}
+                  {user.createdAt && (
+                    <span><span className="font-semibold">Member since:</span> {new Date(user.createdAt).toLocaleDateString()}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-4"><FaUser className="text-blue-600" /> {formData.name || user.name}</h1>
+                <p className="text-gray-600 mb-2">{formData.email || user.email}</p>
+                <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-4">
+                  <span><span className="font-semibold">Role:</span> {user.role}</span>
+                  {user.agencyId && <span><span className="font-semibold">Agency:</span> {user.agencyId}</span>}
+                  {user.createdAt && (
+                    <span><span className="font-semibold">Member since:</span> {new Date(user.createdAt).toLocaleDateString()}</span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           </div>
           {/* Quick Actions Dropdown */}
           <div className="absolute top-0 right-0 md:static md:ml-4 z-10" ref={dropdownRef}>
@@ -1106,7 +1106,7 @@ const ProfilePage = () => {
                       <div>
                         <h4 className="font-semibold">Two-Factor Authentication</h4>
                         <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
-                      </div>
+                    </div>
                     </div>
                     <button
                       onClick={handleToggle2FA}
@@ -1385,8 +1385,8 @@ const ProfilePage = () => {
                       })
                     )}
                   </div>
-                </div>
-              </Card>
+              </div>
+            </Card>
             </div>
           )}
         </div>
