@@ -35,20 +35,22 @@ function Clients() {
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
 
-  const filteredClients = clients.filter(client => {
-    const matchesSearch =
-      client.name?.toLowerCase().includes(search.toLowerCase()) ||
-      client.email?.toLowerCase().includes(search.toLowerCase()) ||
-      client.phone?.toLowerCase().includes(search.toLowerCase()) ||
-      (client.passportNumber && client.passportNumber.toLowerCase().includes(search.toLowerCase())) ||
-      (client.nationality && client.nationality.toLowerCase().includes(search.toLowerCase()));
-    
-    const matchesAgent = filterAgent ? String(client.assignedAgent?._id) === filterAgent : true;
-    const matchesStatus = filterStatus ? (client.status || 'Active') === filterStatus : true;
-    const matchesNationality = filterNationality ? client.nationality === filterNationality : true;
-    
-    return matchesSearch && matchesAgent && matchesStatus && matchesNationality;
-  });
+  const filteredClients = clients
+    .filter(Boolean)
+    .filter(client => {
+      const matchesSearch =
+        client.name?.toLowerCase().includes(search.toLowerCase()) ||
+        client.email?.toLowerCase().includes(search.toLowerCase()) ||
+        client.phone?.toLowerCase().includes(search.toLowerCase()) ||
+        (client.passportNumber && client.passportNumber.toLowerCase().includes(search.toLowerCase())) ||
+        (client.nationality && client.nationality.toLowerCase().includes(search.toLowerCase()));
+      
+      const matchesAgent = filterAgent ? String(client.assignedAgent?._id) === filterAgent : true;
+      const matchesStatus = filterStatus ? (client.status || 'Active') === filterStatus : true;
+      const matchesNationality = filterNationality ? client.nationality === filterNationality : true;
+      
+      return matchesSearch && matchesAgent && matchesStatus && matchesNationality;
+    });
 
   // Sort clients
   const sortedClients = [...filteredClients].sort((a, b) => {
@@ -223,14 +225,18 @@ function Clients() {
     { 
       label: 'Name', 
       key: 'name',
-      render: (row) => (
+      render: (client) => (
         <div className="flex items-center gap-3">
-          <img src={row.avatarUrl || `https://ui-avatars.com/api/?name=${row.name}&background=random`} alt={row.name} className="w-9 h-9 rounded-full object-cover" />
+          <img 
+            src={client.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(client.name)}&background=cbf3f0&color=075985`} 
+            alt={client.name} 
+            className="w-10 h-10 rounded-full object-cover" 
+          />
           <div>
-            <Link to={`/clients/${row._id}`} className="text-blue-700 hover:underline font-semibold">
-              {row.name}
+            <Link to={`/clients/${client._id}`} className="font-semibold text-cyan-800 hover:underline">
+              {client.name}
             </Link>
-            <div className="text-sm text-gray-500">{row.email}</div>
+            <div className="text-sm text-gray-500">{client.email}</div>
           </div>
         </div>
       )

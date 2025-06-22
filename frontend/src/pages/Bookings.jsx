@@ -314,71 +314,76 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const columns = [
     { 
       label: 'Booking', 
-      accessor: 'destination',
-      render: (v, row) => (
+      key: 'booking',
+      render: (row) => (
         <div>
-          <div className="font-medium text-blue-700 hover:underline cursor-pointer" onClick={() => navigate(`/bookings/${row._id}`)}>
-            {typeof v === 'string' ? v : (v?.name || 'N/A')}
+          <div 
+            className="font-semibold text-blue-700 hover:underline cursor-pointer"
+            onClick={() => navigate(`/bookings/${row._id}`)}
+          >
+            {row.destination?.name || 'N/A'}
           </div>
-          <div className="text-sm text-gray-500">
-            {row && row.startDate && !isNaN(new Date(row.startDate)) ? new Date(row.startDate).toLocaleDateString() : 'No date'} - {row && row.endDate && !isNaN(new Date(row.endDate)) ? new Date(row.endDate).toLocaleDateString() : 'No end date'}
+          <div className="text-xs text-gray-500">
+            {row.startDate ? new Date(row.startDate).toLocaleDateString() : 'No date'} - {row.endDate ? new Date(row.endDate).toLocaleDateString() : 'No end date'}
           </div>
         </div>
       )
     },
     { 
       label: 'Client', 
-      accessor: 'client',
-      render: (v, row) => (
+      key: 'client',
+      render: (row) => (
         <div className="flex items-center gap-2">
           <FaUser className="text-gray-400" />
-          <span>{typeof v === 'string' ? v : (v?.name || 'Unknown')}</span>
+          <span>{row.client?.name || 'Unknown'}</span>
         </div>
       )
     },
     { 
       label: 'Agent', 
-      accessor: 'agent',
-      render: (v, row) => (
-        <div className="flex items-center gap-2">
+      key: 'agent',
+      render: (row) => (
+         <div className="flex items-center gap-2">
           <FaUserTie className="text-gray-400" />
-          <span>{typeof v === 'string' ? v : (v?.name || 'Unassigned')}</span>
+          <span>{row.agent?.name || 'Unassigned'}</span>
         </div>
       )
     },
     { 
       label: 'Vehicle', 
-      accessor: 'vehicle',
-      render: (v, row) => (
+      key: 'vehicle',
+      render: (row) => (
         <div className="flex items-center gap-2">
           <FaCar className="text-gray-400" />
-          <span>{typeof v === 'string' ? v : (v?.name || 'Unassigned')}</span>
+          <span>{row.vehicle?.name || 'Unassigned'}</span>
         </div>
       )
     },
     { 
       label: 'Status', 
-      accessor: 'status',
-      render: (v) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(v)}`}>
-          {typeof v === 'string' || typeof v === 'number' ? v : 'Unknown'}
+      key: 'status',
+      render: (row) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status)}`}>
+          {row.status || 'Unknown'}
         </span>
       )
     },
     { 
       label: 'Price', 
-      accessor: 'price',
-      render: (v) => (
-        <span className="font-medium text-green-600">
-          ${!isNaN(Number(v)) && v !== null && v !== undefined ? Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+      key: 'price',
+      render: (row) => (
+        <span className="font-medium text-green-700">
+          ${(row.price || 0).toFixed(2)}
         </span>
       )
     },
     { 
       label: 'Created', 
-      accessor: 'createdAt',
-      render: (v) => (
-        isNaN(new Date(v)) || !v ? 'N/A' : new Date(v).toLocaleDateString()
+      key: 'createdAt',
+      render: (row) => (
+        <span className="text-gray-500">
+          {new Date(row.createdAt).toLocaleDateString()}
+        </span>
       )
     },
   ];
@@ -406,7 +411,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
 
   const columnsWithCheckbox = [
     {
-      label: <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} />,
+      label: <input type="checkbox" checked={selectedBookings.length > 0 && selectedBookings.length === paginatedBookings.length} onChange={handleSelectAll} />,
       accessor: '_checkbox',
       render: (val, row) => (
         <input

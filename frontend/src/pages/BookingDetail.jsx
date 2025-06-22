@@ -176,8 +176,46 @@ const BookingDetail = () => {
     }
   };
 
-  if (loadError) return <div>Error loading maps</div>;
-  if (loading || (!isLoaded && !loadError)) return <div className="p-8"><Loader /></div>;
+  // Centralized loading and error handling
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button color="primary" onClick={() => navigate('/bookings')}>
+          Back to Bookings
+        </Button>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-xl font-semibold text-red-600 mb-2">Map Error</h2>
+        <p className="text-gray-600 mb-4">Google Maps could not be loaded. Please check your connection or API key.</p>
+        <Button color="primary" onClick={() => navigate('/bookings')}>
+          Back to Bookings
+        </Button>
+      </div>
+    )
+  }
+  
+  if (!isLoaded) {
+     return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader />
+      </div>
+    );
+  }
 
   if (!booking) {
     return (

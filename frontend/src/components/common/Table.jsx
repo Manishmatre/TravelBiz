@@ -24,7 +24,7 @@ function Table({ columns, data, actions, className = '' }) {
               <tr key={row._id || row.id || idx} className="hover:bg-blue-50/60 transition-colors border-t border-blue-50">
                 {columns.map((col, colIdx) => (
                   <td key={`${row._id || row.id || idx}-${col.accessor || colIdx}`} className="py-2 px-4 whitespace-nowrap align-middle">
-                    {col.render ? col.render(row[col.accessor], row) : row[col.accessor]}
+                    {col.render ? col.render(row) : row[col.key]}
                   </td>
                 ))}
                 {actions && <td className="py-2 px-4 whitespace-nowrap align-middle">{actions(row)}</td>}
