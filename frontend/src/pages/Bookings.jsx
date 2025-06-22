@@ -12,7 +12,7 @@ import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
 import { useAuth } from '../contexts/AuthContext';
 import StatCard from '../components/common/StatCard';
-import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave, FaPlus, FaFilter, FaSearch, FaEye } from 'react-icons/fa';
+import { FaCalendarAlt, FaCheckCircle, FaHourglassHalf, FaTimesCircle, FaMoneyBillWave, FaPlus, FaFilter, FaSearch, FaEye, FaEdit, FaTrash, FaSyncAlt, FaDownload, FaMapMarkerAlt, FaUser, FaCar } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useBookings } from '../contexts/BookingsContext';
 import Notification from '../components/common/Notification';
@@ -27,6 +27,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const [filterClient, setFilterClient] = useState('');
   const [filterAgent, setFilterAgent] = useState('');
   const [filterStatus, setFilterStatus] = useState(initialFilterStatus || '');
+  const [filterDateRange, setFilterDateRange] = useState(filterDate || '');
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -36,13 +37,16 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [notification, setNotification] = useState(null);
   const [error, setError] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('startDate');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [selectedBookings, setSelectedBookings] = useState([]);
+  const [bookingsPerPage] = useState(15);
 
   // Use context if available, otherwise use local state
   const bookings = bookingsContext?.bookings || [];
   const loading = bookingsContext?.loading || false;
   const fetchBookings = bookingsContext?.fetchBookings;
-
-  const bookingsPerPage = 10;
 
   useEffect(() => {
     getClients(token).then(setClients);
@@ -51,41 +55,70 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
 
   const filteredBookings = bookings.filter(b => {
     const matchesSearch =
-      b.destination.toLowerCase().includes(search.toLowerCase()) ||
-      (b.client?.name || '').toLowerCase().includes(search.toLowerCase());
+      b.destination?.toLowerCase().includes(search.toLowerCase()) ||
+      (b.client?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (b.agent?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (b.vehicle?.name || '').toLowerCase().includes(search.toLowerCase());
     const matchesClient = filterClient ? String(b.client?._id) === filterClient : true;
     const matchesAgent = filterAgent ? String(b.agent?._id) === filterAgent : true;
     const matchesStatus = filterStatus ? b.status === filterStatus : true;
     
     // Date filtering
     let matchesDate = true;
-    if (filterDate) {
+    if (filterDateRange) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const bookingDate = b.startDate ? new Date(b.startDate) : null;
       
-      if (filterDate === 'today' && bookingDate) {
+      if (filterDateRange === 'today' && bookingDate) {
         const bookingDay = new Date(bookingDate);
         bookingDay.setHours(0, 0, 0, 0);
         matchesDate = bookingDay.getTime() === today.getTime();
-      } else if (filterDate === 'upcoming' && bookingDate) {
+      } else if (filterDateRange === 'upcoming' && bookingDate) {
         matchesDate = bookingDate > today;
-      } else if (filterDate === 'overdue' && bookingDate) {
+      } else if (filterDateRange === 'overdue' && bookingDate) {
         matchesDate = bookingDate < today && b.status !== 'Completed' && b.status !== 'Cancelled';
+      } else if (filterDateRange === 'this-week' && bookingDate) {
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        matchesDate = bookingDate >= weekStart && bookingDate <= weekEnd;
+      } else if (filterDateRange === 'this-month' && bookingDate) {
+        matchesDate = bookingDate.getMonth() === today.getMonth() && bookingDate.getFullYear() === today.getFullYear();
       }
     }
     
     return matchesSearch && matchesClient && matchesAgent && matchesStatus && matchesDate;
   });
 
+  // Sort bookings
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    let aValue = a[sortBy] || '';
+    let bValue = b[sortBy] || '';
+    
+    if (sortBy === 'startDate' || sortBy === 'createdAt') {
+      aValue = new Date(aValue);
+      bValue = new Date(bValue);
+    } else if (typeof aValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+    
+    if (sortOrder === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
+  });
+
+  const totalPages = Math.ceil(sortedBookings.length / bookingsPerPage);
+  const paginatedBookings = sortedBookings.slice((currentPage - 1) * bookingsPerPage, currentPage * bookingsPerPage);
+
   const handleInput = e => {
     const { name, value } = e.target;
     setNewBooking(b => ({ ...b, [name]: value }));
   };
-
-  // Note: We removed the popup edit modal since we have a comprehensive edit mode
-  // in the BookingDetail page (/bookings/:id) that provides a much better user experience
-  // with full-width layout, better form organization, and real-time validation.
 
   const handleAddBooking = async () => {
     setAdding(true);
@@ -121,15 +154,52 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
     }
   };
 
-  // Stats calculation (mocked for now)
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedBookings.length} selected bookings?`)) return;
+    
+    for (const id of selectedBookings) {
+      try {
+        await deleteBooking(id, token);
+      } catch (err) {
+        console.error(`Failed to delete booking ${id}:`, err);
+      }
+    }
+    
+    if (fetchBookings) {
+      await fetchBookings();
+    }
+    setSelectedBookings([]);
+    setNotification({ 
+      message: `Successfully deleted ${selectedBookings.length} bookings!`, 
+      type: 'success' 
+    });
+  };
+
+  const handleRefresh = async () => {
+    if (!fetchBookings) return;
+    
+    try {
+      await fetchBookings();
+      setNotification({ message: 'Bookings refreshed successfully!', type: 'success' });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to refresh bookings');
+      setNotification({ 
+        message: 'Failed to refresh bookings: ' + (err.response?.data?.message || err.message), 
+        type: 'error' 
+      });
+    }
+  };
+
+  // Stats calculation
   const totalBookings = bookings.length;
   const pendingCount = bookings.filter(b => b.status === 'Pending').length;
   const confirmedCount = bookings.filter(b => b.status === 'Confirmed').length;
   const completedCount = bookings.filter(b => b.status === 'Completed').length;
   const cancelledCount = bookings.filter(b => b.status === 'Cancelled').length;
   const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.price) || 0), 0);
+  const averageRevenue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
-  // Analytics data (mocked from bookings)
+  // Analytics data
   const bookingsByDate = (() => {
     const map = {};
     bookings.forEach(b => {
@@ -138,6 +208,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
     });
     return Object.entries(map).map(([date, count]) => ({ date, count }));
   })();
+  
   const revenueByDate = (() => {
     const map = {};
     bookings.forEach(b => {
@@ -146,12 +217,14 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
     });
     return Object.entries(map).map(([date, revenue]) => ({ date, revenue }));
   })();
+  
   const statusColors = {
     Pending: '#facc15',
     Confirmed: '#22c55e',
     Completed: '#14b8a6',
     Cancelled: '#ef4444',
   };
+  
   const bookingsByStatus = [
     { name: 'Pending', value: pendingCount },
     { name: 'Confirmed', value: confirmedCount },
@@ -168,6 +241,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   })();
+  
   // Bookings by Destination
   const bookingsByDestination = (() => {
     const map = {};
@@ -177,6 +251,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   })();
+
   // CSV Export
   function exportCSV(rows) {
     if (!rows.length) return;
@@ -193,53 +268,147 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
     URL.revokeObjectURL(url);
   }
 
-  // Recent Activity Feed (last 10 bookings by createdAt desc)
+  // Recent Activity Feed
   const recentBookings = [...bookings]
     .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate))
     .slice(0, 10);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
-  const startIndex = (currentPage - 1) * bookingsPerPage;
-  const paginatedBookings = filteredBookings.slice(startIndex, startIndex + bookingsPerPage);
-
-  // Manual refresh function
-  const handleRefresh = async () => {
-    if (!fetchBookings) return; // Only refresh if context is available
-    
-    try {
-      await fetchBookings();
-      setNotification({ message: 'Bookings refreshed successfully!', type: 'success' });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to refresh bookings');
-      setNotification({ 
-        message: 'Failed to refresh bookings: ' + (err.response?.data?.message || err.message), 
-        type: 'error' 
-      });
-    }
-  };
-
-  // Get page title based on filter or view
   const getPageTitle = () => {
     if (view === 'calendar') return 'Booking Calendar';
     if (view === 'reports') return 'Booking Reports';
-    if (filterDate === 'today') return 'Today\'s Bookings';
-    if (filterDate === 'upcoming') return 'Upcoming Bookings';
-    if (filterDate === 'overdue') return 'Overdue Bookings';
+    if (filterDateRange === 'today') return 'Today\'s Bookings';
+    if (filterDateRange === 'upcoming') return 'Upcoming Bookings';
+    if (filterDateRange === 'overdue') return 'Overdue Bookings';
     if (filterStatus) return `${filterStatus} Bookings`;
     return 'All Bookings';
   };
 
-  // Get page description based on filter or view
   const getPageDescription = () => {
     if (view === 'calendar') return 'Calendar view of all bookings';
     if (view === 'reports') return 'Analytics and reports for bookings';
-    if (filterDate === 'today') return 'Bookings scheduled for today';
-    if (filterDate === 'upcoming') return 'Future bookings and reservations';
-    if (filterDate === 'overdue') return 'Past bookings that are not completed or cancelled';
+    if (filterDateRange === 'today') return 'Bookings scheduled for today';
+    if (filterDateRange === 'upcoming') return 'Future bookings and reservations';
+    if (filterDateRange === 'overdue') return 'Past bookings that are not completed or cancelled';
     if (filterStatus) return `Showing ${filterStatus.toLowerCase()} bookings`;
     return 'Manage all client bookings and reservations';
   };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Pending': return 'bg-yellow-100 text-yellow-800';
+      case 'Confirmed': return 'bg-green-100 text-green-800';
+      case 'Completed': return 'bg-blue-100 text-blue-800';
+      case 'Cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const columns = [
+    { 
+      label: 'Booking', 
+      accessor: 'destination',
+      render: (v, row) => (
+        <div>
+          <div className="font-medium text-blue-700 hover:underline cursor-pointer" onClick={() => navigate(`/bookings/${row._id}`)}>
+            {v}
+          </div>
+          <div className="text-sm text-gray-500">
+            {row.startDate ? new Date(row.startDate).toLocaleDateString() : 'No date'} - {row.endDate ? new Date(row.endDate).toLocaleDateString() : 'No end date'}
+          </div>
+        </div>
+      )
+    },
+    { 
+      label: 'Client', 
+      accessor: 'client',
+      render: (v, row) => (
+        <div className="flex items-center gap-2">
+          <FaUser className="text-gray-400" />
+          <span>{v?.name || 'Unknown'}</span>
+        </div>
+      )
+    },
+    { 
+      label: 'Agent', 
+      accessor: 'agent',
+      render: (v, row) => (
+        <div className="flex items-center gap-2">
+          <FaUserTie className="text-gray-400" />
+          <span>{v?.name || 'Unassigned'}</span>
+        </div>
+      )
+    },
+    { 
+      label: 'Vehicle', 
+      accessor: 'vehicle',
+      render: (v, row) => (
+        <div className="flex items-center gap-2">
+          <FaCar className="text-gray-400" />
+          <span>{v?.name || 'Unassigned'}</span>
+        </div>
+      )
+    },
+    { 
+      label: 'Status', 
+      accessor: 'status',
+      render: (v) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(v)}`}>
+          {v}
+        </span>
+      )
+    },
+    { 
+      label: 'Price', 
+      accessor: 'price',
+      render: (v) => (
+        <span className="font-medium text-green-600">
+          ${Number(v || 0).toLocaleString()}
+        </span>
+      )
+    },
+    { 
+      label: 'Created', 
+      accessor: 'createdAt',
+      render: (v) => new Date(v).toLocaleDateString()
+    },
+  ];
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
+  const isAllSelected = paginatedBookings.length > 0 && paginatedBookings.every(b => selectedBookings.includes(b._id));
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedBookings(selectedBookings.filter(id => !paginatedBookings.some(b => b._id === id)));
+    } else {
+      setSelectedBookings([
+        ...selectedBookings,
+        ...paginatedBookings.filter(b => !selectedBookings.includes(b._id)).map(b => b._id)
+      ]);
+    }
+  };
+  const handleSelectOne = (id) => {
+    setSelectedBookings(selectedBookings.includes(id)
+      ? selectedBookings.filter(bid => bid !== id)
+      : [...selectedBookings, id]);
+  };
+
+  const columnsWithCheckbox = [
+    {
+      label: <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} />,
+      accessor: '_checkbox',
+      render: (val, row) => (
+        <input
+          type="checkbox"
+          checked={selectedBookings.includes(row._id)}
+          onChange={() => handleSelectOne(row._id)}
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+        />
+      )
+    },
+    ...columns
+  ];
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8 min-h-screen">
@@ -251,6 +420,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           onClose={() => setNotification(null)}
         />
       )}
+      
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{getPageTitle()}</h1>
@@ -263,7 +433,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
             className="flex items-center gap-2"
             disabled={loading || !fetchBookings}
           >
-            <FaSearch className="w-4 h-4" />
+            <FaSyncAlt className="w-4 h-4" />
             Refresh
           </Button>
           <Button 
@@ -275,8 +445,9 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           </Button>
         </div>
       </div>
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         <StatCard icon={<FaCalendarAlt />} label="Total Bookings" value={totalBookings} accentColor="blue" />
         <StatCard icon={<FaHourglassHalf />} label="Pending" value={pendingCount} accentColor="yellow" />
         <StatCard icon={<FaCheckCircle />} label="Confirmed" value={confirmedCount} accentColor="green" />
@@ -284,6 +455,7 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
         <StatCard icon={<FaTimesCircle />} label="Cancelled" value={cancelledCount} accentColor="red" />
         <StatCard icon={<FaMoneyBillWave />} label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} accentColor="teal" />
       </div>
+
       {/* Analytics Charts Section */}
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
         <h2 className="text-lg font-bold mb-4">Booking Analytics</h2>
@@ -359,158 +531,232 @@ function Bookings({ filterStatus: initialFilterStatus, view, filterDate }) {
           </div>
         </div>
       </div>
-      {/* Recent Activity Feed */}
+
+      {/* Filters and Search */}
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <h2 className="text-lg font-bold mb-4">Recent Activity</h2>
-        {recentBookings.length === 0 ? (
-          <div className="text-gray-500">No recent bookings.</div>
-        ) : (
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="bg-white/60">
-                <th className="py-2 px-4 text-left font-semibold text-gray-700">Date</th>
-                <th className="py-2 px-4 text-left font-semibold text-gray-700">Client</th>
-                <th className="py-2 px-4 text-left font-semibold text-gray-700">Agent</th>
-                <th className="py-2 px-4 text-left font-semibold text-gray-700">Status</th>
-                <th className="py-2 px-4 text-left font-semibold text-gray-700">Destination</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentBookings.map(b => (
-                <tr key={b._id} className="border-t border-blue-50 hover:bg-blue-50/60 transition-colors">
-                  <td className="py-2 px-4">{b.createdAt ? new Date(b.createdAt).toLocaleString() : (b.startDate ? new Date(b.startDate).toLocaleString() : '-')}</td>
-                  <td className="py-2 px-4">{b.client?.name || '-'}</td>
-                  <td className="py-2 px-4">{b.agent?.name || '-'}</td>
-                  <td className="py-2 px-4">{b.status}</td>
-                  <td className="py-2 px-4">{b.destination}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <SearchInput
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search bookings..."
+              className="w-64"
+            />
+            <Button
+              color="secondary"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="flex items-center gap-2"
+            >
+              <FaFilter />
+              {showAdvancedFilters ? 'Hide' : 'Show'} Filters
+            </Button>
+          </div>
+          
+          <div className="flex gap-2">
+            {selectedBookings.length > 0 && (
+              <Button
+                color="danger"
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2"
+              >
+                <FaTrash />
+                Delete Selected ({selectedBookings.length})
+              </Button>
+            )}
+            <Button
+              color="secondary"
+              onClick={() => exportCSV(filteredBookings)}
+              className="flex items-center gap-2"
+            >
+              <FaDownload />
+              Export CSV
+            </Button>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
+            <Dropdown
+              value={filterClient}
+              onChange={e => setFilterClient(e.target.value)}
+              options={[
+                { value: '', label: 'All Clients' },
+                ...clients.map(client => ({ value: client._id, label: client.name }))
+              ]}
+              className="w-full"
+            />
+            <Dropdown
+              value={filterAgent}
+              onChange={e => setFilterAgent(e.target.value)}
+              options={[
+                { value: '', label: 'All Agents' },
+                ...agents.map(agent => ({ value: agent._id, label: agent.name }))
+              ]}
+              className="w-full"
+            />
+            <Dropdown
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              options={[
+                { value: '', label: 'All Status' },
+                { value: 'Pending', label: 'Pending' },
+                { value: 'Confirmed', label: 'Confirmed' },
+                { value: 'Completed', label: 'Completed' },
+                { value: 'Cancelled', label: 'Cancelled' }
+              ]}
+              className="w-full"
+            />
+            <Dropdown
+              value={filterDateRange}
+              onChange={e => setFilterDateRange(e.target.value)}
+              options={[
+                { value: '', label: 'All Dates' },
+                { value: 'today', label: 'Today' },
+                { value: 'upcoming', label: 'Upcoming' },
+                { value: 'overdue', label: 'Overdue' },
+                { value: 'this-week', label: 'This Week' },
+                { value: 'this-month', label: 'This Month' }
+              ]}
+              className="w-full"
+            />
+            <Dropdown
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              options={[
+                { value: 'startDate', label: 'Sort by Date' },
+                { value: 'destination', label: 'Sort by Destination' },
+                { value: 'price', label: 'Sort by Price' },
+                { value: 'status', label: 'Sort by Status' },
+                { value: 'createdAt', label: 'Sort by Created' }
+              ]}
+              className="w-full"
+            />
+          </div>
         )}
       </div>
-      {/* Export CSV Button */}
-      <div className="flex justify-end mb-2">
-        <Button color="secondary" size="sm" onClick={() => exportCSV(filteredBookings)}>
-          Export CSV
-        </Button>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-lg p-6">
+        {loading ? (
+          <Loader className="my-10" />
+        ) : error ? (
+          <div className="text-red-500 p-6">{error}</div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * bookingsPerPage) + 1} to {Math.min(currentPage * bookingsPerPage, sortedBookings.length)} of {sortedBookings.length} bookings
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  color="secondary"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                >
+                  {sortOrder === 'asc' ? '↑' : '↓'} {sortBy}
+                </Button>
+              </div>
+            </div>
+            
+            <Table
+              columns={selectedBookings.length > 0 ? columnsWithCheckbox : columns}
+              data={paginatedBookings}
+              actions={booking => (
+                <div className="flex gap-2">
+                  <Button
+                    color="primary"
+                    size="sm"
+                    onClick={() => navigate(`/bookings/${booking._id}`)}
+                  >
+                    <FaEye />
+                  </Button>
+                  <Button
+                    color="secondary"
+                    size="sm"
+                    onClick={() => navigate(`/bookings/${booking._id}/edit`)}
+                  >
+                    <FaEdit />
+                  </Button>
+                  <Button
+                    color="danger"
+                    size="sm"
+                    onClick={() => { setSelectedBooking(booking); setDeleteModalOpen(true); }}
+                  >
+                    <FaTrash />
+                  </Button>
+                </div>
+              )}
+            />
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center mt-6">
+                <div className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    color="secondary"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                    return (
+                      <Button
+                        key={page}
+                        color={currentPage === page ? "primary" : "secondary"}
+                        size="sm"
+                        onClick={() => handlePageChange(page)}
+                      >
+                        {page}
+                      </Button>
+                    );
+                  })}
+                  <Button
+                    color="secondary"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-      <div className="flex flex-col md:flex-row gap-2 mb-4 items-center">
-        <SearchInput
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by destination or client..."
-          className="w-full md:w-64"
-        />
-        <Dropdown
-          label="Client"
-          value={filterClient}
-          onChange={e => setFilterClient(e.target.value)}
-          options={[{ value: '', label: 'All Clients' }, ...clients.map(c => ({ value: c._id, label: c.name }))]}
-          className="w-full md:w-48"
-        />
-        <Dropdown
-          label="Agent"
-          value={filterAgent}
-          onChange={e => setFilterAgent(e.target.value)}
-          options={[{ value: '', label: 'All Agents' }, ...agents.map(a => ({ value: a._id, label: a.name }))]}
-          className="w-full md:w-48"
-        />
-        <Dropdown
-          label="Status"
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          options={[
-            { value: '', label: 'All Statuses' },
-            { value: 'Pending', label: 'Pending' },
-            { value: 'Confirmed', label: 'Confirmed' },
-            { value: 'Completed', label: 'Completed' },
-            { value: 'Cancelled', label: 'Cancelled' },
-          ]}
-          className="w-full md:w-40"
-        />
-      </div>
-      {loading ? (
-        <Loader className="my-10" />
-      ) : (
-        <Table
-          columns={[
-            { label: 'Client', accessor: 'client', render: c => c?.name || '-' },
-            { label: 'Agent', accessor: 'agent', render: a => a?.name || '-' },
-            { label: 'Start Date', accessor: 'startDate', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-            { label: 'End Date', accessor: 'endDate', render: v => v ? new Date(v).toLocaleDateString() : '-' },
-            { label: 'Destination', accessor: 'destination' },
-            { label: 'Status', accessor: 'status' },
-            { label: 'Price', accessor: 'price' },
-            { label: 'Notes', accessor: 'notes' },
-          ]}
-          data={paginatedBookings}
-          actions={row => (
-            <>
-              <Button 
-                color="primary" 
-                size="sm" 
-                className="mr-2 flex items-center gap-1" 
-                onClick={() => navigate(`/bookings/${row._id}`)}
-              >
-                <FaEye className="w-3 h-3" />
-                View & Edit
-              </Button>
-              <Button 
-                color="danger" 
-                size="sm" 
-                onClick={() => { setSelectedBooking(row); setDeleteModalOpen(true); }}
-              >
-                Delete
-              </Button>
-            </>
-          )}
-        />
-      )}
-      {/* Add Booking Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <div className="p-4">
-          <h3 className="font-bold mb-2">Add Booking</h3>
-          <Dropdown
-            label="Client"
-            name="client"
-            value={newBooking.client}
-            onChange={handleInput}
-            options={[{ value: '', label: 'Select Client' }, ...clients.map(c => ({ value: c._id, label: c.name }))]}
-          />
-          <Dropdown
-            label="Agent"
-            name="agent"
-            value={newBooking.agent}
-            onChange={handleInput}
-            options={[{ value: '', label: 'Select Agent' }, ...agents.map(a => ({ value: a._id, label: a.name }))]}
-          />
-          <Input label="Start Date" name="startDate" type="date" value={newBooking.startDate} onChange={handleInput} />
-          <Input label="End Date" name="endDate" type="date" value={newBooking.endDate} onChange={handleInput} />
-          <Input label="Destination" name="destination" value={newBooking.destination} onChange={handleInput} />
-          <Dropdown
-            label="Status"
-            name="status"
-            value={newBooking.status}
-            onChange={handleInput}
-            options={[
-              { value: 'Pending', label: 'Pending' },
-              { value: 'Confirmed', label: 'Confirmed' },
-              { value: 'Completed', label: 'Completed' },
-              { value: 'Cancelled', label: 'Cancelled' },
-            ]}
-          />
-          <Input label="Price" name="price" type="number" value={newBooking.price} onChange={handleInput} />
-          <Input label="Notes" name="notes" value={newBooking.notes} onChange={handleInput} />
-          <Button color="primary" className="mt-2 w-full" onClick={handleAddBooking} loading={adding}>Save</Button>
-        </div>
-      </Modal>
-      {/* Delete Booking Modal */}
-      <Modal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)}>
-        <div className="p-4">
-          <h3 className="font-bold mb-2">Delete Booking</h3>
-          <div className="mb-4">Are you sure you want to delete this booking?</div>
-          <Button color="danger" className="w-full" onClick={handleDeleteBooking} loading={deleting}>Delete</Button>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Booking"
+      >
+        <div className="p-6">
+          <p className="text-gray-600 mb-4">
+            Are you sure you want to delete this booking? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              color="secondary"
+              onClick={() => setDeleteModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="danger"
+              onClick={handleDeleteBooking}
+              loading={deleting}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

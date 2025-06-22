@@ -2,13 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { getClients } from '../services/clientService';
 import { getVehicles } from '../services/vehicleService';
 import { getFiles } from '../services/fileService';
+import { getBookings } from '../services/bookingService';
+import { getUsers } from '../services/userService';
+import { getAllLocations } from '../services/locationService';
 import { useAuth } from '../contexts/AuthContext';
 import Card from '../components/common/Card';
 import StatCard from '../components/common/StatCard';
-import { FaUsers, FaCar, FaFileAlt, FaPlus, FaSyncAlt } from 'react-icons/fa';
+import { FaUsers, FaCar, FaFileAlt, FaPlus, FaSyncAlt, FaCalendarAlt, FaMoneyBillWave, FaUserTie, FaMapMarkerAlt, FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf } from 'react-icons/fa';
 import {
-  AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend
+  AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend, BarChart, Bar, LineChart, Line
 } from 'recharts';
+import { Link } from 'react-router-dom';
 
 // Mock data for analytics
 const mockTrendsData = [
@@ -33,58 +37,151 @@ const mockPieData = [
 const pieColors = ['#3B82F6', '#22C55E', '#A21CAF'];
 
 function Dashboard() {
-  const { token } = useAuth();
-  const [stats, setStats] = useState({ clients: 0, vehicles: 0, files: 0 });
+  const { token, user } = useAuth();
+  const [stats, setStats] = useState({
+    clients: 0,
+    vehicles: 0,
+    files: 0,
+    bookings: 0,
+    drivers: 0,
+    agents: 0,
+    totalRevenue: 0,
+    pendingBookings: 0,
+    completedBookings: 0,
+    cancelledBookings: 0,
+    onlineVehicles: 0,
+    availableVehicles: 0,
+    onTripVehicles: 0,
+    maintenanceVehicles: 0
+  });
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [recentClients, setRecentClients] = useState([]);
+  const [liveLocations, setLiveLocations] = useState([]);
+  const [timeRange, setTimeRange] = useState('month'); // week, month, quarter, year
 
   useEffect(() => {
     const fetchStats = async () => {
       setLoading(true);
       setError('');
       try {
-        const [clients, vehicles, files] = await Promise.all([
+        const [
+          clients, 
+          vehicles, 
+          files, 
+          bookings, 
+          drivers, 
+          agents, 
+          locations
+        ] = await Promise.all([
           getClients(token),
           getVehicles(token),
           getFiles(token),
+          getBookings(token),
+          getUsers({ role: 'driver' }, token),
+          getUsers({ role: 'agent' }, token),
+          getAllLocations(token)
         ]);
-        setStats({ clients: clients.length, vehicles: vehicles.length, files: files.length });
+
+        // Calculate comprehensive stats
+        const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.price) || 0), 0);
+        const pendingBookings = bookings.filter(b => b.status === 'Pending').length;
+        const completedBookings = bookings.filter(b => b.status === 'Completed').length;
+        const cancelledBookings = bookings.filter(b => b.status === 'Cancelled').length;
+        
+        const onlineVehicles = vehicles.filter(v => {
+          const location = locations.find(l => l.vehicleId === v._id);
+          if (!location) return false;
+          const now = new Date();
+          const lastUpdate = new Date(location.updatedAt);
+          return (now - lastUpdate) / (1000 * 60) < 5; // Online if updated within 5 minutes
+        }).length;
+
+        const availableVehicles = vehicles.filter(v => v.status === 'available').length;
+        const onTripVehicles = vehicles.filter(v => v.status === 'on-trip').length;
+        const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length;
+
+        setStats({
+          clients: clients.length,
+          vehicles: vehicles.length,
+          files: files.length,
+          bookings: bookings.length,
+          drivers: drivers.length,
+          agents: agents.length,
+          totalRevenue,
+          pendingBookings,
+          completedBookings,
+          cancelledBookings,
+          onlineVehicles,
+          availableVehicles,
+          onTripVehicles,
+          maintenanceVehicles
+        });
+
         // Build recent activity feed
         const recentClients = clients
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .slice(0, 5)
+          .slice(0, 3)
           .map(c => ({
             type: 'Client',
             name: c.name,
             date: c.createdAt,
             detail: c.email,
+            icon: 'FaUsers',
+            color: 'blue'
           }));
+
         const recentVehicles = vehicles
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .slice(0, 5)
+          .slice(0, 3)
           .map(v => ({
             type: 'Vehicle',
             name: v.name,
             date: v.createdAt,
             detail: v.numberPlate,
+            icon: 'FaCar',
+            color: 'green'
           }));
+
+        const recentBookingsData = bookings
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 5)
+          .map(b => ({
+            type: 'Booking',
+            name: b.client?.name || 'Unknown Client',
+            date: b.createdAt,
+            detail: b.destination,
+            status: b.status,
+            icon: 'FaCalendarAlt',
+            color: b.status === 'Completed' ? 'green' : b.status === 'Pending' ? 'yellow' : 'red'
+          }));
+
         const recentFiles = files
           .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate))
-          .slice(0, 5)
+          .slice(0, 2)
           .map(f => ({
             type: 'File',
             name: f.title,
             date: f.uploadDate,
             detail: f.fileType,
+            icon: 'FaFileAlt',
+            color: 'purple'
           }));
+
         // Merge and sort by date
-        const merged = [...recentClients, ...recentVehicles, ...recentFiles]
+        const merged = [...recentClients, ...recentVehicles, ...recentBookingsData, ...recentFiles]
           .sort((a, b) => new Date(b.date) - new Date(a.date))
-          .slice(0, 7);
+          .slice(0, 8);
         setActivity(merged);
+        setRecentBookings(recentBookingsData);
+        setRecentClients(recentClients);
+        setLiveLocations(locations);
+
       } catch (err) {
         setError('Failed to load dashboard stats');
+        console.error('Dashboard error:', err);
       } finally {
         setLoading(false);
       }
@@ -92,99 +189,213 @@ function Dashboard() {
     if (token) fetchStats();
   }, [token]);
 
+  // Filter data based on time range
+  const getFilteredData = (data, dateField = 'createdAt') => {
+    const now = new Date();
+    const startDate = new Date();
+    
+    switch (timeRange) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'quarter':
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setMonth(now.getMonth() - 1);
+    }
+    
+    return data.filter(item => {
+      const itemDate = new Date(item[dateField]);
+      return itemDate >= startDate && itemDate <= now;
+    });
+  };
+
+  // Calculate statistics
+  const totalBookings = stats.bookings;
+  const totalClients = stats.clients;
+  const totalVehicles = stats.vehicles;
+  const totalUsers = stats.drivers + stats.agents;
+  
+  // Analytics data
+  const revenueData = [
+    { month: 'Jan', revenue: 45000 },
+    { month: 'Feb', revenue: 52000 },
+    { month: 'Mar', revenue: 48000 },
+    { month: 'Apr', revenue: 61000 },
+    { month: 'May', revenue: 55000 },
+    { month: 'Jun', revenue: 67000 },
+  ];
+
+  const bookingStatusData = [
+    { name: 'Completed', value: stats.completedBookings, color: '#10b981' },
+    { name: 'Pending', value: stats.pendingBookings, color: '#f59e0b' },
+    { name: 'Cancelled', value: stats.cancelledBookings, color: '#ef4444' },
+  ];
+
+  const vehicleStatusData = [
+    { name: 'Available', value: stats.availableVehicles, color: '#10b981' },
+    { name: 'On Trip', value: stats.onTripVehicles, color: '#3b82f6' },
+    { name: 'Maintenance', value: stats.maintenanceVehicles, color: '#f59e0b' },
+  ];
+
+  const quickActions = [
+    { label: 'Add Client', icon: <FaUsers />, link: '/clients/add', color: 'blue' },
+    { label: 'Add Vehicle', icon: <FaCar />, link: '/vehicles/add', color: 'green' },
+    { label: 'New Booking', icon: <FaCalendarAlt />, link: '/bookings/add', color: 'purple' },
+    { label: 'Live Tracking', icon: <FaMapMarkerAlt />, link: '/tracking', color: 'red' },
+  ];
+
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 px-2 md:px-8">
-      <h1 className="text-2xl font-bold mb-5 text-gray-900 tracking-tight">Dashboard</h1>
-      {/* Quick Actions Bar */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-sm font-medium shadow-sm hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 transition-all">
-          <FaPlus /> Add Client
-        </button>
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500 text-white text-sm font-medium shadow-sm hover:bg-green-600 focus:ring-2 focus:ring-green-300 transition-all">
-          <FaPlus /> Add Vehicle
-        </button>
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500 text-white text-sm font-medium shadow-sm hover:bg-purple-600 focus:ring-2 focus:ring-purple-300 transition-all">
-          <FaPlus /> Add File
-        </button>
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium shadow-sm hover:bg-gray-200 focus:ring-2 focus:ring-gray-300 transition-all" onClick={() => window.location.reload()}>
-          <FaSyncAlt /> Refresh
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-2 text-gray-900 tracking-tight">
+            Welcome back, {user?.name || 'Admin'}!
+          </h1>
+          <p className="text-gray-600">Here's what's happening with your business today</p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          <FaSyncAlt className="text-gray-600" />
+          <span className="text-gray-700 font-medium">Refresh</span>
         </button>
       </div>
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {quickActions.map((action, index) => (
+          <Link
+            key={index}
+            to={action.link}
+            className={`flex items-center gap-3 p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all bg-white hover:scale-105 ${
+              action.color === 'blue' ? 'hover:border-blue-300' :
+              action.color === 'green' ? 'hover:border-green-300' :
+              action.color === 'purple' ? 'hover:border-purple-300' :
+              'hover:border-red-300'
+            }`}
+          >
+            <div className={`p-2 rounded-lg ${
+              action.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+              action.color === 'green' ? 'bg-green-100 text-green-600' :
+              action.color === 'purple' ? 'bg-purple-100 text-purple-600' :
+              'bg-red-100 text-red-600'
+            }`}>
+              {action.icon}
+            </div>
+            <span className="font-medium text-gray-700">{action.label}</span>
+          </Link>
+        ))}
+      </div>
+
+      {/* Main Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           icon={<FaUsers />}
           label="Total Clients"
           value={loading ? '--' : stats.clients}
-          trend={{ direction: 'up', percent: 7.3 }}
+          trend={{ direction: 'up', percent: 12.5 }}
           accentColor="blue"
         />
         <StatCard
           icon={<FaCar />}
           label="Total Vehicles"
           value={loading ? '--' : stats.vehicles}
-          trend={{ direction: 'down', percent: 2.1 }}
+          trend={{ direction: 'up', percent: 8.2 }}
           accentColor="green"
         />
         <StatCard
-          icon={<FaFileAlt />}
-          label="Total Files"
-          value={loading ? '--' : stats.files}
-          trend={{ direction: 'up', percent: 4.8 }}
+          icon={<FaCalendarAlt />}
+          label="Total Bookings"
+          value={loading ? '--' : stats.bookings}
+          trend={{ direction: 'up', percent: 15.3 }}
           accentColor="purple"
+        />
+        <StatCard
+          icon={<FaMoneyBillWave />}
+          label="Total Revenue"
+          value={loading ? '--' : `$${stats.totalRevenue.toLocaleString()}`}
+          trend={{ direction: 'up', percent: 22.1 }}
+          accentColor="teal"
+        />
+      </div>
+
+      {/* Secondary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard
+          icon={<FaUserTie />}
+          label="Drivers"
+          value={loading ? '--' : stats.drivers}
+          accentColor="indigo"
+        />
+        <StatCard
+          icon={<FaMapMarkerAlt />}
+          label="Online Vehicles"
+          value={loading ? '--' : `${stats.onlineVehicles}/${stats.vehicles}`}
+          accentColor="green"
+        />
+        <StatCard
+          icon={<FaCheckCircle />}
+          label="Completed Trips"
+          value={loading ? '--' : stats.completedBookings}
+          accentColor="emerald"
+        />
+        <StatCard
+          icon={<FaClock />}
+          label="Pending Trips"
+          value={loading ? '--' : stats.pendingBookings}
+          accentColor="yellow"
         />
       </div>
 
       {/* Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-5">
-        {/* Area Chart */}
-        <Card title="Monthly Trends" className="col-span-2">
-          <div className="w-full h-48">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Revenue Chart */}
+        <Card title="Revenue Trend" className="col-span-2">
+          <div className="w-full h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mockTrendsData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorClients" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorVehicles" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorFiles" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#A21CAF" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#A21CAF" stopOpacity={0}/>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <XAxis dataKey="month" />
+                <YAxis />
                 <CartesianGrid strokeDasharray="3 3" />
-                <Tooltip />
-                <Legend />
-                <Area type="monotone" dataKey="clients" stroke="#3B82F6" fillOpacity={1} fill="url(#colorClients)" name="Clients" />
-                <Area type="monotone" dataKey="vehicles" stroke="#22C55E" fillOpacity={1} fill="url(#colorVehicles)" name="Vehicles" />
-                <Area type="monotone" dataKey="files" stroke="#A21CAF" fillOpacity={1} fill="url(#colorFiles)" name="Files" />
+                <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']} />
+                <Area type="monotone" dataKey="revenue" stroke="#14b8a6" fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
-        {/* Pie Chart */}
-        <Card title="Distribution" className="flex flex-col items-center justify-center">
-          <div className="w-full h-48 flex items-center justify-center">
+
+        {/* Booking Status */}
+        <Card title="Booking Status">
+          <div className="w-full h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={mockPieData}
+                  data={bookingStatusData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={55}
+                  outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {mockPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                  {bookingStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -194,27 +405,98 @@ function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Activity Feed */}
-      <Card className="bg-white/80 border border-gray-100">
-        <h2 className="text-xl font-semibold mb-3 text-gray-900">Recent Activity</h2>
-        {error && <div className="text-red-500 mb-2">{error}</div>}
-        {loading ? (
-          <div className="text-gray-400">Loading...</div>
-        ) : activity.length === 0 ? (
-          <div className="text-gray-400">No recent activity yet.</div>
-        ) : (
-          <ul className="divide-y divide-gray-50">
-            {activity.map((item, idx) => (
-              <li key={idx} className="py-3 flex items-center gap-4 group">
-                <span className="inline-block font-semibold text-xs px-2 py-1 rounded bg-blue-100 text-blue-600 border border-blue-100 mr-2 group-hover:bg-blue-200 transition">{item.type}</span>
-                <span className="font-medium text-gray-800 truncate max-w-xs md:max-w-md">{item.name}</span>
-                <span className="text-gray-400 text-xs">{item.date ? new Date(item.date).toLocaleString() : ''}</span>
-                <span className="ml-auto text-gray-500 text-xs truncate max-w-[100px]">{item.detail}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+      {/* Vehicle Status and Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Vehicle Status */}
+        <Card title="Vehicle Status">
+          <div className="w-full h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={vehicleStatusData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card title="Recent Activity">
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {loading ? (
+              <div className="text-gray-500">Loading activity...</div>
+            ) : activity.length === 0 ? (
+              <div className="text-gray-500">No recent activity</div>
+            ) : (
+              activity.map((item, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                  <div className={`p-2 rounded-lg ${
+                    item.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                    item.color === 'green' ? 'bg-green-100 text-green-600' :
+                    item.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
+                    item.color === 'red' ? 'bg-red-100 text-red-600' :
+                    'bg-purple-100 text-purple-600'
+                  }`}>
+                    {item.icon === 'FaUsers' && <FaUsers />}
+                    {item.icon === 'FaCar' && <FaCar />}
+                    {item.icon === 'FaCalendarAlt' && <FaCalendarAlt />}
+                    {item.icon === 'FaFileAlt' && <FaFileAlt />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{item.name}</p>
+                    <p className="text-sm text-gray-600">{item.detail}</p>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(item.date).toLocaleDateString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Live Tracking Summary */}
+      <Card title="Live Tracking Summary">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{stats.onlineVehicles}</div>
+            <div className="text-sm text-green-700">Vehicles Online</div>
+          </div>
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{stats.onTripVehicles}</div>
+            <div className="text-sm text-blue-700">Currently on Trip</div>
+          </div>
+          <div className="text-center p-4 bg-yellow-50 rounded-lg">
+            <div className="text-2xl font-bold text-yellow-600">{stats.availableVehicles}</div>
+            <div className="text-sm text-yellow-700">Available for Booking</div>
+          </div>
+        </div>
+        <div className="mt-4 text-center">
+          <Link 
+            to="/tracking" 
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <FaMapMarkerAlt />
+            View Live Map
+          </Link>
+        </div>
       </Card>
+
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <FaTimesCircle className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

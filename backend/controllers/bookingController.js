@@ -40,16 +40,18 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// Get all bookings, or by client or agent if param is present
+// Get all bookings, with optional filters
 exports.getBookings = async (req, res) => {
   try {
     const filter = {};
     if (req.query.client) filter.client = req.query.client;
-    if (req.query.agent) filter.agent = req.query.agent; // Add agent filter for driver
+    if (req.query.agent) filter.agent = req.query.agent;
+    if (req.query.status) filter.status = req.query.status;
+
     const bookings = await Booking.find(filter)
       .populate('client', 'name email')
       .populate('vehicle', 'name numberPlate')
-      .populate('agent', 'name email');
+      .populate('driver', 'name');
     res.json(bookings);
   } catch (err) {
     res.status(500).json({ message: err.message });

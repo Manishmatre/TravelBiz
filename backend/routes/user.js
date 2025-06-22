@@ -24,8 +24,9 @@ router.put('/:id/photo', authorize('admin', 'agent'), upload.single('photo'), us
 router.put('/me', userController.updateCurrentUser);
 router.put('/me/photo', upload.single('photo'), userController.updateMyPhoto);
 
-// New route for driver dashboard
+// Dashboard routes
 router.get('/driver/dashboard', userController.getDriverDashboard);
+router.get('/admin/dashboard', authorize('admin'), userController.getAdminDashboard);
 
 // Route for a user to join an agency
 router.put('/:id/agency', async (req, res) => {

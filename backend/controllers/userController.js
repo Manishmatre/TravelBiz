@@ -310,3 +310,44 @@ exports.getDriverDashboard = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getAdminDashboard = async (req, res, next) => {
+  try {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const onlineDrivers = await User.countDocuments({
+      role: 'driver',
+      lastLocationUpdate: { $gte: fiveMinutesAgo },
+    });
+
+    const activeTrips = await Booking.countDocuments({ status: 'In-Progress' });
+
+    const totalBookingsToday = await Booking.countDocuments({
+      createdAt: { $gte: startOfToday },
+    });
+    
+    // For now, issues are not tracked, so we return 0
+    const issues = 0;
+
+    const recentActivity = await Booking.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('client', 'name')
+      .populate('driver', 'name');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        onlineDrivers,
+        activeTrips,
+        totalBookingsToday,
+        issues,
+        recentActivity,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
