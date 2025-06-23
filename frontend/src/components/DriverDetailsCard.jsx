@@ -34,7 +34,11 @@ function DriverDetailsCard({ driver, vehicle, location, onBack, onFocus, isFloat
       <div className="text-sm text-gray-700 mb-1"><b>Status:</b> {typeof driver.status === 'string' ? driver.status : '-'}</div>
       <div className="text-sm text-gray-700 mb-1"><b>License #:</b> {typeof driver.licenseNumber === 'string' ? driver.licenseNumber : '-'}</div>
       <div className="text-sm text-gray-700 mb-1"><b>License Expiry:</b> {typeof driver.licenseExpiry === 'string' ? driver.licenseExpiry : '-'}</div>
-      <div className="text-sm text-gray-700 mb-1"><b>Last Location:</b> {location ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}` : '-'}</div>
+      <div className="text-sm text-gray-700 mb-1"><b>Last Location:</b> {
+        location && typeof location.latitude === 'number' && typeof location.longitude === 'number'
+          ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
+          : '-'
+      }</div>
       <div className="flex gap-2 mt-4">
         <button className="px-3 py-1 bg-purple-100 text-purple-700 rounded font-bold hover:bg-purple-200 transition" onClick={onBack}>Back</button>
         {onFocus && <button className="px-3 py-1 bg-purple-100 text-purple-700 rounded font-bold hover:bg-purple-200 transition" onClick={onFocus}>Focus</button>}

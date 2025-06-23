@@ -15,6 +15,7 @@ import ClientDetailsCard from '../components/ClientDetailsCard';
 import VehicleCard from '../components/VehicleCard';
 import DriverDetailsCard from '../components/DriverDetailsCard';
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from '@react-google-maps/api';
+import axios from 'axios';
 
 const libraries = ['places', 'directions'];
 
@@ -57,6 +58,7 @@ const BookingDetail = () => {
   const [agents, setAgents] = useState([]);
   const [driverDetails, setDriverDetails] = useState(null);
   const [directions, setDirections] = useState(null);
+  const [driverLocation, setDriverLocation] = useState(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -120,7 +122,25 @@ const BookingDetail = () => {
         }
       );
     }
-  }, [booking, isLoaded, token]);
+
+    // Fetch live driver location
+    const fetchDriverLocation = async () => {
+      if (booking.driver && token) {
+        try {
+          const res = await axios.get(`/api/location/driver/${typeof booking.driver === 'object' ? booking.driver._id : booking.driver}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setDriverLocation(res.data);
+        } catch (e) {
+          setDriverLocation(null);
+        }
+      }
+    };
+    fetchDriverLocation();
+    // Optionally, poll every 10 seconds for live updates
+    const interval = setInterval(fetchDriverLocation, 10000);
+    return () => clearInterval(interval);
+  }, [booking, token]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -273,7 +293,7 @@ const BookingDetail = () => {
             
             {driverDetails ? (
               <Card>
-                <DriverDetailsCard driver={driverDetails} vehicle={booking.vehicle} />
+                <DriverDetailsCard driver={driverDetails} vehicle={booking.vehicle} location={driverLocation} />
               </Card>
             ) : (
               <Card>
@@ -297,16 +317,18 @@ const BookingDetail = () => {
                 {hasCoordinates ? (
                   <GoogleMap
                     mapContainerStyle={{ height: '100%', width: '100%' }}
-                    center={booking.pickupCoordinates}
+                    center={{
+                      lat: (booking.pickupCoordinates.lat + booking.destinationCoordinates.lat) / 2,
+                      lng: (booking.pickupCoordinates.lng + booking.destinationCoordinates.lng) / 2,
+                    }}
                     zoom={10}
                   >
-                    {directions && <DirectionsRenderer directions={directions} />}
-                    {!directions && (
-                      <>
-                        <Marker position={booking.pickupCoordinates} label="P" />
-                        <Marker position={booking.destinationCoordinates} label="D" />
-                      </>
+                    <Marker position={booking.pickupCoordinates} label="A" />
+                    <Marker position={booking.destinationCoordinates} label="B" />
+                    {driverLocation && driverLocation.latitude && driverLocation.longitude && (
+                      <Marker position={{ lat: driverLocation.latitude, lng: driverLocation.longitude }} label="Driver" />
                     )}
+                    {directions && <DirectionsRenderer directions={directions} />}
                   </GoogleMap>
                 ) : (
                   <div className="flex items-center justify-center h-full bg-gray-50">

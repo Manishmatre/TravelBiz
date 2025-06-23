@@ -6,7 +6,7 @@ const Client = require('../models/Client');
 // Create a new booking
 exports.createBooking = async (req, res) => {
   try {
-    const { vehicle, startDate, endDate, agent, status, pickup, destination } = req.body;
+    const { vehicle, startDate, endDate, agent, status, pickup, destination, driver } = req.body;
 
     // Sanitize driver field
     if (req.body.driver === '') {
@@ -32,12 +32,10 @@ exports.createBooking = async (req, res) => {
       }
     }
     const booking = await Booking.create(req.body);
-    // If booking is confirmed, update vehicle and driver assignment
-    if (vehicle && status === 'Confirmed') {
-      await Vehicle.findByIdAndUpdate(vehicle, { status: 'on-trip', assignedTrip: booking._id });
-      if (agent) {
-        await User.findByIdAndUpdate(agent, { assignedVehicle: vehicle });
-      }
+    // If booking is confirmed and has driver and vehicle, sync assignments
+    if (vehicle && driver && status === 'Confirmed') {
+      await User.findByIdAndUpdate(driver, { assignedVehicle: vehicle });
+      await Vehicle.findByIdAndUpdate(vehicle, { assignedDriver: driver });
     }
     // Emit real-time event
     const io = req.app.get('io');
@@ -128,15 +126,13 @@ exports.getBookingById = async (req, res) => {
 // Update booking
 exports.updateBooking = async (req, res) => {
   try {
-    const { vehicle, status } = req.body;
+    const { vehicle, driver, status } = req.body;
     const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    // If booking is completed or cancelled, update vehicle and driver status
-    if (booking.vehicle && ['Completed', 'Cancelled'].includes(booking.status)) {
-      await Vehicle.findByIdAndUpdate(booking.vehicle, { status: 'available', assignedTrip: null });
-      if (booking.agent) {
-        await User.findByIdAndUpdate(booking.agent, { assignedVehicle: null });
-      }
+    // If booking is confirmed and has driver and vehicle, sync assignments
+    if (vehicle && driver && status === 'Confirmed') {
+      await User.findByIdAndUpdate(driver, { assignedVehicle: vehicle });
+      await Vehicle.findByIdAndUpdate(vehicle, { assignedDriver: driver });
     }
     // Emit real-time event
     const io = req.app.get('io');
@@ -193,5 +189,25 @@ exports.getBookingsByDriver = async (req, res) => {
   } catch (err) {
     console.error('Error fetching bookings by driver:', err);
     res.status(500).json({ message: 'Server error while fetching trips' });
+  }
+};
+
+// Admin-only: Repair all driver/vehicle assignments for bookings
+exports.repairAssignments = async (req, res) => {
+  try {
+    // Only allow admin
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const bookings = await Booking.find({ driver: { $ne: null }, vehicle: { $ne: null } });
+    let updated = 0;
+    for (const booking of bookings) {
+      await User.findByIdAndUpdate(booking.driver, { assignedVehicle: booking.vehicle });
+      await Vehicle.findByIdAndUpdate(booking.vehicle, { assignedDriver: booking.driver });
+      updated++;
+    }
+    res.json({ message: `Synced ${updated} driver/vehicle assignments.` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 }; 

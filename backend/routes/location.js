@@ -14,5 +14,7 @@ router.get('/:vehicleId', authorize('admin', 'agent', 'driver'), locationControl
 router.get('/', authorize('admin', 'agent', 'driver'), locationController.getAllLocations);
 // Get location history for a vehicle
 router.get('/history/:vehicleId', authorize('admin', 'agent', 'driver'), locationController.getLocationHistory);
+// Get current location for a driver
+router.get('/driver/:driverId', authorize('admin', 'agent', 'driver'), locationController.getLocationByDriver);
 
 module.exports = router; 
