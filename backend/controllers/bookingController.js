@@ -113,8 +113,8 @@ exports.getBookingById = async (req, res) => {
       .populate({ path: 'client', select: 'name email phone avatarUrl' })
       .populate({ path: 'vehicle', select: 'name numberPlate vehicleType status photoUrl' })
       .populate({ path: 'agent', select: 'name email' })
-      .populate({ path: 'driver', select: 'name email phone status licenseNumber avatarUrl' })
-      .lean(); // Use .lean() for faster, plain object results
+      .populate({ path: 'driver', select: 'name email phone status licenseNumber licenseExpiry avatarUrl' })
+      .lean();
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });

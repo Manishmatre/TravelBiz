@@ -1,17 +1,21 @@
 import React from 'react';
 
-function DriverDetailsCard({ driver, location, onBack, onFocus, isFloating, onToggleFloating }) {
+function DriverDetailsCard({ driver, vehicle, location, onBack, onFocus, isFloating, onToggleFloating }) {
   if (!driver) return <div className="text-gray-500">Driver not found.</div>;
   const safeName = typeof driver.name === 'string' ? driver.name : '-';
   const safeEmail = typeof driver.email === 'string' ? driver.email : '-';
-  let assignmentText = 'Unassigned';
+    let assignmentText = 'Unassigned';
+
+  const assignedVehicleForDisplay = vehicle || driver.assignedVehicle;
+
   if (
-    driver.assignedVehicle &&
-    (typeof driver.assignedVehicle.numberPlate === 'string' && driver.assignedVehicle.numberPlate.trim() !== '' ||
-     typeof driver.assignedVehicle.name === 'string' && driver.assignedVehicle.name.trim() !== '')
+    assignedVehicleForDisplay &&
+    (typeof assignedVehicleForDisplay.numberPlate === 'string' && assignedVehicleForDisplay.numberPlate.trim() !== '' ||
+     typeof assignedVehicleForDisplay.name === 'string' && assignedVehicleForDisplay.name.trim() !== '')
   ) {
-    assignmentText = `Assigned: ${driver.assignedVehicle.numberPlate || driver.assignedVehicle.name}`;
+    assignmentText = `Assigned: ${assignedVehicleForDisplay.numberPlate || assignedVehicleForDisplay.name}`;
   }
+
   return (
     <div className="bg-white rounded-xl shadow p-6">
       <div className="flex items-center gap-4 mb-4">

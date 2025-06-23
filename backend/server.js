@@ -32,7 +32,7 @@ const vehicleRoutes = require('./routes/vehicle');
 app.use('/api/vehicles', vehicleRoutes);
 
 const locationRoutes = require('./routes/location');
-app.use('/api/location', locationRoutes);
+app.use('/api/locations', locationRoutes);
 
 const agencyRoutes = require('./routes/agency');
 app.use('/api/agencies', agencyRoutes);

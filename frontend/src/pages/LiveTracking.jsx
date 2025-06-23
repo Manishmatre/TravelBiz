@@ -1,912 +1,771 @@
-/**
- * Enhanced Live Tracking - All vehicles, drivers, clients
- * Features:
- * - Real-time tracking of all vehicles, drivers, and clients
- * - Advanced filtering and search
- * - Route history playback
- * - Status indicators and alerts
- */
 import React, { useEffect, useState, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow, MarkerClusterer } from '@react-google-maps/api';
-import { getAllLocations, getLocationHistory } from '../services/locationService';
+import { GoogleMap, useJsApiLoader, Marker, MarkerClusterer, Polyline, InfoWindow } from '@react-google-maps/api';
 import { getVehicles } from '../services/vehicleService';
 import { getBookings } from '../services/bookingService';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import StatCard from '../components/common/StatCard';
-import { FaMapMarkerAlt, FaBars, FaTimes, FaCarSide, FaSyncAlt, FaUser, FaUsers, FaSearch, FaFilter, FaCar, FaRoute, FaClock, FaEye, FaEyeSlash, FaCheckCircle, FaTools, FaDownload, FaLocationArrow, FaCompass, FaSatellite, FaStreetView, FaLayerGroup, FaInfoCircle, FaPlay, FaPause, FaExpand, FaCompress } from 'react-icons/fa';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { getAgents, getUsers } from '../services/userService';
+import { FaSyncAlt, FaCar, FaRoute, FaClock, FaCheckCircle, FaTools, FaExpand, FaCompress, FaTimes, FaMapMarkerAlt, FaHistory, FaPlay, FaPause, FaLocationArrow, FaCompass, FaSatellite, FaStreetView, FaLayerGroup, FaInfoCircle, FaDownload, FaFilter, FaSearch, FaEye, FaEyeSlash, FaBars, FaTimes as FaTimesIcon, FaChartLine, FaGlobe, FaTachometerAlt, FaChartBar, FaChartPie, FaExclamationTriangle } from 'react-icons/fa';
+import { getUsers } from '../services/userService';
 import { getClients } from '../services/clientService';
-import VehicleDetailsCard from '../components/VehicleDetailsCard';
-import Draggable from 'react-draggable';
-import axios from 'axios';
-import DriverDetailsCard from '../components/DriverDetailsCard';
-import AgentDetailsCard from '../components/AgentDetailsCard';
-import ClientDetailsCard from '../components/ClientDetailsCard';
 import Button from '../components/common/Button';
 import Dropdown from '../components/common/Dropdown';
-import Notification from '../components/common/Notification';
+import Loader from '../components/common/Loader';
 
 const containerStyle = {
   width: '100%',
-  height: '600px',
+  height: 'calc(100vh - 350px)',
 };
 
-// Placeholder center (Dubai)
-const center = {
-  lat: 25.2048,
-  lng: 55.2708,
-};
-
-// Enhanced Pulsing Marker with different colors for different entity types
-const PulsingMarker = ({ color = '#007bff', size = 32, entityType = 'vehicle' }) => {
-  const getMarkerIcon = () => {
-    switch (entityType) {
-      case 'driver':
-        return (
-          <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="16" cy="16" r="8" fill={color} fillOpacity="0.7">
-      <animate attributeName="r" values="8;14;8" dur="1.2s" repeatCount="indefinite" />
-      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.2s" repeatCount="indefinite" />
-    </circle>
-    <circle cx="16" cy="16" r="5" fill={color} />
-    <circle cx="16" cy="16" r="2" fill="#fff" />
-            <path d="M12 20h8l-4-4z" fill="#fff" />
-  </svg>
-);
-      case 'client':
-        return (
-          <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="8" fill={color} fillOpacity="0.7">
-              <animate attributeName="r" values="8;14;8" dur="1.2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.2s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="16" cy="16" r="5" fill={color} />
-            <circle cx="16" cy="16" r="2" fill="#fff" />
-            <path d="M14 18h4l-2-2z" fill="#fff" />
-          </svg>
-        );
-      default: // vehicle
-        return (
-          <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="8" fill={color} fillOpacity="0.7">
-              <animate attributeName="r" values="8;14;8" dur="1.2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.2s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="16" cy="16" r="5" fill={color} />
-            <circle cx="16" cy="16" r="2" fill="#fff" />
-            <path d="M10 20h12l-2-4h-8l-2 4z" fill="#fff" />
-          </svg>
-        );
-    }
-  };
-
-  return getMarkerIcon();
-};
-
-// Map style options
 const MAP_STYLES = [
   { label: 'Default', value: 'roadmap', mapTypeId: 'roadmap', styles: null },
-  { label: 'Dark', value: 'dark', mapTypeId: 'roadmap', styles: [
-    { elementType: 'geometry', stylers: [{ color: '#212121' }] },
-    { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
-    { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
-    { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] },
-    { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-    { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] },
-    { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
-    { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
-    { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
-    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
-    { featureType: 'road.highway.controlled_access', elementType: 'geometry', stylers: [{ color: '#4e4e4e' }] },
-    { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-    { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
-    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
-  ] },
+  { label: 'Dark', value: 'dark', mapTypeId: 'roadmap', styles: [ { elementType: 'geometry', stylers: [{ color: '#212121' }] }, { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] }, { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] }, { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] }, { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] }, { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] }, { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] }, { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] }, { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] }, { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] }, { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] }, { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] }, { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] }, { featureType: 'road.highway.controlled_access', elementType: 'geometry', stylers: [{ color: '#4e4e4e' }] }, { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] }, { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] }, { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] }, { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] }, ] },
   { label: 'Satellite', value: 'satellite', mapTypeId: 'satellite', styles: null },
   { label: 'Terrain', value: 'terrain', mapTypeId: 'terrain', styles: null },
 ];
 
 function LiveTracking() {
   const { token } = useAuth();
-  const [locations, setLocations] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [clients, setClients] = useState([]);
-  const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const socketRef = useRef(null);
   const mapRef = useRef(null);
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
   });
 
-  // Enhanced state management
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('vehicles'); // 'vehicles', 'drivers', 'clients', 'agents'
+  const [activeTab, setActiveTab] = useState('vehicles');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'online', 'offline', 'active', 'inactive'
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [mapStyle, setMapStyle] = useState(MAP_STYLES[0]);
-  const [mapCenter, setMapCenter] = useState(center);
+  const [mapCenter, setMapCenter] = useState({ lat: 25.2048, lng: 55.2708 });
   const [mapZoom, setMapZoom] = useState(12);
-
-  // Real-time tracking stats
-  const [stats, setStats] = useState({
-    totalVehicles: 0,
-    onlineVehicles: 0,
-    totalDrivers: 0,
-    onlineDrivers: 0,
-    totalClients: 0,
-    activeClients: 0,
-    totalAgents: 0,
-    onlineAgents: 0
-  });
-
+  const [stats, setStats] = useState({ totalVehicles: 0, onlineVehicles: 0 });
   const [bookings, setBookings] = useState([]);
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [mapType, setMapType] = useState('roadmap');
   const [showTraffic, setShowTraffic] = useState(false);
-  const [showBookings, setShowBookings] = useState(true);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [notification, setNotification] = useState(null);
-  const [error, setError] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterVehicleType, setFilterVehicleType] = useState('');
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [trackingHistory, setTrackingHistory] = useState({});
   const [showHistory, setShowHistory] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  const [locationHistory, setLocationHistory] = useState({});
+  const [showRoutes, setShowRoutes] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showSpeedLimit, setShowSpeedLimit] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30);
+  const [selectedFilters, setSelectedFilters] = useState({
+    status: 'all',
+    type: 'all',
+    speed: 'all'
+  });
+  const [showInfoWindow, setShowInfoWindow] = useState(false);
+  const [infoWindowData, setInfoWindowData] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [locs, vehs, drvs, clts, agts, bookingsData] = await Promise.all([
-          getAllLocations(token),
-          getVehicles(token),
-          getUsers({ role: 'driver' }, token),
-          getClients(token),
-          getUsers({ role: 'agent' }, token),
-          getBookings(null, token)
-        ]);
-        setLocations(locs);
-        setVehicles(vehs);
-        setDrivers(drvs);
-        setClients(clts);
-        setAgents(agts);
-        setBookings(bookingsData);
-        
-        // Calculate stats
-        const onlineVehicles = vehs.filter(v => isOnline(v.lastUpdated)).length;
-        const onlineDrivers = drvs.filter(d => isOnline(d.lastUpdated)).length;
-        const activeClients = clts.filter(c => c.status === 'active').length;
-        const onlineAgents = agts.filter(a => isOnline(a.lastUpdated)).length;
-        
-        setStats({
-          totalVehicles: vehs.length,
-          onlineVehicles,
-          totalDrivers: drvs.length,
-          onlineDrivers,
-          totalClients: clts.length,
-          activeClients,
-          totalAgents: agts.length,
-          onlineAgents
-        });
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load tracking data');
-        setNotification({ 
-          message: 'Failed to load tracking data: ' + (err.response?.data?.message || err.message), 
-          type: 'error' 
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (token) fetchData();
-  }, [token]);
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    if (!token) return;
-    
-    const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000', {
-      transports: ['websocket'],
-    });
-    socketRef.current = socket;
-    
-    socket.on('locationUpdate', (location) => {
-      setLocations((prev) => {
-        const idx = prev.findIndex(l => l.vehicleId === location.vehicleId);
-        if (idx !== -1) {
-          const updated = [...prev];
-          updated[idx] = location;
-          return updated;
-        } else {
-          return [location, ...prev];
-        }
-      });
-    });
-
-    socket.on('driverLocationUpdate', (driverLocation) => {
-      // Handle driver location updates
-      setDrivers(prev => prev.map(d => 
-        d._id === driverLocation.driverId 
-          ? { ...d, location: driverLocation }
-          : d
-      ));
-    });
-
-    socket.on('clientLocationUpdate', (clientLocation) => {
-      // Handle client location updates
-      setClients(prev => prev.map(c => 
-        c._id === clientLocation.clientId 
-          ? { ...c, location: clientLocation }
-          : c
-      ));
-    });
-
-    return () => socket.disconnect();
-  }, [token]);
-
-  const isOnline = (lastUpdated) => {
-    if (!lastUpdated) return false;
-    const now = new Date();
-    const last = new Date(lastUpdated);
-    const diffMinutes = (now - last) / (1000 * 60);
-    return diffMinutes < 5; // Consider online if updated within last 5 minutes
-  };
-
-  const getFilteredEntities = () => {
-    let entities = [];
-    let searchFields = [];
-
-    switch (activeTab) {
-      case 'vehicles':
-        entities = vehicles;
-        searchFields = ['name', 'numberPlate', 'driverName'];
-        break;
-      case 'drivers':
-        entities = drivers;
-        searchFields = ['name', 'email', 'phone'];
-        break;
-      case 'clients':
-        entities = clients;
-        searchFields = ['name', 'email', 'phone'];
-        break;
-      case 'agents':
-        entities = agents;
-        searchFields = ['name', 'email', 'phone'];
-        break;
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      entities = entities.filter(entity => 
-        searchFields.some(field => 
-          entity[field]?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      entities = entities.filter(entity => {
-        switch (statusFilter) {
-          case 'online':
-            return isOnline(entity.lastUpdated);
-          case 'offline':
-            return !isOnline(entity.lastUpdated);
-          case 'active':
-            return entity.status === 'active';
-          case 'inactive':
-            return entity.status === 'inactive';
-          default:
-            return true;
-        }
-      });
-    }
-
-    return entities;
-  };
-
-  const getEntityLocation = (entity) => {
-    switch (activeTab) {
-      case 'vehicles':
-        return locations.find(l => l.vehicleId === entity._id);
-      case 'drivers':
-        return entity.location;
-      case 'clients':
-        return entity.location;
-      case 'agents':
-        return entity.location;
-      default:
-        return null;
-    }
-  };
-
-  const getEntityColor = (entity) => {
-    const isEntityOnline = isOnline(entity.lastUpdated);
-    
-    switch (activeTab) {
-      case 'vehicles':
-        return isEntityOnline ? '#22c55e' : '#6b7280';
-      case 'drivers':
-        return isEntityOnline ? '#3b82f6' : '#6b7280';
-      case 'clients':
-        return entity.status === 'active' ? '#f59e0b' : '#6b7280';
-      case 'agents':
-        return isEntityOnline ? '#8b5cf6' : '#6b7280';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const handleEntityClick = (entity) => {
-    setSelectedEntity(entity);
-    const location = getEntityLocation(entity);
-    if (location) {
-      setMapCenter({ lat: location.lat, lng: location.lng });
-      setMapZoom(15);
-    }
-  };
-
-  const renderEntityMarkers = () => {
-    const filteredEntities = getFilteredEntities();
-    
-    return filteredEntities.map(entity => {
-      const location = getEntityLocation(entity);
-      if (!location) return null;
-
-      const color = getEntityColor(entity);
-      const iconUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-        renderToStaticMarkup(<PulsingMarker color={color} entityType={activeTab.slice(0, -1)} />)
-      )}`;
-
-      return (
-        <Marker
-          key={`${activeTab}-${entity._id}`}
-          position={{ lat: location.lat, lng: location.lng }}
-          icon={{
-            url: iconUrl,
-            scaledSize: new window.google.maps.Size(32, 32),
-            anchor: new window.google.maps.Point(16, 16),
-          }}
-          onClick={() => handleEntityClick(entity)}
-        />
-      );
-    });
-  };
-
-  const renderDetailsCard = () => {
-    if (!selectedEntity) return null;
-
-    const location = getEntityLocation(selectedEntity);
-    const isEntityOnline = isOnline(selectedEntity.lastUpdated);
-
-    return (
-      <Draggable>
-        <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-10">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-semibold text-lg capitalize">
-              {activeTab.slice(0, -1)} Details
-            </h3>
-            <button 
-              onClick={() => setSelectedEntity(null)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <FaTimes />
-            </button>
-          </div>
-          
-          <div className="space-y-2">
-            <p><strong>Name:</strong> {selectedEntity.name}</p>
-            {selectedEntity.email && <p><strong>Email:</strong> {selectedEntity.email}</p>}
-            {selectedEntity.phone && <p><strong>Phone:</strong> {selectedEntity.phone}</p>}
-            {location && (
-              <>
-                <p><strong>Location:</strong> {location.lat.toFixed(6)}, {location.lng.toFixed(6)}</p>
-                <p><strong>Status:</strong> 
-                  <span className={`ml-1 px-2 py-1 rounded text-xs ${
-                    isEntityOnline ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {isEntityOnline ? 'Online' : 'Offline'}
-                  </span>
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      </Draggable>
-    );
-  };
-
-  // Initialize map
-  useEffect(() => {
-    if (!window.google || !mapRef.current) return;
-
-    const map = new window.google.maps.Map(mapRef.current, {
-      center: mapCenter,
-      zoom: mapZoom,
-      mapTypeId: mapType,
-      styles: [
-        {
-          featureType: 'poi',
-          elementType: 'labels',
-          stylers: [{ visibility: 'off' }]
-        }
-      ],
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    });
-
-    // Add traffic layer if enabled
-    if (showTraffic) {
-      const trafficLayer = new window.google.maps.TrafficLayer();
-      trafficLayer.setMap(map);
-    }
-
-    // Store map instance
-    window.trackingMap = map;
-
-    // Add map event listeners
-    map.addListener('center_changed', () => {
-      const center = map.getCenter();
-      setMapCenter({ lat: center.lat(), lng: center.lng() });
-    });
-
-    map.addListener('zoom_changed', () => {
-      setMapZoom(map.getZoom());
-    });
-
-  }, [mapType, showTraffic, mapCenter, mapZoom]);
-
-  // Update map markers when vehicles change
-  useEffect(() => {
-    if (!window.google || !window.trackingMap) return;
-
-    // Clear existing markers
-    if (window.vehicleMarkers) {
-      window.vehicleMarkers.forEach(marker => marker.setMap(null));
-    }
-    window.vehicleMarkers = [];
-
-    const filteredVehicles = vehicles.filter(v => {
-      if (filterStatus && v.status !== filterStatus) return false;
-      if (filterVehicleType && v.vehicleType !== filterVehicleType) return false;
-      return true;
-    });
-
-    filteredVehicles.forEach(vehicle => {
-      if (!vehicle.location) return;
-
-      const marker = new window.google.maps.Marker({
-        position: { lat: vehicle.location.lat, lng: vehicle.location.lng },
-        map: window.trackingMap,
-        title: vehicle.name,
-        icon: {
-          url: getVehicleIcon(vehicle.status, vehicle.vehicleType),
-          scaledSize: new window.google.maps.Size(32, 32),
-          anchor: new window.google.maps.Point(16, 16)
-        },
-        animation: vehicle.status === 'on-trip' ? window.google.maps.Animation.BOUNCE : null
-      });
-
-      // Add info window
-      const infoWindow = new window.google.maps.InfoWindow({
-        content: createInfoWindowContent(vehicle, bookings)
-      });
-
-      marker.addListener('click', () => {
-        setSelectedVehicle(vehicle);
-        infoWindow.open(window.trackingMap, marker);
-      });
-
-      // Add tracking path if history exists
-      if (showHistory && trackingHistory[vehicle._id] && trackingHistory[vehicle._id].length > 1) {
-        const path = new window.google.maps.Polyline({
-          path: trackingHistory[vehicle._id].map(point => ({ lat: point.lat, lng: point.lng })),
-          geodesic: true,
-          strokeColor: getVehicleColor(vehicle.status),
-          strokeOpacity: 0.8,
-          strokeWeight: 3,
-          map: window.trackingMap
-        });
-      }
-
-      window.vehicleMarkers.push(marker);
-    });
-
-  }, [vehicles, filterStatus, filterVehicleType, showHistory, trackingHistory]);
-
-  // Add booking markers
-  useEffect(() => {
-    if (!window.google || !window.trackingMap || !showBookings) return;
-
-    // Clear existing booking markers
-    if (window.bookingMarkers) {
-      window.bookingMarkers.forEach(marker => marker.setMap(null));
-    }
-    window.bookingMarkers = [];
-
-    const activeBookings = bookings.filter(b => 
-      b.status === 'Confirmed' && b.startLocation
-    );
-
-    activeBookings.forEach(booking => {
-      const marker = new window.google.maps.Marker({
-        position: { lat: booking.startLocation.lat, lng: booking.startLocation.lng },
-        map: window.trackingMap,
-        title: `Booking: ${booking.destination}`,
-        icon: {
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" fill="#3B82F6" stroke="white" stroke-width="2"/>
-              <path d="M12 6v6l4 2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          `),
-          scaledSize: new window.google.maps.Size(24, 24),
-          anchor: new window.google.maps.Point(12, 12)
-        }
-      });
-
-      const infoWindow = new window.google.maps.InfoWindow({
-        content: createBookingInfoContent(booking)
-      });
-
-      marker.addListener('click', () => {
-        infoWindow.open(window.trackingMap, marker);
-      });
-
-      window.bookingMarkers.push(marker);
-    });
-
-  }, [bookings, showBookings]);
-
-  const getVehicleIcon = (status, type) => {
-    const baseColor = getVehicleColor(status);
-    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="14" fill="${baseColor}" stroke="white" stroke-width="2"/>
-        <path d="M8 20h16M10 12h12M12 8h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    `)}`;
-  };
-
-  const getVehicleColor = (status) => {
-    switch (status) {
-      case 'available': return '#10B981';
-      case 'on-trip': return '#3B82F6';
-      case 'maintenance': return '#F59E0B';
-      default: return '#6B7280';
-    }
-  };
-
-  const createInfoWindowContent = (vehicle, bookings) => {
-    const vehicleBookings = bookings.filter(b => b.vehicle?._id === vehicle._id);
-    const activeBooking = vehicleBookings.find(b => b.status === 'Confirmed');
-    
-    return `
-      <div class="p-4 max-w-sm">
-        <div class="font-bold text-lg mb-2">${vehicle.name}</div>
-        <div class="text-sm text-gray-600 mb-2">${vehicle.numberPlate}</div>
-        <div class="text-sm mb-2">
-          <span class="font-medium">Status:</span> 
-          <span class="px-2 py-1 rounded text-xs ${getStatusClass(vehicle.status)}">${vehicle.status}</span>
-        </div>
-        <div class="text-sm mb-2">
-          <span class="font-medium">Driver:</span> ${vehicle.driverName || 'Unassigned'}
-          </div>
-        ${activeBooking ? `
-          <div class="text-sm mb-2">
-            <span class="font-medium">Current Trip:</span> ${activeBooking.destination}
-        </div>
-        ` : ''}
-        <div class="text-sm text-gray-500">
-          Last updated: ${vehicle.lastUpdate ? new Date(vehicle.lastUpdate).toLocaleTimeString() : 'Unknown'}
-              </div>
-              </div>
-    `;
-  };
-
-  const createBookingInfoContent = (booking) => {
-    return `
-      <div class="p-4 max-w-sm">
-        <div class="font-bold text-lg mb-2">Booking</div>
-        <div class="text-sm mb-2">
-          <span class="font-medium">Destination:</span> ${booking.destination}
-                        </div>
-        <div class="text-sm mb-2">
-          <span class="font-medium">Client:</span> ${booking.client?.name || 'Unknown'}
-                      </div>
-        <div class="text-sm mb-2">
-          <span class="font-medium">Date:</span> ${booking.startDate ? new Date(booking.startDate).toLocaleDateString() : 'TBD'}
-              </div>
-        <div class="text-sm mb-2">
-          <span class="font-medium">Price:</span> $${booking.price || 0}
-              </div>
-                  </div>
-    `;
-  };
-
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'available': return 'bg-green-100 text-green-800';
-      case 'on-trip': return 'bg-blue-100 text-blue-800';
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const handleRefresh = async () => {
+  const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
-      const [vehiclesData, bookingsData] = await Promise.all([
+      const [vehs, drvs, clts, bks] = await Promise.all([
         getVehicles(token),
-        getBookings(token)
+        getUsers({ role: 'driver' }, token),
+        getClients(token),
+        getBookings(null, token)
       ]);
-      setVehicles(vehiclesData);
-      setBookings(bookingsData);
-      setNotification({ message: 'Tracking data refreshed!', type: 'success' });
-    } catch (err) {
-      setNotification({ 
-        message: 'Failed to refresh data: ' + (err.response?.data?.message || err.message), 
-        type: 'error' 
+
+      setVehicles(vehs);
+      setDrivers(drvs);
+      setClients(clts);
+      setBookings(bks);
+      
+      const isEntityOnline = (entity) => entity.lastUpdated && (new Date() - new Date(entity.lastUpdated)) < 300000;
+      setStats({
+        totalVehicles: vehs.length,
+        onlineVehicles: vehs.filter(isEntityOnline).length,
       });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load tracking data');
     } finally {
       setLoading(false);
     }
   };
 
-  const centerOnVehicle = (vehicle) => {
-    if (!window.trackingMap || !vehicle.location) return;
+  useEffect(() => {
+    if (token) fetchData();
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000', { transports: ['websocket'] });
+    socketRef.current = socket;
     
-    window.trackingMap.setCenter({ lat: vehicle.location.lat, lng: vehicle.location.lng });
-    window.trackingMap.setZoom(15);
-  };
+    const updateEntityLocation = (updater, locationData) => {
+        updater(prev => prev.map(e => {
+          if (e._id === locationData.entityId) {
+            const history = locationHistory[e._id] || [];
+            const newLocation = {
+              ...locationData.location,
+              timestamp: new Date(),
+              speed: locationData.speed || 0
+            };
+            
+            setLocationHistory(prev => ({
+              ...prev,
+              [e._id]: [...history.slice(-50), newLocation]
+            }));
+            
+            return { ...e, location: locationData.location, speed: locationData.speed };
+          }
+          return e;
+        }));
+    };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+    socket.on('locationUpdate', (location) => updateEntityLocation(setVehicles, location));
+    socket.on('driverLocationUpdate', (location) => updateEntityLocation(setDrivers, location));
+    socket.on('clientLocationUpdate', (location) => updateEntityLocation(setClients, location));
+    
+    return () => socket.disconnect();
+  }, [token, locationHistory]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      fetchData();
+    }, refreshInterval * 1000);
+    
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval]);
+
+  const handleRefresh = () => fetchData();
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
+
+  const getFilteredEntities = () => {
+    let list;
+    switch (activeTab) {
+      case 'vehicles': list = vehicles; break;
+      case 'drivers': list = drivers; break;
+      case 'clients': list = clients; break;
+      default: list = [];
     }
+    
+    let filtered = list;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(e =>
+        (e.name && e.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.email && e.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.numberPlate && e.numberPlate.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+    
+    if (selectedFilters.status !== 'all') {
+      filtered = filtered.filter(e => e.status === selectedFilters.status);
+    }
+    
+    if (selectedFilters.type !== 'all') {
+      filtered = filtered.filter(e => e.type === selectedFilters.type);
+    }
+    
+    if (selectedFilters.speed !== 'all') {
+      filtered = filtered.filter(e => {
+        const speed = e.speed || 0;
+        switch (selectedFilters.speed) {
+          case 'slow': return speed < 30;
+          case 'normal': return speed >= 30 && speed < 80;
+          case 'fast': return speed >= 80;
+          default: return true;
+        }
+      });
+    }
+    
+    return filtered;
   };
 
-  const exportTrackingData = () => {
-    const data = vehicles.map(v => ({
-      name: v.name,
-      numberPlate: v.numberPlate,
-      status: v.status,
-      driver: v.driverName,
-      location: v.location ? `${v.location.lat}, ${v.location.lng}` : 'Unknown',
-      lastUpdate: v.lastUpdate || 'Unknown'
+  const handleEntityClick = (entity, type) => {
+    setSelectedEntity({ ...entity, type });
+    if (entity.location) {
+      setMapCenter(entity.location);
+      setMapZoom(15);
+    }
+    
+    setInfoWindowData({
+      entity,
+      type,
+      location: entity.location
+    });
+    setShowInfoWindow(true);
+  };
+
+  const renderEntityList = () => {
+    const entities = getFilteredEntities();
+    return entities.map(entity => (
+      <div key={entity._id} className={`p-3 cursor-pointer border-b border-gray-200 hover:bg-gray-50 ${selectedEntity?._id === entity._id ? 'bg-blue-100' : ''}`} onClick={() => handleEntityClick(entity, activeTab.slice(0, -1))}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-gray-800">{entity.name || `${entity.make} ${entity.model}`}</p>
+            <p className="text-sm text-gray-500">{entity.numberPlate || entity.email}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {entity.speed && (
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                entity.speed < 30 ? 'bg-green-100 text-green-800' :
+                entity.speed < 80 ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {entity.speed} km/h
+              </span>
+            )}
+            {entity.status && (
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                entity.status === 'available' || entity.status === 'active' ? 'bg-green-100 text-green-800' :
+                entity.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {entity.status}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    ));
+  };
+
+  const renderLocationHistory = (entityId) => {
+    const history = locationHistory[entityId] || [];
+    if (history.length < 2) return null;
+    
+    const path = history.map(point => ({
+      lat: point.lat,
+      lng: point.lng
     }));
+    
+    return (
+      <Polyline
+        path={path}
+        options={{
+          strokeColor: '#3B82F6',
+          strokeOpacity: 0.8,
+          strokeWeight: 3,
+          geodesic: true
+        }}
+      />
+    );
+  };
 
-    const csv = [
-      ['Name', 'Number Plate', 'Status', 'Driver', 'Location', 'Last Update'],
-      ...data.map(row => [row.name, row.numberPlate, row.status, row.driver, row.location, row.lastUpdate])
-    ].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+  const renderEntityMarkers = (clusterer) => {
+    const getEntityType = (entity) => {
+        if (entity.numberPlate) return 'vehicle';
+        if (entity.licenseNumber) return 'driver';
+        return 'client';
+    }
+    const allEntities = [...vehicles, ...drivers, ...clients];
 
-    const blob = new Blob([csv], { type: 'text/csv' });
+    return allEntities
+        .filter(entity => entity.location)
+        .map(entity => (
+            <Marker 
+                key={entity._id} 
+                position={entity.location} 
+                onClick={() => handleEntityClick(entity, getEntityType(entity))}
+                clusterer={clusterer}
+                icon={{
+                  url: getEntityType(entity) === 'vehicle' ? 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' :
+                        getEntityType(entity) === 'driver' ? 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' :
+                        'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+                  scaledSize: new window.google.maps.Size(30, 30)
+                }}
+            />
+        ));
+  };
+
+  const exportLocationData = () => {
+    const data = {
+      vehicles: vehicles.map(v => ({
+        id: v._id,
+        name: v.name,
+        numberPlate: v.numberPlate,
+        location: v.location,
+        speed: v.speed,
+        status: v.status,
+        history: locationHistory[v._id] || []
+      })),
+      drivers: drivers.map(d => ({
+        id: d._id,
+        name: d.name,
+        email: d.email,
+        location: d.location,
+        status: d.status,
+        history: locationHistory[d._id] || []
+      })),
+      timestamp: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tracking_data_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `location-data-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // Statistics
-  const totalVehicles = vehicles.length;
-  const availableVehicles = vehicles.filter(v => v.status === 'available').length;
-  const onTripVehicles = vehicles.filter(v => v.status === 'on-trip').length;
-  const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length;
-  const vehiclesWithLocation = vehicles.filter(v => v.location).length;
-  const activeBookings = bookings.filter(b => b.status === 'Confirmed').length;
-
-  if (!isLoaded) {
-    return <div className="flex items-center justify-center h-96">Loading map...</div>;
+  if (!isLoaded || loading) {
+    return <div className="flex items-center justify-center h-[600px]"><Loader /><p className="ml-4 text-lg text-gray-600">Loading Live Tracking Map...</p></div>;
   }
 
-                  return (
-    <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
-      {/* Notification */}
-      {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type}
-          onClose={() => setNotification(null)}
-        />
-      )}
-
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-              <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Live Vehicle Tracking</h1>
-            <p className="text-gray-600 mt-1">Real-time location tracking of your fleet</p>
-              </div>
-          <div className="flex gap-2">
-            <Button
-              color="secondary"
-              onClick={handleRefresh}
-              className="flex items-center gap-2"
-              disabled={loading}
-            >
-              <FaSyncAlt className="w-4 h-4" />
-              Refresh
-            </Button>
-            <Button
-              color="secondary"
-              onClick={toggleFullscreen}
-              className="flex items-center gap-2"
-            >
-              {isFullscreen ? <FaCompress /> : <FaExpand />}
-              {isFullscreen ? 'Exit' : 'Fullscreen'}
-            </Button>
-                        </div>
-                        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-          <StatCard icon={<FaCar />} label="Total Vehicles" value={totalVehicles} accentColor="blue" />
-          <StatCard icon={<FaMapMarkerAlt />} label="With Location" value={vehiclesWithLocation} accentColor="green" />
-          <StatCard icon={<FaCheckCircle />} label="Available" value={availableVehicles} accentColor="green" />
-          <StatCard icon={<FaRoute />} label="On Trip" value={onTripVehicles} accentColor="blue" />
-          <StatCard icon={<FaTools />} label="Maintenance" value={maintenanceVehicles} accentColor="yellow" />
-          <StatCard icon={<FaClock />} label="Active Bookings" value={activeBookings} accentColor="purple" />
-                      </div>
-
-        {/* Controls */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-4 items-center">
-              {/* Map Type */}
-              <Dropdown
-                value={mapType}
-                onChange={e => setMapType(e.target.value)}
-                options={[
-                  { value: 'roadmap', label: 'Road Map' },
-                  { value: 'satellite', label: 'Satellite' },
-                  { value: 'hybrid', label: 'Hybrid' },
-                  { value: 'terrain', label: 'Terrain' }
-                ]}
-                className="w-40"
-              />
-
-              {/* Vehicle Status Filter */}
-              <Dropdown
-                value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-                options={[
-                  { value: '', label: 'All Status' },
-                  { value: 'available', label: 'Available' },
-                  { value: 'on-trip', label: 'On Trip' },
-                  { value: 'maintenance', label: 'Maintenance' }
-                ]}
-                className="w-40"
-              />
-
-              {/* Vehicle Type Filter */}
-              <Dropdown
-                value={filterVehicleType}
-                onChange={e => setFilterVehicleType(e.target.value)}
-                options={[
-                  { value: '', label: 'All Types' },
-                  ...Array.from(new Set(vehicles.map(v => v.vehicleType).filter(Boolean)))
-                    .map(type => ({ value: type, label: type }))
-                ]}
-                className="w-40"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              {/* Toggle Controls */}
-              <Button
-                color={showTraffic ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => setShowTraffic(!showTraffic)}
-                className="flex items-center gap-2"
-              >
-                <FaLayerGroup />
-                Traffic
-              </Button>
-              <Button
-                color={showBookings ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => setShowBookings(!showBookings)}
-                className="flex items-center gap-2"
-              >
-                <FaInfoCircle />
-                Bookings
-              </Button>
-              <Button
-                color={showHistory ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center gap-2"
-              >
-                <FaRoute />
-                History
-              </Button>
-              <Button
-                color={autoRefresh ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className="flex items-center gap-2"
-              >
-                {autoRefresh ? <FaPause /> : <FaPlay />}
-                Auto
-              </Button>
-              <Button
-                color="secondary"
-                size="sm"
-                onClick={exportTrackingData}
-                className="flex items-center gap-2"
-              >
-                <FaDownload />
-                Export
-              </Button>
-                        </div>
-                        </div>
-                      </div>
-                    </div>
-
-      {/* Map Container */}
-      <div className="relative">
-        <div 
-          ref={mapRef} 
-          className="w-full h-[calc(100vh-300px)] min-h-[500px] rounded-2xl shadow-lg"
-        />
-        
-        {/* Vehicle List Overlay */}
-        {selectedVehicle && (
-          <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold">Vehicle Details</h3>
-              <Button
-                color="secondary"
-                size="sm"
-                onClick={() => setSelectedVehicle(null)}
-              >
-                ×
-              </Button>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            {sidebarOpen ? <FaTimesIcon /> : <FaBars />}
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Live Vehicle Tracking</h1>
+            <p className="text-gray-500">Real-time location tracking of your fleet</p>
           </div>
-            <div className="text-sm space-y-1">
-              <div><strong>Name:</strong> {selectedVehicle.name}</div>
-              <div><strong>Plate:</strong> {selectedVehicle.numberPlate}</div>
-              <div><strong>Status:</strong> 
-                <span className={`ml-1 px-2 py-1 rounded text-xs ${getStatusClass(selectedVehicle.status)}`}>
-                  {selectedVehicle.status}
-                </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button color="secondary" onClick={handleRefresh} loading={loading}><FaSyncAlt /> Refresh</Button>
+          <Button color="secondary" onClick={() => setShowAnalytics(true)}><FaChartLine /> Analytics</Button>
+          <Button color="secondary" onClick={exportLocationData}><FaDownload /> Export</Button>
+          <Button color="secondary" onClick={toggleFullscreen}>{isFullscreen ? <FaCompress/> : <FaExpand/>} {isFullscreen ? 'Exit' : 'Full'}</Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <StatCard title="Total Vehicles" value={stats.totalVehicles} icon={<FaCar />} />
+        <StatCard title="Online" value={stats.onlineVehicles} icon={<FaCheckCircle className="text-green-500" />} />
+        <StatCard title="On Trip" value={bookings.filter(b => b.status === 'Confirmed').length} icon={<FaRoute />} />
+        <StatCard title="Available" value={vehicles.filter(v => v.status === 'available').length} icon={<FaCheckCircle />} />
+        <StatCard title="Maintenance" value={vehicles.filter(v => v.status === 'maintenance').length} icon={<FaTools />} />
+        <StatCard title="Active Bookings" value={bookings.filter(b => b.status === 'Confirmed').length} icon={<FaClock />} />
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6" style={{ height: containerStyle.height }}>
+        {sidebarOpen && (
+          <div className="lg:w-1/3 bg-white rounded-xl shadow-md flex flex-col">
+            <div className="flex border-b p-1">
+              <button onClick={() => setActiveTab('vehicles')} className={`flex-1 p-3 text-sm font-semibold rounded-t-lg ${activeTab === 'vehicles' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>Vehicles</button>
+              <button onClick={() => setActiveTab('drivers')} className={`flex-1 p-3 text-sm font-semibold rounded-t-lg ${activeTab === 'drivers' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>Drivers</button>
+              <button onClick={() => setActiveTab('clients')} className={`flex-1 p-3 text-sm font-semibold rounded-t-lg ${activeTab === 'clients' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>Clients</button>
             </div>
-              <div><strong>Driver:</strong> {selectedVehicle.driverName || 'Unassigned'}</div>
-              {selectedVehicle.location && (
-                <div><strong>Location:</strong> {selectedVehicle.location.lat.toFixed(4)}, {selectedVehicle.location.lng.toFixed(4)}</div>
-              )}
+            <div className="p-2 space-y-2">
+              <input type="text" placeholder={`Search ${activeTab}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-2 border rounded-md" />
+              
+              <div className="flex gap-2">
+                <select 
+                  value={selectedFilters.status} 
+                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, status: e.target.value }))}
+                  className="flex-1 p-2 border rounded-md text-sm"
+                >
+                  <option value="all">All Status</option>
+                  <option value="available">Available</option>
+                  <option value="active">Active</option>
+                  <option value="maintenance">Maintenance</option>
+                </select>
+                
+                <select 
+                  value={selectedFilters.speed} 
+                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, speed: e.target.value }))}
+                  className="flex-1 p-2 border rounded-md text-sm"
+                >
+                  <option value="all">All Speed</option>
+                  <option value="slow">Slow (&lt;30 km/h)</option>
+                  <option value="normal">Normal (30-80 km/h)</option>
+                  <option value="fast">Fast (&gt;80 km/h)</option>
+                </select>
+              </div>
             </div>
-            <Button
-              color="primary"
-              size="sm"
-              onClick={() => centerOnVehicle(selectedVehicle)}
-              className="w-full mt-2"
-            >
-              <FaLocationArrow className="w-3 h-3" />
-              Center on Map
-            </Button>
+            <div className="flex-1 overflow-y-auto">{renderEntityList()}</div>
+          </div>
+        )}
+        
+        <div className={`relative rounded-xl shadow-md overflow-hidden ${sidebarOpen ? 'lg:flex-1' : 'flex-1'}`}>
+          <GoogleMap 
+            mapContainerStyle={{ width: '100%', height: '100%' }} 
+            center={mapCenter} 
+            zoom={mapZoom} 
+            options={{ 
+              styles: mapStyle.styles, 
+              mapTypeControl: false, 
+              streetViewControl: false, 
+              fullscreenControl: false,
+              trafficLayer: showTraffic
+            }} 
+            onLoad={map => (mapRef.current = map)}
+          >
+            <MarkerClusterer>{(clusterer) => renderEntityMarkers(clusterer)}</MarkerClusterer>
+            
+            {showHistory && selectedEntity && locationHistory[selectedEntity._id] && 
+              renderLocationHistory(selectedEntity._id)
+            }
+            
+            {showInfoWindow && infoWindowData && (
+              <InfoWindow
+                position={infoWindowData.location}
+                onCloseClick={() => setShowInfoWindow(false)}
+              >
+                <div className="p-2">
+                  <h3 className="font-semibold">{infoWindowData.entity.name}</h3>
+                  <p className="text-sm text-gray-600">{infoWindowData.entity.numberPlate || infoWindowData.entity.email}</p>
+                  {infoWindowData.entity.speed && (
+                    <p className="text-sm text-gray-600">Speed: {infoWindowData.entity.speed} km/h</p>
+                  )}
+                  <p className="text-sm text-gray-600">Status: {infoWindowData.entity.status}</p>
+                </div>
+              </InfoWindow>
+            )}
+          </GoogleMap>
+          
+          <div className="absolute top-4 left-4 z-10 bg-white p-2 rounded-lg shadow-lg flex items-center gap-2">
+             <Dropdown options={MAP_STYLES.map(s => ({label: s.label, value: s.value}))} value={mapStyle.value} onChange={e => setMapStyle(MAP_STYLES.find(s => s.value === e.target.value))} />
+             <Button color="secondary" onClick={() => setShowTraffic(!showTraffic)} active={showTraffic}><FaLayerGroup /> Traffic</Button>
+             <Button color="secondary" onClick={() => setShowHistory(!showHistory)} active={showHistory}><FaHistory /> History</Button>
+             <Button color="secondary" onClick={() => setShowRoutes(!showRoutes)} active={showRoutes}><FaRoute /> Routes</Button>
+             <Button color="secondary" onClick={() => setShowSpeedLimit(!showSpeedLimit)} active={showSpeedLimit}><FaCompass /> Speed</Button>
+          </div>
+          
+          {selectedEntity && (
+            <div className="absolute top-4 right-4 z-10 w-96 bg-white rounded-lg shadow-xl border">
+              <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {selectedEntity.type === 'vehicle' ? 'Vehicle Details' : 
+                   selectedEntity.type === 'driver' ? 'Driver Details' : 'Client Details'}
+                </h3>
+                <button 
+                  onClick={() => setSelectedEntity(null)}
+                  className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-200"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="p-4">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Name</p>
+                    <p className="text-gray-900">{selectedEntity.name || `${selectedEntity.make} ${selectedEntity.model}` || 'N/A'}</p>
+                  </div>
+                  
+                  {selectedEntity.numberPlate && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Number Plate</p>
+                      <p className="text-gray-900">{selectedEntity.numberPlate}</p>
+                    </div>
+                  )}
+                  
+                  {selectedEntity.email && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Email</p>
+                      <p className="text-gray-900">{selectedEntity.email}</p>
+                    </div>
+                  )}
+                  
+                  {selectedEntity.phone && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Phone</p>
+                      <p className="text-gray-900">{selectedEntity.phone}</p>
+                    </div>
+                  )}
+                  
+                  {selectedEntity.status && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Status</p>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedEntity.status === 'available' || selectedEntity.status === 'active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : selectedEntity.status === 'maintenance' 
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedEntity.status}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {selectedEntity.speed && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Current Speed</p>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedEntity.speed < 30 ? 'bg-green-100 text-green-800' :
+                        selectedEntity.speed < 80 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedEntity.speed} km/h
+                      </span>
+                    </div>
+                  )}
+                  
+                  {selectedEntity.location && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Location</p>
+                      <p className="text-gray-900 text-sm">
+                        Lat: {selectedEntity.location.lat.toFixed(6)}, Lng: {selectedEntity.location.lng.toFixed(6)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedEntity.type === 'vehicle' && selectedEntity.assignedDriver && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Assigned Driver</p>
+                      <p className="text-gray-900">{selectedEntity.assignedDriver.name || 'N/A'}</p>
+                    </div>
+                  )}
+                  
+                  {locationHistory[selectedEntity._id] && locationHistory[selectedEntity._id].length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Location History</p>
+                      <p className="text-gray-900 text-sm">
+                        {locationHistory[selectedEntity._id].length} points tracked
+                      </p>
+                      <button 
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="text-xs text-blue-600 hover:underline mt-1"
+                      >
+                        {showHistory ? 'Hide' : 'Show'} route on map
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
+        </div>
+      </div>
+      
+      {/* Analytics Modal */}
+      {showAnalytics && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Location Analytics</h2>
+                <button 
+                  onClick={() => setShowAnalytics(false)}
+                  className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              
+              {/* Simple Analytics Content */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-90">Total Entities</p>
+                      <p className="text-2xl font-bold">{vehicles.length + drivers.length + clients.length}</p>
+                    </div>
+                    <FaGlobe className="text-2xl opacity-80" />
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-90">Online</p>
+                      <p className="text-2xl font-bold">
+                        {[...vehicles, ...drivers, ...clients].filter(e => 
+                          e.lastUpdated && (new Date() - new Date(e.lastUpdated)) < 300000
+                        ).length}
+                      </p>
+                    </div>
+                    <FaCheckCircle className="text-2xl opacity-80" />
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-90">Avg Speed</p>
+                      <p className="text-2xl font-bold">
+                        {(() => {
+                          const speeds = [...vehicles, ...drivers, ...clients]
+                            .filter(e => e.speed && e.speed > 0)
+                            .map(e => e.speed);
+                          return speeds.length > 0 ? Math.round(speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length) : 0;
+                        })()} km/h
+                      </p>
+                    </div>
+                    <FaTachometerAlt className="text-2xl opacity-80" />
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-90">Active Routes</p>
+                      <p className="text-2xl font-bold">{Object.keys(locationHistory).length}</p>
+                    </div>
+                    <FaRoute className="text-2xl opacity-80" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Speed Distribution */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <FaChartBar className="text-blue-600" />
+                    Speed Distribution
+                  </h3>
+                  <div className="space-y-3">
+                    {(() => {
+                      const allEntities = [...vehicles, ...drivers, ...clients];
+                      const speeds = allEntities.filter(e => e.speed && e.speed > 0).map(e => e.speed);
+                      const slow = speeds.filter(s => s < 30).length;
+                      const normal = speeds.filter(s => s >= 30 && s < 80).length;
+                      const fast = speeds.filter(s => s >= 80).length;
+                      const total = allEntities.length;
+                      
+                      return (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Slow (&lt;30 km/h)</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-500 h-2 rounded-full" 
+                                  style={{ width: `${total > 0 ? (slow / total) * 100 : 0}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-medium">{slow}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Normal (30-80 km/h)</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-yellow-500 h-2 rounded-full" 
+                                  style={{ width: `${total > 0 ? (normal / total) * 100 : 0}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-medium">{normal}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Fast (&gt;80 km/h)</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-red-500 h-2 rounded-full" 
+                                  style={{ width: `${total > 0 ? (fast / total) * 100 : 0}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-medium">{fast}</span>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <FaChartPie className="text-green-600" />
+                    Status Distribution
+                  </h3>
+                  <div className="space-y-3">
+                    {(() => {
+                      const allEntities = [...vehicles, ...drivers, ...clients];
+                      const statuses = {};
+                      allEntities.forEach(e => {
+                        const status = e.status || 'unknown';
+                        statuses[status] = (statuses[status] || 0) + 1;
+                      });
+                      
+                      return Object.entries(statuses).map(([status, count]) => (
+                        <div key={status} className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 capitalize">{status}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full ${
+                                  status === 'available' || status === 'active' ? 'bg-green-500' :
+                                  status === 'maintenance' ? 'bg-yellow-500' :
+                                  'bg-red-500'
+                                }`}
+                                style={{ width: `${(count / allEntities.length) * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium">{count}</span>
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Alerts */}
+              {(() => {
+                const alerts = [];
+                [...vehicles, ...drivers, ...clients].forEach(entity => {
+                  if (entity.speed && entity.speed > 100) {
+                    alerts.push({
+                      type: 'speed',
+                      entity: entity,
+                      message: `${entity.name || entity.numberPlate} is traveling at ${entity.speed} km/h`,
+                      severity: 'high'
+                    });
+                  }
+                  
+                  if (entity.status === 'maintenance') {
+                    alerts.push({
+                      type: 'maintenance',
+                      entity: entity,
+                      message: `${entity.name || entity.numberPlate} is under maintenance`,
+                      severity: 'medium'
+                    });
+                  }
+                });
+                
+                return alerts.length > 0 ? (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-800">
+                      <FaExclamationTriangle />
+                      Active Alerts
+                    </h3>
+                    <div className="space-y-2">
+                      {alerts.slice(0, 5).map((alert, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${
+                              alert.severity === 'high' ? 'bg-red-500' : 'bg-yellow-500'
+                            }`}></div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">{alert.message}</p>
+                              <p className="text-xs text-gray-500">{alert.entity.name || alert.entity.numberPlate}</p>
+                            </div>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            alert.severity === 'high' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {alert.severity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default LiveTracking; 
+export default LiveTracking;

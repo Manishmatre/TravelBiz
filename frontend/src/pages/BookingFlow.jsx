@@ -60,8 +60,15 @@ function BookingFlow() {
   }, [user]);
 
   useEffect(() => {
-    if (selectedVehicle && selectedVehicle.assignedDriver) {
-      setBookingDetails(d => ({ ...d, driver: selectedVehicle.assignedDriver._id }));
+    if (selectedVehicle) {
+      // More robustly handle getting the driver ID, whether it's populated or just an ID string.
+      const driverId = selectedVehicle.assignedDriver?._id || selectedVehicle.assignedDriver;
+      if (driverId) {
+        setBookingDetails(d => ({ ...d, driver: driverId }));
+      } else {
+        // If vehicle has no assigned driver, ensure we don't carry over an old one.
+        setBookingDetails(d => ({ ...d, driver: '' }));
+      }
     }
   }, [selectedVehicle]);
 
