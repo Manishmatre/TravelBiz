@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Platform, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -7,6 +7,7 @@ import { getTripDetails, startTrip, completeTrip, cancelTrip } from '../../servi
 import ScreenLayout from '../../src/components/ScreenLayout';
 import Header from '../../src/components/Header';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 export default function TripDetailScreen() {
   const { id: tripId } = useLocalSearchParams();
@@ -17,6 +18,9 @@ export default function TripDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [tracking, setTracking] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const locationSubscriber = useRef(null);
 
   const fetchTrip = useCallback(async () => {
     if (!tripId || !token) {
@@ -40,6 +44,45 @@ export default function TripDetailScreen() {
     fetchTrip();
   }, [fetchTrip]);
 
+  const startLocationTracking = async () => {
+    if (tracking) return;
+    setTracking(true);
+    locationSubscriber.current = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 10000, // 10 seconds
+        distanceInterval: 20, // 20 meters
+      },
+      async (newLocation) => {
+        const { latitude, longitude } = newLocation.coords;
+        setCurrentLocation({ latitude, longitude });
+        // Send to backend
+        await fetch(`${process.env.EXPO_PUBLIC_API_URL}/location/update`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            driverId: trip.driver?._id || trip.driver,
+            vehicleId: trip.vehicle?._id || trip.vehicle,
+            latitude,
+            longitude,
+            status: 'on-trip',
+          }),
+        });
+        // Optionally, emit via socket.io here
+      }
+    );
+  };
+
+  const stopLocationTracking = () => {
+    if (locationSubscriber.current) {
+      locationSubscriber.current.remove();
+    }
+    setTracking(false);
+  };
+
   const handleTripAction = async (action) => {
     const actions = {
       start: startTrip,
@@ -55,8 +98,12 @@ export default function TripDetailScreen() {
       const updatedTrip = await actionFunction(token, tripId);
       setTrip(updatedTrip);
       Alert.alert('Success', `Trip successfully ${action}ed!`);
+      if (action === 'start') {
+        startLocationTracking();
+      }
       if (action === 'complete' || action === 'cancel') {
-        router.back(); // Go back to dashboard after final action
+        stopLocationTracking();
+        router.back();
       }
     } catch (err) {
       Alert.alert('Error', `Failed to ${action} the trip.`);
@@ -146,6 +193,9 @@ export default function TripDetailScreen() {
             >
               <Marker coordinate={pickupCoordinates} title="Pickup" pinColor="green" />
               <Marker coordinate={destinationCoordinates} title="Destination" pinColor="red" />
+              {currentLocation && (
+                <Marker coordinate={currentLocation} title="You (Driver)" pinColor="blue" />
+              )}
             </MapView>
           </View>
         )}

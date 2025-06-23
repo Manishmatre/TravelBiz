@@ -28,6 +28,9 @@ router.put('/me/photo', upload.single('photo'), userController.updateMyPhoto);
 router.get('/driver/dashboard', userController.getDriverDashboard);
 router.get('/admin/dashboard', authorize('admin'), userController.getAdminDashboard);
 
+// Add: Get all drivers with their latest location and status (admin only)
+router.get('/drivers/locations', authorize('admin'), userController.getAllDriversWithLocation);
+
 // Route for a user to join an agency
 router.put('/:id/agency', async (req, res) => {
   try {

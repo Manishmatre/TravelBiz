@@ -273,7 +273,7 @@ const BookingDetail = () => {
             
             {driverDetails ? (
               <Card>
-                <DriverDetailsCard driver={driverDetails} />
+                <DriverDetailsCard driver={driverDetails} vehicle={booking.vehicle} />
               </Card>
             ) : (
               <Card>

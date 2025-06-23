@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllDriverTrips } from '../services/api';
+import { getAllDriverTrips, getAssignedVehicle } from '../services/api';
 import BottomNav from '../src/components/BottomNav';
 import Header from '../src/components/Header';
 import ScreenLayout from '../src/components/ScreenLayout';
+import * as Location from 'expo-location';
 
 export default function Dashboard() {
   const { user, token } = useAuth();
@@ -14,6 +15,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [assignedVehicle, setAssignedVehicle] = useState(null);
+  const [tracking, setTracking] = useState(false);
+  const locationSubscriber = useRef(null);
 
   // Restrict access to drivers only
   if (user?.role !== 'driver') {
@@ -41,6 +45,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (token) {
       fetchTrips();
+      getAssignedVehicle(token).then(setAssignedVehicle).catch(() => setAssignedVehicle(null));
     }
   }, [token, fetchTrips]);
 
@@ -79,6 +84,21 @@ export default function Dashboard() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🚗 Assigned Vehicle</Text>
+          {assignedVehicle ? (
+            <View style={styles.card}>
+              <Text style={styles.vehicleName}>{assignedVehicle.name} ({assignedVehicle.numberPlate})</Text>
+              <Text style={styles.vehicleDetail}>Type: {assignedVehicle.vehicleType || '-'}</Text>
+              <Text style={styles.vehicleDetail}>Status: {assignedVehicle.status || '-'}</Text>
+            </View>
+          ) : (
+            <View style={styles.card}>
+              <Text style={styles.emptyText}>No vehicle assigned.</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🗓️ Upcoming Trips</Text>
@@ -305,5 +325,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
     marginTop: 8,
+  },
+  vehicleName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  vehicleDetail: {
+    fontSize: 14,
+    color: '#6b7280',
   },
 }); 

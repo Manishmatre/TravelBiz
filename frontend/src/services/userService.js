@@ -110,4 +110,12 @@ export async function getAgents(token) {
   });
   if (!res.ok) throw new Error('Failed to fetch agents');
   return res.json();
-} 
+}
+
+// Get admin dashboard data
+export const getAdminDashboard = async (token) => {
+  const res = await axios.get(`${API_URL}/users/admin/dashboard`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data.data;
+}; 

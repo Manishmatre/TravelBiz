@@ -3,6 +3,7 @@ const Agency = require('../models/Agency');
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
+const Location = require('../models/Location');
 
 // List all users in the current agency, with optional role filter
 exports.listUsers = async (req, res) => {
@@ -313,6 +314,27 @@ exports.getDriverDashboard = async (req, res, next) => {
   }
 };
 
+// Get all drivers with their latest location and status (for admin panel)
+exports.getAllDriversWithLocation = async (req, res) => {
+  try {
+    // Get all drivers in the agency
+    const drivers = await User.find({ agencyId: req.user.agencyId, role: 'driver' }).select('-password');
+    // For each driver, get their latest location
+    const driverData = await Promise.all(drivers.map(async (driver) => {
+      const latestLocation = await Location.findOne({ driverId: driver._id }).sort({ updatedAt: -1 });
+      return {
+        ...driver.toObject(),
+        latestLocation,
+        status: driver.status || (latestLocation ? latestLocation.status : 'offline'),
+      };
+    }));
+    res.json(driverData);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Update: Add driverLocations to admin dashboard
 exports.getAdminDashboard = async (req, res, next) => {
   try {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
@@ -339,6 +361,17 @@ exports.getAdminDashboard = async (req, res, next) => {
       .populate('client', 'name')
       .populate('driver', 'name');
 
+    // NEW: Get all drivers with their latest location and status
+    const drivers = await User.find({ agencyId: req.user.agencyId, role: 'driver' }).select('-password');
+    const driverLocations = await Promise.all(drivers.map(async (driver) => {
+      const latestLocation = await Location.findOne({ driverId: driver._id }).sort({ updatedAt: -1 });
+      return {
+        ...driver.toObject(),
+        latestLocation,
+        status: driver.status || (latestLocation ? latestLocation.status : 'offline'),
+      };
+    }));
+
     res.status(200).json({
       success: true,
       data: {
@@ -347,6 +380,7 @@ exports.getAdminDashboard = async (req, res, next) => {
         totalBookingsToday,
         issues,
         recentActivity,
+        driverLocations, // <-- Add this to the dashboard response
       },
     });
   } catch (error) {

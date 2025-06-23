@@ -3,7 +3,7 @@ import { getClients } from '../services/clientService';
 import { getVehicles } from '../services/vehicleService';
 import { getFiles } from '../services/fileService';
 import { getBookings } from '../services/bookingService';
-import { getUsers } from '../services/userService';
+import { getUsers, getAdminDashboard } from '../services/userService';
 import { getAllLocations } from '../services/locationService';
 import { useAuth } from '../contexts/AuthContext';
 import Card from '../components/common/Card';
@@ -76,6 +76,7 @@ function Dashboard() {
     { month: 'Nov', revenue: 0 },
     { month: 'Dec', revenue: 0 },
   ]);
+  const [driverLocations, setDriverLocations] = useState([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -242,6 +243,12 @@ function Dashboard() {
         setRecentBookings(recentBookingsData);
         setRecentClients(recentClients);
         setLiveLocations(locations);
+
+        // Fetch dashboard data with driverLocations
+        const dashboardData = await getAdminDashboard(token);
+        if (dashboardData.driverLocations) {
+          setDriverLocations(dashboardData.driverLocations);
+        }
 
       } catch (err) {
         setError('Failed to load dashboard stats');
@@ -537,6 +544,55 @@ function Dashboard() {
             <FaMapMarkerAlt />
             View Live Map
           </Link>
+        </div>
+      </Card>
+
+      {/* Driver Trip & Location Table */}
+      <Card title="Driver Status & Location" className="mt-6">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Driver</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Current Trip</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {driverLocations.length === 0 ? (
+                <tr><td colSpan={4} className="text-center py-4 text-gray-400">No driver data</td></tr>
+              ) : (
+                driverLocations.map((driver) => (
+                  <tr key={driver._id}>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {driver.avatarUrl && <img src={driver.avatarUrl} alt="avatar" className="w-8 h-8 rounded-full" />}
+                        <span className="font-medium text-gray-900">{driver.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${driver.status === 'on-trip' ? 'bg-blue-100 text-blue-700' : driver.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{driver.status || 'offline'}</span>
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {driver.assignedVehicle ? (
+                        <span>Vehicle: {driver.assignedVehicle.name || driver.assignedVehicle}</span>
+                      ) : (
+                        <span className="text-gray-400">None</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {driver.latestLocation ? (
+                        <span>Lat: {driver.latestLocation.latitude?.toFixed(4)}, Lng: {driver.latestLocation.longitude?.toFixed(4)}</span>
+                      ) : (
+                        <span className="text-gray-400">No location</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
 
