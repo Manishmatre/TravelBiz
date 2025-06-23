@@ -21,17 +21,18 @@ exports.listUsers = async (req, res) => {
 // Invite a new user to the agency (admin only)
 exports.inviteUser = async (req, res) => {
   try {
+    console.log('inviteUser req.body:', req.body); // Debug log
     const {
       name, email, role, licenseNumber, licenseExpiry, assignedVehicle, documents,
       phone, gender, joiningDate, address, status, dateOfBirth, avatarUrl,
-      nationality, passportNumber, emergencyContact, assignedAgent, bookings, notes
+      nationality, passportNumber, emergencyContact, assignedAgent, bookings, notes, password: providedPassword
     } = req.body;
     if (!name || !email || !role) return res.status(400).json({ message: 'Name, email, and role are required' });
     // Check if user already exists
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'Email already exists' });
-    // Create user with random password (should send invite email in real SaaS)
-    const password = Math.random().toString(36).slice(-8);
+    // Use provided password if present, otherwise generate random
+    const password = providedPassword || Math.random().toString(36).slice(-8);
     const user = await User.create({
       name,
       email,
@@ -56,6 +57,7 @@ exports.inviteUser = async (req, res) => {
       bookings,
       notes
     });
+    console.log('inviteUser created user:', user); // Debug log
     // TODO: Send invite email with password reset link
     res.status(201).json({ message: 'User invited', user: { id: user._id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {

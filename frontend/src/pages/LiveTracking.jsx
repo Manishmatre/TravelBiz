@@ -408,7 +408,9 @@ function LiveTracking() {
               renderLocationHistory(selectedEntity._id)
             }
             
-            {showInfoWindow && infoWindowData && (
+            {showInfoWindow && infoWindowData && infoWindowData.location &&
+              typeof infoWindowData.location.lat === 'number' &&
+              typeof infoWindowData.location.lng === 'number' && (
               <InfoWindow
                 position={infoWindowData.location}
                 onCloseClick={() => setShowInfoWindow(false)}

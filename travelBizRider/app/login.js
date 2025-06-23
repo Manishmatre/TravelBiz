@@ -49,17 +49,27 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-    
     setLoading(true);
     try {
+      console.log('Starting login...');
       const data = await loginDriver(email, password);
-      console.log('LOGIN: token received:', data.token);
+      console.log('Login API response:', data);
+      if (data.user.role !== 'driver') {
+        console.log('Role is not driver:', data.user.role);
+        Alert.alert('Access Denied', 'Only drivers can log in to this app.');
+        setLoading(false);
+        return;
+      }
       await login(data.token, data.user);
+      console.log('Token/user saved, navigating...');
       router.replace('/dashboard');
+      console.log('Navigation to dashboard triggered.');
     } catch (err) {
+      console.log('Login error:', err);
       Alert.alert('Login Failed', err.message || 'Invalid credentials. Please check your email and password.');
     } finally {
       setLoading(false);
+      console.log('Login process finished.');
     }
   };
 

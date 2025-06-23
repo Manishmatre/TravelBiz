@@ -17,7 +17,8 @@ const AddUser = () => {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    role: 'agent'
+    role: 'agent',
+    password: ''
   });
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditMode);
@@ -52,6 +53,12 @@ const AddUser = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (form.role === 'driver' && !form.password) {
+      setError('Password is required for drivers');
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isEditMode) {
@@ -153,6 +160,16 @@ const AddUser = () => {
               { value: 'driver', label: 'Driver' },
               { value: 'admin', label: 'Admin' },
             ]}
+          />
+
+          <Input
+            label="Password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={handleChange}
+            required={form.role === 'driver'}
+            placeholder="Set password for driver login"
           />
 
           <div className="flex gap-4 pt-6 border-t border-gray-200">

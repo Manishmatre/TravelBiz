@@ -15,6 +15,15 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Restrict access to drivers only
+  if (user?.role !== 'driver') {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: 'red', fontSize: 18, fontWeight: 'bold' }}>Access denied. Only drivers can access this page.</Text>
+      </View>
+    );
+  }
+
   const fetchTrips = useCallback(async () => {
     try {
       setLoading(true);

@@ -30,6 +30,7 @@ function Button({
   disabled = false,
   loading = false,
   className = '',
+  active,
   ...props
 }) {
   const variantClasses = VARIANTS[variant] || VARIANTS.solid;
@@ -39,7 +40,7 @@ function Button({
     <button
       type={type}
       disabled={disabled || loading}
-      className={`rounded-lg font-semibold transition-all duration-200 border-2 inline-flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${colorClasses} ${SIZES[size] || SIZES.md} ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      className={`rounded-lg font-semibold transition-all duration-200 border-2 inline-flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${colorClasses} ${SIZES[size] || SIZES.md} ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''} ${active ? 'ring-2 ring-blue-400' : ''} ${className}`}
       {...props}
     >
       {loading ? <span className="loader mr-2 inline-block align-middle" /> : null}
